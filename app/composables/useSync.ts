@@ -148,18 +148,35 @@ export function useSync() {
    * Sur les 7 derniers jours, remplace les noms Strava génériques :
    * par le nom Garmin s'il est parlant, sinon par la règle de nommage.
    */
+  /**
+   * Renommage automatique, volontairement prudent :
+   * - seulement les courses faites APRÈS la première connexion (jamais l'historique) ;
+   * - une seule fois par course : une course déjà modifiée ou annulée n'est plus touchée ;
+   * - une règle ne remplace qu'un nom générique (« Morning Run »…), jamais un nom écrit par toi ;
+   * - le nom Garmin remplace un nom générique, ou n'importe quel nom si « Écraser » est activé.
+   */
   async function autoApply() {
-    const since = Date.now() - 7 * 24 * 3600 * 1000
+    if (!settings.value.autoSince) {
+      settings.value.autoSince = new Date().toISOString()
+      return
+    }
+    const since = settings.value.autoSince
+    const touched = new Set(historyState.value.map((e) => e.activityId))
     for (const a of activities.value) {
-      if (Date.parse(a.startedAt) < since) continue
-      const garminIsGood = a.garminId && !isGenericName(a.garminName)
+      if (a.startedAt <= since || touched.has(a.id)) continue
+      const stravaGeneric = isGenericName(a.stravaName)
+      const garminIsGood = Boolean(a.garminId) && !isGenericName(a.garminName)
       const rule = settings.value.naming.enabled ? ruleTitle(a) : ''
 
-      if (isGenericName(a.stravaName) || settings.value.overwriteEdited) {
-        const target = garminIsGood ? a.garminName : rule
-        if (target && target !== a.stravaName && (await setStravaName(a.id, target, garminIsGood ? 'garmin' : 'regle'))) {
-          notify({ kind: 'titles', title: 'Nom appliqué sur Strava', body: target, to: `/activites/${a.id}` })
-        }
+      let target = ''
+      let source: 'garmin' | 'regle' = 'garmin'
+      if (garminIsGood && a.garminName !== a.stravaName && (stravaGeneric || settings.value.overwriteEdited)) target = a.garminName
+      else if (stravaGeneric && rule) {
+        target = rule
+        source = 'regle'
+      }
+      if (target && target !== a.stravaName && (await setStravaName(a.id, target, source))) {
+        notify({ kind: 'titles', title: 'Nom appliqué sur Strava', body: target, to: `/activites/${a.id}` })
       }
 
       // Option : le nom générique côté montre est aussi remplacé dans Garmin Connect

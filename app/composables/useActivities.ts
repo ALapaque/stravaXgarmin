@@ -289,7 +289,16 @@ export async function pushField(a: Activity, field: 'name' | 'description' | 'ga
       await $fetch(`/api/garmin/activities/${a.garminId}`, { method: 'PUT', body: { name: value } })
     } else {
       if (!a.stravaId) return true
-      await $fetch(`/api/strava/activities/${a.stravaId}`, { method: 'PUT', body: { [field]: value } })
+      const res = await $fetch<{ name: string; description: string | null }>(`/api/strava/activities/${a.stravaId}`, {
+        method: 'PUT',
+        body: { [field]: value },
+      })
+      // Strava renvoie l'activité modifiée : on vérifie que le changement a bien été pris
+      const now = field === 'name' ? res.name : (res.description ?? '')
+      if (now.trim() !== value.trim()) {
+        useToast().show('Strava n’a pas pris la modification, réessaie')
+        return false
+      }
     }
     return true
   } catch (e) {

@@ -4,6 +4,8 @@ export function useSettings() {
   return useState('settings', () => ({
     autoSync: true,
     overwriteEdited: false,
+    /** Date de la première synchro réelle : seules les courses suivantes sont renommées automatiquement */
+    autoSince: '' as string,
     naming: {
       /** Remplace les noms génériques (« Morning Run »…) par la règle du type de séance */
       enabled: true,
