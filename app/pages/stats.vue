@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { ArrowRight } from 'lucide-vue-next'
+import { ArrowRight, Trophy, CalendarRange, CalendarDays } from 'lucide-vue-next'
 
 useHead({ title: 'Stats · stravaXgarmin' })
 
-const { activities } = useActivities()
+const { sorted } = useActivities()
 const { estimateLevel } = useAi()
+const { bests } = useRecords()
+
+// Courses des deux dernières semaines
+const since = lastDays(14)[0]!.key
+const recent = computed(() => sorted.value.filter((a) => a.startedAt.slice(0, 10) >= since))
 
 // Les séances intenses donnent de meilleures estimations : cochées par défaut
-const selected = ref<string[]>(activities.value.filter((a) => a.type !== 'recovery').map((a) => a.id))
+const selected = ref<string[]>(recent.value.filter((a) => a.type !== 'recovery').map((a) => a.id))
+const shortDate = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' })
 const level = ref({ vma: 16.2, vo2max: 52, threshold: '4:38', half: '1:42', count: 3 })
 const estimatedOn = ref('le 16 novembre')
 const loading = ref(false)
 
 async function run() {
   loading.value = true
-  level.value = await estimateLevel(activities.value.filter((a) => selected.value.includes(a.id)))
+  level.value = await estimateLevel(recent.value.filter((a) => selected.value.includes(a.id)))
   estimatedOn.value = 'à l’instant'
   loading.value = false
 }
@@ -48,14 +54,43 @@ const n = computed(() => selected.value.length)
       </div>
     </dl>
 
+    <div class="grid-2">
+      <NuxtLink to="/recap" class="card recap-link">
+        <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarDays :size="22" /></span>
+        <span class="title">Récap semaine</span>
+      </NuxtLink>
+      <NuxtLink to="/recap?p=mois" class="card recap-link">
+        <span class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><CalendarRange :size="22" /></span>
+        <span class="title">Récap mois</span>
+      </NuxtLink>
+    </div>
+
+    <h2 class="h2">Tes records</h2>
+    <div class="card list">
+      <component
+        :is="b.activity ? 'NuxtLink' : 'div'"
+        v-for="b in bests"
+        :key="b.key"
+        :to="b.activity ? `/activites/${b.activity.id}` : undefined"
+        class="row"
+      >
+        <span class="tile" :style="{ '--tile': b.time ? 'var(--ok)' : 'var(--muted)' }" aria-hidden="true"><Trophy :size="22" /></span>
+        <span class="row__main">
+          <span class="title">{{ b.label }}</span>
+          <span class="label">{{ b.activity ? `${b.activity.garminName} · ${shortDate.format(new Date(b.activity.startedAt))}` : 'Pas encore couru' }}</span>
+        </span>
+        <span class="num pr">{{ b.time ? formatDuration(b.time) : '–' }}</span>
+      </component>
+    </div>
+
     <div class="section-head">
       <h2 class="h2">Courses à analyser</h2>
-      <span class="label">30 derniers jours</span>
+      <span class="label">14 derniers jours</span>
     </div>
 
     <fieldset class="card list runs">
-      <legend class="sr">Courses envoyées à l’analyse</legend>
-      <label v-for="a in activities" :key="a.id" class="row">
+      <legend class="sr-only">Courses envoyées à l’analyse</legend>
+      <label v-for="a in recent" :key="a.id" class="row">
         <span class="row__main">
           <span class="title" :class="{ dim: !selected.includes(a.id) }">{{ a.garminName }}</span>
           <span class="label">{{ formatKm(a.distanceKm) }} km · {{ formatPace(a.durationSec, a.distanceKm) }} /km</span>
@@ -73,6 +108,17 @@ const n = computed(() => selected.value.length)
 </template>
 
 <style scoped>
+.recap-link {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.pr {
+  font-size: 20px;
+}
+
 .title-block {
   display: flex;
   flex-direction: column;

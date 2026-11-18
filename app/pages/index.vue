@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Sparkles, ChevronRight } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Bell, CalendarRange } from 'lucide-vue-next'
 
 useHead({ title: 'Accueil · stravaXgarmin' })
 
-const { activities, toReview, lastWeek } = useActivities()
+const { sorted, toReview, lastWeek } = useActivities()
+const { unread } = useNotifications()
+const recap = useRecap(ref('semaine'))
 const week = lastWeek
 const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
-const latest = computed(() => activities.value.slice(0, 3))
+const latest = computed(() => sorted.value.slice(0, 3))
 const firstToReview = computed(() => toReview.value[0])
 </script>
 
@@ -17,7 +19,13 @@ const firstToReview = computed(() => toReview.value[0])
         <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
         <h1 class="h1">Salut Arlioz</h1>
       </div>
-      <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
+      <div class="head-actions">
+        <NuxtLink to="/notifications" class="bell" :aria-label="unread ? `Notifications, ${unread} non lues` : 'Notifications'">
+          <Bell :size="22" aria-hidden="true" />
+          <span v-if="unread" :key="unread" class="badge" aria-hidden="true">{{ unread }}</span>
+        </NuxtLink>
+        <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
+      </div>
     </header>
 
     <section class="block block--primary week" aria-labelledby="week-title">
@@ -49,6 +57,17 @@ const firstToReview = computed(() => toReview.value[0])
       <ChevronRight :size="20" aria-hidden="true" />
     </NuxtLink>
 
+    <NuxtLink to="/recap" class="card recap">
+      <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarRange :size="22" /></span>
+      <span class="row__main">
+        <span class="title">Récap de la semaine</span>
+        <span class="label">
+          {{ formatKm(recap.km) }} km · {{ recap.count }} courses<template v-if="recap.deltaPct !== null"> · {{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</template>
+        </span>
+      </span>
+      <ChevronRight :size="20" aria-hidden="true" />
+    </NuxtLink>
+
     <div class="section-head">
       <h2 class="h2">Dernières courses</h2>
       <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
@@ -70,6 +89,47 @@ const firstToReview = computed(() => toReview.value[0])
 
 .head .h1 {
   font-size: 28px;
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+}
+
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--ko);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  animation: pop 0.5s var(--ease-spring) 0.6s backwards;
+}
+
+.recap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
 }
 
 .avatar {

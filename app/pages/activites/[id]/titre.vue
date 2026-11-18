@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { RefreshCw, ArrowRight } from 'lucide-vue-next'
 import type { TitleStyle } from '~/composables/useAi'
+import type { ChangeSource } from '~/composables/useActivities'
 
 const route = useRoute()
 const router = useRouter()
 const { byId, setStravaName } = useActivities()
 const { suggestTitles } = useAi()
 const { show } = useToast()
+const { ruleTitle } = useNaming()
+const { recordTitle } = useRecords()
+const { entries, undo } = useHistory()
+const { notify } = useNotifications()
 
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
@@ -26,6 +31,22 @@ const custom = ref('')
 const field = ref<HTMLInputElement>()
 const finalTitle = computed(() => (chosen.value === CUSTOM ? custom.value.trim() : chosen.value))
 
+/** Titres proposés sans IA : le record battu, puis la règle de nommage du type */
+const special = computed(() => {
+  if (!a.value) return []
+  const list: { title: string; tag: string; source: ChangeSource }[] = []
+  const rec = recordTitle(a.value)
+  if (rec) list.push({ title: rec, tag: 'Record', source: 'record' })
+  list.push({ title: ruleTitle(a.value), tag: 'Ta règle', source: 'regle' })
+  return list
+})
+const aiIdeas = computed(() => ideas.value.filter((t) => !special.value.some((s) => s.title === t)))
+
+function sourceOf(title: string): ChangeSource {
+  if (chosen.value === CUSTOM) return 'manuel'
+  return special.value.find((s) => s.title === title)?.source ?? 'ia'
+}
+
 function pickCustom() {
   chosen.value = CUSTOM
   field.value?.focus()
@@ -35,7 +56,8 @@ async function load() {
   if (!a.value) return
   loading.value = true
   ideas.value = await suggestTitles(a.value, style.value, round.value)
-  if (chosen.value !== CUSTOM) chosen.value = ideas.value[0] ?? ''
+  const all = [...special.value.map((s) => s.title), ...ideas.value]
+  if (chosen.value !== CUSTOM && !all.includes(chosen.value)) chosen.value = all[0] ?? ''
   loading.value = false
 }
 
@@ -53,9 +75,16 @@ function more() {
 
 async function publish() {
   if (!a.value || !finalTitle.value) return
-  // TODO: PUT /activities/{id} sur l'API Strava avec { name }
-  setStravaName(a.value.id, finalTitle.value)
-  show('Titre publié sur Strava')
+  const title = finalTitle.value
+  setStravaName(a.value.id, title, sourceOf(title))
+  show('Titre publié sur Strava', {
+    label: 'Annuler',
+    run: () => {
+      const last = entries.value[0]
+      if (last && undo(last.id)) show('Ancien titre remis sur Strava')
+    },
+  })
+  notify({ kind: 'titles', title: 'Titre publié sur Strava', body: title, to: `/activites/${a.value.id}` })
   await router.push(`/activites/${a.value.id}`)
 }
 </script>
@@ -86,7 +115,14 @@ async function publish() {
 
       <fieldset class="card list ideas" :aria-busy="loading">
         <legend class="sr">Choisis un titre</legend>
-        <label v-for="t in ideas" :key="t" class="row">
+        <label v-for="s in special" :key="s.tag" class="row">
+          <span class="row__main">
+            <span class="tag" :class="`tag--${s.source}`">{{ s.tag }}</span>
+            <span class="title">{{ s.title }}</span>
+          </span>
+          <input v-model="chosen" class="radio" type="radio" name="title" :value="s.title">
+        </label>
+        <label v-for="t in aiIdeas" :key="t" class="row">
           <span class="row__main"><span class="title">{{ t }}</span></span>
           <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
         </label>
@@ -161,6 +197,22 @@ async function publish() {
 
 .ideas .title {
   white-space: normal;
+}
+
+.tag {
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 15%, transparent);
+}
+
+.tag--record {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
 }
 
 .custom {

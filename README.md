@@ -20,13 +20,28 @@ Node 20 ou plus récent.
 | Route | Écran |
 |---|---|
 | `/connexion` | Connexion Strava et Garmin |
-| `/` | Accueil : 7 derniers jours, titres à revoir, dernières courses |
+| `/` | Accueil : 7 derniers jours, titres à revoir, récap, notifications |
 | `/activites` | Toutes les activités, filtre « À revoir » |
-| `/activites/:id` | Détail, comparaison des noms Garmin / Strava, copie du nom |
-| `/activites/:id/titre` | Titres proposés par l'IA (sobre, drôle, épique) |
+| `/activites/:id` | Détail : records battus, cœur et allure animés, noms Garmin / Strava, description enrichie |
+| `/activites/:id/titre` | Titre : record, règle de nommage, idées IA (sobre, drôle, épique) ou saisie libre |
 | `/activites/:id/analyse` | Analyse de la séance |
-| `/stats` | VMA, VO2max, seuil, semi estimés à partir des courses cochées |
-| `/reglages` | Synchro, comptes connectés, choix du thème |
+| `/stats` | Niveau estimé, records, accès aux récaps |
+| `/recap` | Récap semaine ou mois, comparaison, image à partager en story |
+| `/notifications` | Centre de notifications |
+| `/historique` | Tout ce qui a été modifié sur Strava, avec annulation |
+| `/reglages` | Synchro, description, notifications, comptes, thème |
+| `/reglages/nommage` | Modèles de nom par type de séance |
+
+## Fonctionnalités
+
+- **Règles de nommage** : un modèle par type de séance (`{distance}`, `{allure}`, `{lieu}`, `{moment}`, `{météo}`…), appliqué aux noms génériques comme « Morning Run ».
+- **Historique et annulation** : chaque modification Strava est journalisée ; « Annuler » remet l'ancienne valeur (aussi depuis le toast juste après l'action).
+- **Description enrichie** : météo, temps au kilomètre, chaussures et signature, au choix.
+- **Records** : détectés à partir des meilleurs efforts (5 km, 10 km, semi), avec titre spécial proposé.
+- **Récaps** : semaine (lundi → dimanche) et mois, comparés à la période précédente, exportables en image 1080×1920.
+- **Notifications** : centre dans l'appli + notifications système une fois autorisées. Pour les recevoir appli fermée, il faudra du Web Push (clés VAPID + route serveur).
+
+L'état (réglages, historique, notifications, données fictives) est gardé dans le navigateur en attendant une vraie base de données.
 
 ## Thèmes
 

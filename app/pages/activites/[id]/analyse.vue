@@ -23,7 +23,6 @@ const added = computed(() => Boolean(a.value?.stravaDescription))
 function addToStrava() {
   if (!a.value) return
   const text = [result.verdict, ...result.findings.map((f) => `${f.title} : ${f.text}`)].join('\n')
-  // TODO: PUT /activities/{id} sur l'API Strava avec { description }
   setStravaDescription(a.value.id, text)
   show('Analyse ajoutée à la description Strava')
 }

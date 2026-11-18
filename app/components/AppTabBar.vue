@@ -4,10 +4,10 @@ import { House, Activity, ChartColumn, SlidersHorizontal } from 'lucide-vue-next
 const route = useRoute()
 
 const tabs = [
-  { to: '/', label: 'Accueil', icon: House, match: (p: string) => p === '/' },
+  { to: '/', label: 'Accueil', icon: House, match: (p: string) => p === '/' || p.startsWith('/notifications') },
   { to: '/activites', label: 'Activités', icon: Activity, match: (p: string) => p.startsWith('/activites') },
-  { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') },
-  { to: '/reglages', label: 'Réglages', icon: SlidersHorizontal, match: (p: string) => p.startsWith('/reglages') },
+  { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') || p.startsWith('/recap') },
+  { to: '/reglages', label: 'Réglages', icon: SlidersHorizontal, match: (p: string) => p.startsWith('/reglages') || p.startsWith('/historique') },
 ]
 
 const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
