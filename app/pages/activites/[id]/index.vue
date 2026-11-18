@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, ChartLine, Check, Trophy, Heart } from 'lucide-vue-next'
+import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain } from 'lucide-vue-next'
 
 const route = useRoute()
 const { byId, isSynced, setStravaName, setStravaDescription, setGarminName } = useActivities()
@@ -21,6 +21,18 @@ const records = computed(() => (a.value ? recordsOf(a.value) : []))
 const paceSec = computed(() => (a.value ? Math.round(a.value.durationSec / a.value.distanceKm) : 0))
 const description = computed(() => (a.value ? describe(a.value) : ''))
 const descriptionAdded = computed(() => Boolean(a.value?.stravaDescription))
+
+// Temps au km : barre plus haute = km plus rapide, le plus rapide mis en avant
+const splits = computed(() => a.value?.splits ?? [])
+const splitRange = computed(() => {
+  const v = splits.value
+  return { min: Math.min(...v), max: Math.max(...v) }
+})
+const splitH = (s: number) => {
+  const { min, max } = splitRange.value
+  return max === min ? 70 : Math.round(35 + ((max - s) / (max - min)) * 65)
+}
+const typeColor = computed(() => (a.value ? RUN_TYPES[a.value.type].color : 'var(--accent-text)'))
 
 function undoLast(message: string) {
   return {
@@ -60,14 +72,20 @@ async function addDescription() {
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack detail">
     <template v-if="a">
       <BackLink to="/activites" label="Activités" />
 
-      <div class="title-block">
-        <h1 class="h1">{{ a.garminName }}</h1>
-        <p class="label">{{ formatDay(a.startedAt) }} · {{ a.place }} · {{ formatTime(a.startedAt) }}</p>
-      </div>
+      <section class="card hero" :style="{ '--c': typeColor }">
+        <div class="map">
+          <RouteTrace :activity="a" :width="1.6" :delay="200" />
+        </div>
+        <div class="hero-text">
+          <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}</p>
+          <h1 class="h1">{{ a.garminName }}</h1>
+          <p class="label">{{ formatDay(a.startedAt) }}<template v-if="a.place"> · {{ a.place }}</template> · {{ formatTime(a.startedAt) }}</p>
+        </div>
+      </section>
 
       <div v-for="r in records" :key="r.key" class="block block--secondary record">
         <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
@@ -77,30 +95,47 @@ async function addDescription() {
         </span>
       </div>
 
-      <dl class="card kpis">
-        <div class="kpi">
-          <dt class="label" style="color: var(--type-interval)">km</dt>
-          <dd class="num">{{ formatKm(a.distanceKm) }}</dd>
+      <dl class="kpis">
+        <div class="card kpi kpi--wide">
+          <dt class="eyebrow">Distance</dt>
+          <dd class="num huge">{{ formatKm(a.distanceKm) }}<span class="unit">km</span></dd>
         </div>
-        <div class="kpi">
-          <dt class="label" style="color: var(--info)">durée</dt>
+        <div class="card kpi">
+          <dt class="eyebrow">Durée</dt>
           <dd class="num">{{ formatDuration(a.durationSec) }}</dd>
         </div>
-        <div class="kpi" style="color: var(--ok)">
-          <dt class="label">/km</dt>
-          <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}</dd>
+        <div class="card kpi" style="--k: var(--ok)">
+          <dt class="eyebrow">Allure</dt>
+          <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}<span class="unit">/km</span></dd>
           <KpiPulse kind="pace" :value="paceSec" />
         </div>
-        <div class="kpi" :style="{ color: 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
-          <dt class="label"><Heart class="heart" :size="12" fill="currentColor" aria-hidden="true" /> bpm</dt>
-          <dd class="num">{{ a.avgHr }}</dd>
+        <div v-if="a.avgHr" class="card kpi" :style="{ '--k': 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
+          <dt class="eyebrow"><Heart class="heart" :size="11" fill="currentColor" aria-hidden="true" /> Cardio</dt>
+          <dd class="num">{{ a.avgHr }}<span class="unit">bpm</span></dd>
           <KpiPulse kind="hr" :value="a.avgHr" />
+        </div>
+        <div v-if="a.elevationM" class="card kpi">
+          <dt class="eyebrow"><Mountain :size="12" aria-hidden="true" /> Dénivelé</dt>
+          <dd class="num">{{ a.elevationM }}<span class="unit">m</span></dd>
         </div>
       </dl>
 
+      <section v-if="splits.length > 1" class="card card--pad splits" aria-labelledby="splits-title">
+        <div class="section-head">
+          <h2 id="splits-title" class="eyebrow">Allure au km</h2>
+          <span class="label">meilleur km {{ formatPace(splitRange.min, 1) }}</span>
+        </div>
+        <ol class="split-bars" :style="{ '--n': splits.length }">
+          <li v-for="(sp, k) in splits" :key="k" :style="{ '--k': k }" :aria-label="`Km ${k + 1} : ${formatPace(sp, 1)} par km`">
+            <span class="sb" :class="{ best: sp === splitRange.min }" :style="{ height: `${splitH(sp)}%` }" />
+            <span v-if="splits.length <= 14 || (k + 1) % 5 === 0" class="sk">{{ k + 1 }}</span>
+          </li>
+        </ol>
+      </section>
+
       <section class="card list" aria-labelledby="names-title">
         <div class="row names-head">
-          <h2 id="names-title" class="title">Nom de l’activité</h2>
+          <h2 id="names-title" class="eyebrow">Nom de l’activité</h2>
           <StatusChip :ok="synced" :label="synced ? 'Identique' : 'Différent'" />
         </div>
         <div class="row">
@@ -119,6 +154,14 @@ async function addDescription() {
         </div>
       </section>
 
+      <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
+        Copier le nom vers Strava
+        <Check :size="20" aria-hidden="true" />
+      </button>
+      <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
+        Ou copier le nom Strava vers Garmin
+      </button>
+
       <div class="btn-row">
         <NuxtLink :to="`/activites/${a.id}/titre`" class="btn btn--secondary">
           <Sparkles :size="20" aria-hidden="true" /> Titre
@@ -128,17 +171,9 @@ async function addDescription() {
         </NuxtLink>
       </div>
 
-      <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
-        Copier le nom vers Strava
-        <Check :size="20" aria-hidden="true" />
-      </button>
-      <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
-        Ou copier le nom Strava vers Garmin
-      </button>
-
       <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">
         <div class="desc-head">
-          <h2 id="desc-title" class="title">Description Strava</h2>
+          <h2 id="desc-title" class="eyebrow">Description Strava</h2>
           <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
         </div>
         <p class="desc-text">{{ a.stravaDescription || description }}</p>
@@ -151,10 +186,64 @@ async function addDescription() {
 </template>
 
 <style scoped>
-.title-block {
+.detail {
+  gap: 14px;
+}
+
+/* ── Tracé en grand ── */
+.hero {
+  overflow: hidden;
+  border-radius: 32px;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(80% 60% at 50% 35%, color-mix(in srgb, var(--c) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--bg) 85%, transparent));
+  pointer-events: none;
+}
+
+/* Quadrillage discret façon carte */
+.map {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 1 / 0.82;
+  padding: 26px 30px 70px;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center;
+  -webkit-mask: radial-gradient(90% 80% at 50% 40%, #000 55%, transparent);
+  mask: radial-gradient(90% 80% at 50% 40%, #000 55%, transparent);
+}
+
+.map :deep(svg) {
+  -webkit-mask: none;
+}
+
+.hero-text {
+  position: absolute;
+  z-index: 2;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.type {
+  color: var(--c);
+}
+
+.hero-text .h1 {
+  font-size: 30px;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
 }
 
 .record {
@@ -162,6 +251,11 @@ async function addDescription() {
   align-items: center;
   gap: 12px;
   padding: 16px;
+}
+
+.record > * {
+  position: relative;
+  z-index: 1;
 }
 
 .trophy {
@@ -180,43 +274,60 @@ async function addDescription() {
   opacity: 0.85;
 }
 
+/* ── Chiffres ── */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   margin: 0;
 }
 
 .kpi {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px 10px 14px 14px;
+  gap: 8px;
+  padding: 16px;
   min-width: 0;
+  color: var(--k, var(--ink));
 }
 
-.kpi + .kpi {
-  border-left: 1px solid var(--line);
+.kpi--wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
 .kpi dt {
-  order: 2;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: inherit;
-  opacity: 1;
+  gap: 5px;
+  color: var(--k, var(--muted));
 }
 
 .kpi dd {
-  order: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   margin: 0;
-  font-size: 22px;
+  font-size: 28px;
   color: var(--ink);
 }
 
+.kpi dd.huge {
+  font-size: 54px;
+  letter-spacing: -0.05em;
+}
+
+.unit {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
 .kpi :deep(.pulse) {
-  order: 3;
-  margin-top: 4px;
+  margin-top: auto;
 }
 
 /* Le cœur bat au rythme réel de la fréquence cardiaque moyenne */
@@ -240,15 +351,57 @@ async function addDescription() {
   }
 }
 
-.names-head {
-  justify-content: space-between;
-  min-height: 56px;
+/* ── Kilomètres ── */
+.splits {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.names-head h2,
-.desc-head h2 {
+.split-bars {
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  align-items: end;
+  gap: 4px;
+  height: 110px;
   margin: 0;
-  font-size: 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.split-bars li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: 100%;
+}
+
+.sb {
+  width: 100%;
+  max-width: 22px;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(180deg, var(--type-long), color-mix(in srgb, var(--type-long) 25%, transparent));
+  transform-origin: bottom;
+  animation: grow 0.7s var(--ease-spring) backwards;
+  animation-delay: calc(200ms + var(--k) * 40ms);
+}
+
+.sb.best {
+  background: linear-gradient(180deg, var(--accent-text), color-mix(in srgb, var(--accent-text) 25%, transparent));
+  box-shadow: 0 0 16px -2px var(--accent-text);
+}
+
+.sk {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.names-head {
+  justify-content: space-between;
+  min-height: 52px;
 }
 
 .desc {

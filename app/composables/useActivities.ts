@@ -29,6 +29,8 @@ export interface Activity {
   shoe?: Shoe
   /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
   bestEfforts: Partial<Record<EffortKey, number>>
+  /** Tracé GPS simplifié (polyline encodée de Strava) */
+  route?: string
   /** Distances où Strava a compté cette course comme record personnel (pr_rank = 1) */
   prs?: EffortKey[]
   garminName: string

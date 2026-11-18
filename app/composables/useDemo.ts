@@ -8,6 +8,7 @@ export function useDemo() {
     useState('activities').value = on ? demoActivities() : []
     useState('history').value = on ? demoHistory() : []
     useState('notifications').value = on ? demoNotifications() : []
+    usePlan().reset(on)
   }
 
   async function enter() {
@@ -37,6 +38,7 @@ export function useDemo() {
     flag.value = false
     useState('history').value = []
     useState('notifications').value = []
+    usePlan().reset(false)
   }
 
   return { active, enter, exit, reset, leaveSilently }

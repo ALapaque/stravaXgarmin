@@ -52,7 +52,8 @@ const n = computed(() => selected.value.length)
 <template>
   <div class="stack">
     <div class="title-block">
-      <h1 class="h1">Ton niveau</h1>
+      <p class="eyebrow">Stats et records</p>
+      <h1 class="h1 h1--xl">Ton niveau</h1>
       <p v-if="level" class="label">Estimé {{ estimatedOn }} sur {{ level.count }} courses</p>
     </div>
 

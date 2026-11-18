@@ -2,8 +2,8 @@ export const THEMES = [
   {
     id: 'vibe',
     label: 'Vibe',
-    description: 'Dégradés orange et bleu, le design actuel',
-    bg: '#0b0d17',
+    description: 'Dégradés orange et bleu, aurore en fond',
+    bg: '#06070d',
     swatch: ['#ff5a1f', '#ff2e93', '#2b6bff'],
   },
   {

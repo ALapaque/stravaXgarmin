@@ -10,6 +10,7 @@ html,
 body {
   margin: 0;
   background: var(--bg);
+  overscroll-behavior-y: none;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 16px;
@@ -53,29 +54,6 @@ button {
   isolation: isolate;
 }
 
-.app::before,
-.app::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.app::before {
-  width: 420px;
-  height: 420px;
-  top: -180px;
-  left: -170px;
-  background: var(--glow-a);
-}
-
-.app::after {
-  width: 400px;
-  height: 400px;
-  top: -110px;
-  right: -190px;
-  background: var(--glow-b);
-}
 
 .screen {
   display: flex;
@@ -124,27 +102,27 @@ button {
   }
 }
 
-/* Changement de page : la page sortante s'efface, la nouvelle monte doucement */
+/* Changement de page : la page sortante recule, la nouvelle arrive avec un léger zoom */
 .page-enter-active,
 .layout-enter-active {
-  transition: opacity 0.28s ease, transform 0.32s var(--ease-out);
+  transition: opacity 0.35s ease, transform 0.5s var(--ease-out);
 }
 
 .page-leave-active,
 .layout-leave-active {
-  transition: opacity 0.14s ease, transform 0.14s ease;
+  transition: opacity 0.16s ease, transform 0.2s ease;
 }
 
 .page-enter-from,
 .layout-enter-from {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(18px) scale(0.985);
 }
 
 .page-leave-to,
 .layout-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: scale(0.98);
 }
 
 /* Apparition en cascade : chaque bloc de la page, puis chaque ligne des listes.
@@ -256,12 +234,52 @@ button {
 
 /* ───── Cartes et listes ───── */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--surface-border);
   border-radius: var(--r-card);
   box-shadow: var(--surface-shadow);
   -webkit-backdrop-filter: var(--surface-blur);
   backdrop-filter: var(--surface-blur);
+}
+
+/* Liseré lumineux : plus clair en haut, comme une plaque de verre éclairée */
+.card::before,
+.edge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--edge, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+.edge {
+  position: relative;
+}
+
+/* Petit titre de section en capitales espacées */
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Texte en dégradé de la couleur principale */
+.ink-grad {
+  background: var(--primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .card--pad {
@@ -274,12 +292,29 @@ button {
 }
 
 .block--primary {
+  position: relative;
+  overflow: hidden;
   background: var(--primary);
   color: var(--on-primary);
   box-shadow: var(--primary-shadow);
 }
 
+/* Reflet satiné sur les blocs de couleur */
+.block--primary::after,
+.block--secondary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
+    linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+}
+
 .block--secondary {
+  position: relative;
+  overflow: hidden;
   background: var(--secondary);
   color: var(--on-secondary);
 }
@@ -366,10 +401,40 @@ label.row:active {
 }
 
 .btn--primary {
+  position: relative;
+  overflow: hidden;
   justify-content: space-between;
   background: var(--primary);
   color: var(--on-primary);
-  box-shadow: var(--primary-shadow);
+  box-shadow: var(--primary-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Éclat qui traverse le bouton principal toutes les quelques secondes */
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  animation: sheen 5s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+
+.btn--primary:disabled::after {
+  animation: none;
+}
+
+@keyframes sheen {
+  0%,
+  70% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
 }
 
 .btn--secondary {

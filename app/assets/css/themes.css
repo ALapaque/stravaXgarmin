@@ -17,23 +17,29 @@
    Mise en page V3, couleurs V1 : bleu nuit, dégradés orange → rose et bleu → turquoise */
 :root,
 [data-theme='vibe'] {
-  --bg: #0b0d17;
+  --bg: #06070d;
   --ink: #ffffff;
   --ink-2: rgba(255, 255, 255, 0.8);
   --muted: rgba(255, 255, 255, 0.62);
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
 
-  --surface: #141726;
-  --surface-2: #1e2236;
-  --surface-border: rgba(255, 255, 255, 0.08);
-  --surface-blur: none;
-  --surface-shadow: none;
+  --surface: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --surface-border: transparent;
+  --surface-blur: blur(24px) saturate(160%);
+  --surface-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+  --edge: linear-gradient(165deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.02) 70%, rgba(255, 255, 255, 0.12));
+  --aurora-1: #ff5a1f;
+  --aurora-2: #ff2e93;
+  --aurora-3: #2b6bff;
+  --aurora-4: #00e0c6;
+  --aurora-strength: 0.5;
 
   --primary: linear-gradient(120deg, #ff5a1f, #ff2e93);
   --primary-solid: #ff5a1f;
   --on-primary: #ffffff;
-  --primary-shadow: 0 10px 28px rgba(255, 46, 147, 0.35);
+  --primary-shadow: 0 14px 34px -8px rgba(255, 46, 147, 0.55);
   --secondary: linear-gradient(120deg, #2b6bff, #00e0c6);
   --on-secondary: #ffffff;
   --select: linear-gradient(120deg, #10a37f, #2b6bff);
@@ -63,8 +69,8 @@
   --r-btn: 16px;
   --r-ctrl: 12px;
 
-  --tab-bg: rgba(20, 23, 38, 0.92);
-  --tab-border: rgba(255, 255, 255, 0.08);
+  --tab-bg: rgba(14, 16, 28, 0.62);
+  --tab-border: rgba(255, 255, 255, 0.12);
   --tab-active: var(--primary);
   --on-tab-active: #ffffff;
   --focus: #ff8a3d;
@@ -86,6 +92,12 @@
   --surface-border: rgba(255, 255, 255, 0.22);
   --surface-blur: blur(28px) saturate(140%);
   --surface-shadow: 0 12px 32px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --edge: linear-gradient(165deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.08) 45%, rgba(255, 255, 255, 0.2));
+  --aurora-1: #ff5a1f;
+  --aurora-2: #ff2e93;
+  --aurora-3: #2b6bff;
+  --aurora-4: #00e0c6;
+  --aurora-strength: 0.85;
 
   --primary: linear-gradient(120deg, #ff5a1f, #ff2e93);
   --primary-solid: #ff5a1f;
@@ -138,11 +150,17 @@
   --line: rgba(242, 244, 247, 0.07);
   --line-strong: rgba(242, 244, 247, 0.14);
 
-  --surface: #12161e;
+  --surface: #0f1219;
   --surface-2: #1a202b;
-  --surface-border: rgba(242, 244, 247, 0.08);
+  --surface-border: transparent;
   --surface-blur: none;
   --surface-shadow: none;
+  --edge: linear-gradient(165deg, rgba(242, 244, 247, 0.16), rgba(242, 244, 247, 0.04) 50%, rgba(242, 244, 247, 0.06));
+  --aurora-1: #ff6b2c;
+  --aurora-2: #ff6b2c;
+  --aurora-3: #12161e;
+  --aurora-4: #12161e;
+  --aurora-strength: 0.16;
 
   --primary: #ff6b2c;
   --primary-solid: #ff6b2c;
@@ -195,11 +213,17 @@
   --line: rgba(233, 237, 243, 0.08);
   --line-strong: rgba(233, 237, 243, 0.18);
 
-  --surface: #131824;
+  --surface: linear-gradient(180deg, rgba(233, 237, 243, 0.06), rgba(233, 237, 243, 0.025));
   --surface-2: #1d2433;
-  --surface-border: rgba(233, 237, 243, 0.1);
-  --surface-blur: none;
-  --surface-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --surface-border: transparent;
+  --surface-blur: blur(20px);
+  --surface-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.7);
+  --edge: linear-gradient(165deg, rgba(233, 237, 243, 0.2), rgba(233, 237, 243, 0.04) 45%, rgba(233, 237, 243, 0.08));
+  --aurora-1: #5ab9fc;
+  --aurora-2: #2a5d9c;
+  --aurora-3: #3ecf8e;
+  --aurora-4: #1d2433;
+  --aurora-strength: 0.28;
 
   --primary: #5ab9fc;
   --primary-solid: #5ab9fc;

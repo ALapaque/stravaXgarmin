@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { House, Activity, ChartColumn, SlidersHorizontal } from 'lucide-vue-next'
+import { House, Activity, CalendarClock, ChartColumn, SlidersHorizontal } from 'lucide-vue-next'
 
 const route = useRoute()
 
 const tabs = [
   { to: '/', label: 'Accueil', icon: House, match: (p: string) => p === '/' || p.startsWith('/notifications') },
   { to: '/activites', label: 'Activités', icon: Activity, match: (p: string) => p.startsWith('/activites') },
+  { to: '/plan', label: 'Plan', icon: CalendarClock, match: (p: string) => p.startsWith('/plan') },
   { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') || p.startsWith('/recap') },
   { to: '/reglages', label: 'Réglages', icon: SlidersHorizontal, match: (p: string) => p.startsWith('/reglages') || p.startsWith('/historique') },
 ]
@@ -40,14 +41,16 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
   transform: translateX(-50%);
   width: min(calc(100% - 32px), 448px);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 8px;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 6px;
   border-radius: 36px;
   background: var(--tab-bg);
   border: 1px solid var(--tab-border);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    0 18px 40px -10px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   animation: bar-in 0.7s var(--ease-spring) 0.2s backwards;
 }
 
@@ -61,8 +64,8 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
 .indicator {
   position: absolute;
   top: 12px;
-  left: 8px;
-  width: calc((100% - 16px) / 4);
+  left: 6px;
+  width: calc((100% - 12px) / 5);
   height: 30px;
   display: flex;
   justify-content: center;
@@ -72,11 +75,11 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
 }
 
 .indicator span {
-  width: 52px;
+  width: 48px;
   height: 30px;
   border-radius: 15px;
   background: var(--tab-active);
-  box-shadow: var(--primary-shadow);
+  box-shadow: var(--primary-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .indicator.hidden {
@@ -93,8 +96,9 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
   min-height: 56px;
   padding-top: 4px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   border-radius: 20px;
   transition: color 0.25s ease;
 }
@@ -102,7 +106,7 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
 .icon {
   display: grid;
   place-items: center;
-  width: 52px;
+  width: 48px;
   height: 30px;
   transition: transform 0.15s ease, color 0.25s ease;
 }

@@ -41,3 +41,4 @@ export function formatDay(iso: string): string {
 export function formatTime(iso: string): string {
   return timeFmt.format(new Date(iso))
 }
+

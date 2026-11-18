@@ -6,11 +6,15 @@ const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const filter = ref<'all' | 'review'>('all')
 const shown = computed(() => (filter.value === 'all' ? activities.value : toReview.value))
+const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceKm, 0))
 </script>
 
 <template>
   <div class="stack">
-    <h1 class="h1">Activités</h1>
+    <div class="title-block">
+      <p class="eyebrow">60 derniers jours<template v-if="activities.length"> · {{ activities.length }} courses · {{ formatKm(totalKm) }} km</template></p>
+      <h1 class="h1 h1--xl">Activités</h1>
+    </div>
 
     <ConnectPrompt v-if="!activities.length && !accounts.strava.connected && !demo" />
 
@@ -29,3 +33,11 @@ const shown = computed(() => (filter.value === 'all' ? activities.value : toRevi
     </template>
   </div>
 </template>
+
+<style scoped>
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+</style>

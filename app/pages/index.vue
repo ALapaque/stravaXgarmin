@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, ChevronRight, Bell, CalendarRange } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Bell, CalendarRange, CalendarClock, Heart, ArrowUpRight } from 'lucide-vue-next'
 
 useHead({ title: 'Accueil · stravaXgarmin' })
 
@@ -23,23 +23,26 @@ watch(showLanding, (v) => setPageLayout(v ? 'bare' : 'default'))
 const recap = useRecap(ref('semaine'))
 const week = lastWeek
 const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
-const latest = computed(() => sorted.value.slice(0, 3))
+const hero = computed(() => sorted.value[0])
+const latest = computed(() => sorted.value.slice(1, 4))
+const { next: nextSession } = usePlan()
+const heroDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Brussels' })
 const firstToReview = computed(() => toReview.value[0])
 </script>
 
 <template>
   <LandingPage v-if="showLanding" />
-  <div v-else class="stack">
+  <div v-else class="stack home">
     <header class="head">
-      <div>
-        <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
-        <h1 class="h1">
-          Salut<template v-if="firstName">&nbsp;<span :class="{ masked: demo }" :aria-label="demo ? 'nom masqué' : undefined">{{ firstName }}</span></template>
+      <div class="hello">
+        <p class="eyebrow">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
+        <h1 class="h1 h1--xl">
+          Salut<template v-if="firstName">&nbsp;<span class="ink-grad" :class="{ masked: demo }" :aria-label="demo ? 'nom masqué' : undefined">{{ firstName }}</span></template>
         </h1>
       </div>
       <div class="head-actions">
-        <NuxtLink to="/notifications" class="bell" :aria-label="unread ? `Notifications, ${unread} non lues` : 'Notifications'">
-          <Bell :size="22" aria-hidden="true" />
+        <NuxtLink to="/notifications" class="bell card" :aria-label="unread ? `Notifications, ${unread} non lues` : 'Notifications'">
+          <Bell :size="20" aria-hidden="true" />
           <span v-if="unread" :key="unread" class="badge" aria-hidden="true">{{ unread }}</span>
         </NuxtLink>
         <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte"><span :class="{ masked: demo }">{{ (firstName || '?').charAt(0) }}</span></NuxtLink>
@@ -57,68 +60,108 @@ const firstToReview = computed(() => toReview.value[0])
     </section>
 
     <template v-else>
-    <section class="block block--primary week" aria-labelledby="week-title">
-      <p id="week-title" class="label">7 derniers jours</p>
-      <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /> km</p>
-      <p class="label">
-        {{ week.count }} courses · {{ formatHours(week.sec) }} · {{ week.synced }} sur {{ week.count }} synchronisées
-      </p>
-      <ol class="bars" aria-label="Kilomètres par jour">
-        <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
-          <span class="bar-zone">
-            <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 8}%` }" />
+      <section class="block block--primary week" aria-labelledby="week-title">
+        <div class="week-top">
+          <p id="week-title" class="eyebrow on">7 derniers jours</p>
+          <span class="sync-pill">{{ week.synced }}/{{ week.count }} synchro</span>
+        </div>
+        <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /><span class="unit">km</span></p>
+        <dl class="week-stats">
+          <div><dt>Courses</dt><dd class="num">{{ week.count }}</dd></div>
+          <div><dt>Temps</dt><dd class="num">{{ formatHours(week.sec) }}</dd></div>
+          <div v-if="recap.deltaPct !== null"><dt>vs sem. passée</dt><dd class="num">{{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</dd></div>
+        </dl>
+        <ol class="bars" aria-label="Kilomètres par jour">
+          <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
+            <span class="bar-zone">
+              <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 6}%` }" />
+            </span>
+            <span class="day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
+          </li>
+        </ol>
+      </section>
+
+      <NuxtLink v-if="nextSession" to="/plan" class="card next">
+        <div class="next-head">
+          <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>
+          <span class="row__main">
+            <span class="eyebrow">Prochaine séance · {{ planDay(nextSession.date) }}</span>
+            <span class="title next-title">{{ nextSession.title }}</span>
           </span>
-          <span class="label day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
-        </li>
-      </ol>
-    </section>
+          <ArrowUpRight class="go" :size="20" aria-hidden="true" />
+        </div>
+        <WorkoutProfile v-if="nextSession.blocks.length" :blocks="nextSession.blocks" :height="44" />
+        <p class="next-meta">
+          <span v-if="nextSession.durationSec">{{ formatHours(nextSession.durationSec) }}</span>
+          <span v-if="nextSession.distanceM">{{ formatKm(nextSession.distanceM / 1000) }} km</span>
+          <span v-if="nextSession.provider" class="provider">{{ nextSession.provider }}</span>
+        </p>
+      </NuxtLink>
 
-    <NuxtLink
-      v-if="firstToReview"
-      :to="`/activites/${firstToReview.id}/titre`"
-      class="block block--secondary ai"
-    >
-      <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
-      <span class="row__main">
-        <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
-        <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
-      </span>
-      <ChevronRight :size="20" aria-hidden="true" />
-    </NuxtLink>
+      <NuxtLink v-if="hero" :to="`/activites/${hero.id}`" class="card hero-run" :style="{ '--c': RUN_TYPES[hero.type].color }">
+        <div class="hero-map">
+          <RouteTrace :activity="hero" :width="2.2" :delay="300" />
+        </div>
+        <div class="hero-info">
+          <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}</p>
+          <h2 class="hero-title">{{ hero.garminName }}</h2>
+          <dl class="hero-stats">
+            <div><dd class="num">{{ formatKm(hero.distanceKm) }}</dd><dt>km</dt></div>
+            <div><dd class="num">{{ formatPace(hero.durationSec, hero.distanceKm) }}</dd><dt>/km</dt></div>
+            <div v-if="hero.avgHr"><dd class="num">{{ hero.avgHr }}</dd><dt><Heart :size="11" fill="currentColor" aria-hidden="true" /> bpm</dt></div>
+          </dl>
+        </div>
+      </NuxtLink>
 
-    <NuxtLink to="/recap" class="card recap">
-      <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarRange :size="22" /></span>
-      <span class="row__main">
-        <span class="title">Récap de la semaine</span>
-        <span class="label">
-          {{ formatKm(recap.km) }} km · {{ recap.count }} courses<template v-if="recap.deltaPct !== null"> · {{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</template>
+      <NuxtLink v-if="firstToReview" :to="`/activites/${firstToReview.id}/titre`" class="block block--secondary ai">
+        <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
+        <span class="row__main">
+          <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
+          <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
         </span>
-      </span>
-      <ChevronRight :size="20" aria-hidden="true" />
-    </NuxtLink>
+        <ChevronRight :size="20" aria-hidden="true" />
+      </NuxtLink>
 
-    <div class="section-head">
-      <h2 class="h2">Dernières courses</h2>
-      <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
-    </div>
+      <NuxtLink to="/recap" class="card recap">
+        <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarRange :size="22" /></span>
+        <span class="row__main">
+          <span class="title">Récap de la semaine</span>
+          <span class="label">{{ formatKm(recap.km) }} km · {{ recap.count }} courses</span>
+        </span>
+        <ChevronRight :size="20" aria-hidden="true" />
+      </NuxtLink>
 
-    <div class="card list">
-      <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
-    </div>
+      <template v-if="latest.length">
+        <div class="section-head">
+          <h2 class="h2">Avant ça</h2>
+          <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
+        </div>
+        <div class="card list">
+          <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
+        </div>
+      </template>
     </template>
   </div>
 </template>
 
 <style scoped>
+.home {
+  gap: 18px;
+}
+
 .head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
+  padding-top: 4px;
 }
 
-.head .h1 {
-  font-size: 28px;
+.hello {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
 .masked {
@@ -133,20 +176,18 @@ const firstToReview = computed(() => toReview.value[0])
 }
 
 .bell {
-  position: relative;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--surface-border);
 }
 
 .badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  z-index: 1;
+  top: -3px;
+  right: -3px;
   display: grid;
   place-items: center;
   min-width: 20px;
@@ -157,7 +198,20 @@ const firstToReview = computed(() => toReview.value[0])
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  box-shadow: 0 0 0 3px var(--bg);
   animation: pop 0.5s var(--ease-spring) 0.6s backwards;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--primary-solid) 60%, transparent), var(--primary-shadow);
 }
 
 .loading {
@@ -182,40 +236,83 @@ const firstToReview = computed(() => toReview.value[0])
   }
 }
 
-.recap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-primary);
-  font-weight: 700;
-}
-
+/* ── Semaine ── */
 .week {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  padding: 22px 22px 18px;
+  border-radius: 30px;
+}
+
+.week > * {
+  position: relative;
+  z-index: 1;
+}
+
+.week-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eyebrow.on {
+  color: currentColor;
+  opacity: 0.85;
+}
+
+.sync-pill {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .big {
-  margin: 4px 0;
-  font-size: 56px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 10px 0 6px;
+  font-size: 72px;
+  letter-spacing: -0.05em;
+}
+
+.unit {
+  font-size: 22px;
+  letter-spacing: 0;
+  opacity: 0.8;
+}
+
+.week-stats {
+  display: flex;
+  gap: 22px;
+  margin: 0;
+}
+
+.week-stats div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.week-stats dt {
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+.week-stats dd {
+  margin: 0;
+  font-size: 20px;
 }
 
 .bars {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
-  margin: 12px 0 0;
+  margin: 18px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -232,33 +329,167 @@ const firstToReview = computed(() => toReview.value[0])
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 48px;
+  height: 56px;
 }
 
 .bar {
   width: 100%;
-  max-width: 28px;
-  border-radius: 6px;
-  background: currentColor;
-  opacity: 0.9;
+  max-width: 26px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0.55));
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
   transform-origin: bottom;
-  animation: grow 0.7s var(--ease-spring) backwards;
+  animation: grow 0.8s var(--ease-spring) backwards;
   animation-delay: calc(300ms + var(--b) * 55ms);
 }
 
 .bar.off {
-  opacity: 0.25;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: none;
 }
 
 .day {
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
+  opacity: 0.8;
 }
 
+/* ── Prochaine séance ── */
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.next-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.next-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent-text) 16%, transparent);
+}
+
+.next-title {
+  font-size: 18px;
+}
+
+.next-meta {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.provider {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.go {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ── Dernière course ── */
+.hero-run {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.hero-run::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(70% 90% at 0% 50%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-map {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 1;
+  padding: 6px;
+}
+
+.hero-info {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 14px;
+  margin: 6px 0 0;
+}
+
+.hero-stats div {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-stats dd {
+  margin: 0;
+  font-size: 22px;
+}
+
+.hero-stats dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-stats dt svg {
+  color: var(--ko);
+}
+
+/* ── Titres à revoir, récap ── */
 .ai {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 16px;
+}
+
+.ai > * {
+  position: relative;
+  z-index: 1;
 }
 
 .ai-icon {
@@ -275,5 +506,12 @@ const firstToReview = computed(() => toReview.value[0])
 .ai-text {
   font-size: 15px;
   opacity: 0.85;
+}
+
+.recap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
 }
 </style>

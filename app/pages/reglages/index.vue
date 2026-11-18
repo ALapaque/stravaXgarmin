@@ -54,9 +54,9 @@ const descriptionParts = [
 
 <template>
   <div class="stack">
-    <h1 class="h1">Réglages</h1>
+    <h1 class="h1 h1--xl">Réglages</h1>
 
-    <h2 class="label group">Synchronisation</h2>
+    <h2 class="eyebrow group">Synchronisation</h2>
     <div class="card list">
       <div class="row">
         <span class="row__main">
@@ -90,7 +90,7 @@ const descriptionParts = [
       </NuxtLink>
     </div>
 
-    <h2 class="label group">Description Strava</h2>
+    <h2 class="eyebrow group">Description Strava</h2>
     <div class="card list">
       <div class="row">
         <span class="row__main">
@@ -110,7 +110,7 @@ const descriptionParts = [
       </template>
     </div>
 
-    <h2 class="label group">Notifications</h2>
+    <h2 class="eyebrow group">Notifications</h2>
     <div class="card list">
       <div class="row">
         <span class="row__main">
@@ -128,7 +128,7 @@ const descriptionParts = [
       </div>
     </div>
 
-    <h2 class="label group">Comptes</h2>
+    <h2 class="eyebrow group">Comptes</h2>
     <div class="card list">
       <div class="row">
         <BrandMark brand="strava" />
@@ -173,7 +173,7 @@ const descriptionParts = [
       </button>
     </div>
 
-    <h2 class="label group">Application</h2>
+    <h2 class="eyebrow group">Application</h2>
     <div class="card list">
       <button type="button" class="row" @click="showHistory">
         <span class="tile" aria-hidden="true"><Sparkles :size="22" /></span>
@@ -185,7 +185,7 @@ const descriptionParts = [
       </button>
     </div>
 
-    <h2 id="theme-title" class="label group">Thème</h2>
+    <h2 id="theme-title" class="eyebrow group">Thème</h2>
     <div class="themes" role="radiogroup" aria-labelledby="theme-title">
       <label v-for="t in themes" :key="t.id" class="theme card" :class="{ on: theme === t.id }">
         <input v-model="theme" class="sr-only" type="radio" name="theme" :value="t.id">

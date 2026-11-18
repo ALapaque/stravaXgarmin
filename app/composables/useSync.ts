@@ -15,6 +15,7 @@ interface StravaRun {
   average_heartrate?: number
   workout_type?: number | null
   location_city?: string | null
+  map?: { summary_polyline?: string | null }
 }
 
 interface GarminRun {
@@ -95,6 +96,7 @@ function toActivity(s: StravaRun, g?: GarminRun): Activity {
     bestEfforts: {},
     garminName: g?.name ?? s.name,
     stravaName: s.name,
+    route: s.map?.summary_polyline || undefined,
   }
 }
 
@@ -110,6 +112,7 @@ export function useSync() {
   const notifState = useNotifications().list
   const details = useState<Record<number, RunDetails>>('stravaDetails', () => ({}))
   const garminRecords = useGarminRecords()
+  const plan = usePlan()
   const syncing = useState('syncing', () => false)
   const synced = useState('synced', () => false)
 
@@ -146,8 +149,13 @@ export function useSync() {
 
       // En arrière-plan : records et temps au km, sans bloquer la synchro
       loadDetails().catch(() => {})
-      if (accounts.value.garmin.connected) loadGarminRecords().catch(() => {})
-      else garminRecords.value = null
+      if (accounts.value.garmin.connected) {
+        loadGarminRecords().catch(() => {})
+        plan.load().catch(() => {})
+      } else {
+        garminRecords.value = null
+        plan.reset(false)
+      }
     } catch (e) {
       show((e as { data?: { statusMessage?: string } }).data?.statusMessage ?? 'Synchro impossible pour le moment')
     } finally {
