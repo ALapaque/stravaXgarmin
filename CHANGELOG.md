@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.1.0...v1.1.1) (2026-11-18)
+
+### Corrections
+
+* message clair quand le compte OpenAI n'a pas de crédit ([231f31a](https://github.com/ALapaque/stravaXgarmin/commit/231f31aa67f485492b212fa887b2ae24061dfd04))
+
 ## [1.1.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.2...v1.1.0) (2026-11-18)
 
 ### Nouveautés
