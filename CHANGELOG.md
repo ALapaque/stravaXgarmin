@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.8.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.7.0...v1.8.0) (2026-11-18)
+
+### Nouveautés
+
+* apparence sur mesure (couleur d'accent, dégradé, arrondis, police, fond animé) ([3b80bbc](https://github.com/ALapaque/stravaXgarmin/commit/3b80bbc05e8a51fa5d83a018bffedd757d350b85))
+* bilan IA de tes 7 derniers jours dans le récap ([151edd4](https://github.com/ALapaque/stravaXgarmin/commit/151edd4c6adf351eed26c128e87fc580d9fd4258))
+* forme Garmin, charge hebdomadaire, objectif course et suivi des chaussures ([5f7035e](https://github.com/ALapaque/stravaXgarmin/commit/5f7035e27c08e4e5f8f2a9e768548a61c2221cf6))
+* image à partager pour chaque course, aux couleurs de ton thème ([1fd84d9](https://github.com/ALapaque/stravaXgarmin/commit/1fd84d920bcafc2aa021a0eed09c9bba30b077f7))
+
 ## [1.7.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.6.0...v1.7.0) (2026-11-18)
 
 ### Nouveautés
