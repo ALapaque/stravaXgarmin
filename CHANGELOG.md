@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.3.0...v1.4.0) (2026-11-18)
+
+### Nouveautés
+
+* interface immersive et prochaines séances Kiprun via Garmin ([6089590](https://github.com/ALapaque/stravaXgarmin/commit/608959035ea4c89a961c6b27a770c1f5eb03422b))
+
 ## [1.3.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.2.1...v1.3.0) (2026-11-18)
 
 ### Nouveautés
