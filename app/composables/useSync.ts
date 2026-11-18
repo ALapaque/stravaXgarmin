@@ -2,7 +2,8 @@
  * Passage des données de démo aux vraies données Strava et Garmin.
  * Sans base de données, la synchro se fait à l'ouverture de l'appli.
  */
-import type { Activity, RunType } from './useActivities'
+import type { Activity, EffortKey, RunType } from './useActivities'
+import type { GarminRecord } from './useRecords'
 
 interface StravaRun {
   id: number
@@ -107,6 +108,8 @@ export function useSync() {
   const demo = useDemo()
   const historyState = useHistory().entries
   const notifState = useNotifications().list
+  const details = useState<Record<number, RunDetails>>('stravaDetails', () => ({}))
+  const garminRecords = useGarminRecords()
   const syncing = useState('syncing', () => false)
   const synced = useState('synced', () => false)
 
@@ -132,7 +135,7 @@ export function useSync() {
           : Promise.resolve([] as GarminRun[]),
       ])
       activities.value = strava
-        .map((s) => toActivity(s, matchGarmin(s, garmin)))
+        .map((s) => withDetails(toActivity(s, matchGarmin(s, garmin)), details.value[s.id]))
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
       // Les exemples de la démo n'ont plus de sens avec de vraies données
@@ -140,6 +143,11 @@ export function useSync() {
       notifState.value = notifState.value.filter((n) => !/^n\d$/.test(n.id))
 
       if (settings.value.autoSync) await autoApply()
+
+      // En arrière-plan : records et temps au km, sans bloquer la synchro
+      loadDetails().catch(() => {})
+      if (accounts.value.garmin.connected) loadGarminRecords().catch(() => {})
+      else garminRecords.value = null
     } catch (e) {
       show((e as { data?: { statusMessage?: string } }).data?.statusMessage ?? 'Synchro impossible pour le moment')
     } finally {
@@ -190,5 +198,44 @@ export function useSync() {
     }
   }
 
+  /** Détail Strava des courses pas encore vues (meilleurs efforts, records, temps au km), 15 par appel. */
+  async function loadDetails() {
+    for (let round = 0; round < 2; round++) {
+      const missing = activities.value.filter((a) => a.stravaId && !details.value[a.stravaId]).map((a) => a.stravaId!).slice(0, 15)
+      if (!missing.length) return
+      const got = await $fetch<Record<number, RunDetails>>('/api/strava/details', { method: 'POST', body: { ids: missing } })
+      details.value = { ...details.value, ...got }
+      for (const a of activities.value) {
+        const d = a.stravaId ? got[a.stravaId] : undefined
+        if (d) Object.assign(a, withDetails(a, d))
+      }
+      if (Object.keys(got).length < missing.length) return // limite Strava : la suite au prochain passage
+    }
+  }
+
+  /** Records Garmin : relus au plus toutes les 6 heures. */
+  async function loadGarminRecords() {
+    const at = garminRecords.value?.at
+    if (at && Date.now() - Date.parse(at) < 6 * 3600_000) return
+    const list = await $fetch<GarminRecord[]>('/api/garmin/records')
+    garminRecords.value = { at: new Date().toISOString(), list }
+  }
+
   return { run, syncing, synced }
+}
+
+export interface RunDetails {
+  efforts: Record<string, number>
+  prs: string[]
+  splits: number[]
+}
+
+function withDetails(a: Activity, d?: RunDetails): Activity {
+  if (!d) return a
+  return {
+    ...a,
+    bestEfforts: d.efforts as Activity['bestEfforts'],
+    prs: d.prs as EffortKey[],
+    splits: d.splits.length ? d.splits : a.splits,
+  }
 }

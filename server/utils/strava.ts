@@ -52,6 +52,7 @@ export async function stravaFetch<T>(
     return (await $fetch(`${API}${path}`, { ...opts, headers: { Authorization: `Bearer ${token}` } })) as T
   } catch (e: unknown) {
     const status = (e as { statusCode?: number }).statusCode ?? 502
+    if (status === 429) throw createError({ statusCode: 429, statusMessage: 'Strava limite les demandes, réessaie dans un quart d’heure' })
     throw createError({ statusCode: status === 401 ? 401 : 502, statusMessage: `Strava a refusé la requête (${status})` })
   }
 }

@@ -5,7 +5,7 @@
  */
 
 export type RunType = 'long' | 'interval' | 'recovery' | 'tempo'
-export type EffortKey = '5k' | '10k' | 'half'
+export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
 export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava'
 
 export interface Weather {
@@ -29,6 +29,8 @@ export interface Activity {
   shoe?: Shoe
   /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
   bestEfforts: Partial<Record<EffortKey, number>>
+  /** Distances où Strava a compté cette course comme record personnel (pr_rank = 1) */
+  prs?: EffortKey[]
   garminName: string
   stravaName: string
   stravaDescription?: string

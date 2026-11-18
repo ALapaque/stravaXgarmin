@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, Trophy, CalendarRange, CalendarDays } from 'lucide-vue-next'
-import { aiError } from '~/composables/useAi'
+import { aiError, useAiResults } from '~/composables/useAi'
 
 useHead({ title: 'Stats · stravaXgarmin' })
 
@@ -9,7 +9,8 @@ const { connected: aiConnected } = useChatGpt()
 const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { estimateLevel } = useAi()
-const { bests } = useRecords()
+const { bests, fromGarmin } = useRecords()
+const results = useAiResults()
 
 // Courses des deux dernières semaines
 const since = lastDays(14)[0]!.key
@@ -18,11 +19,17 @@ const recent = computed(() => sorted.value.filter((a) => a.startedAt.slice(0, 10
 // Les séances intenses donnent de meilleures estimations : cochées par défaut
 const selected = ref<string[]>(recent.value.filter((a) => a.type !== 'recovery').map((a) => a.id))
 const shortDate = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' })
-// Valeurs d'exemple seulement en démo ; avec de vraies données, rien tant qu'aucune analyse n'est lancée
-const level = ref<{ vma: number; vo2max: number; threshold: string; half: string; count: number } | null>(
-  null,
-)
-const estimatedOn = ref('le 16 novembre')
+// Dernière estimation, gardée entre deux pages et deux visites
+const level = computed(() => results.value.level)
+const estimatedOn = computed(() => {
+  const at = results.value.level?.at
+  if (!at) return ''
+  const d = new Date(at)
+  const today = new Date().toDateString() === d.toDateString()
+  return today
+    ? `aujourd’hui à ${d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' })}`
+    : `le ${shortDate.format(d)}`
+})
 const loading = ref(false)
 const error = ref('')
 
@@ -30,8 +37,8 @@ async function run() {
   loading.value = true
   error.value = ''
   try {
-    level.value = await estimateLevel(recent.value.filter((a) => selected.value.includes(a.id)))
-    estimatedOn.value = 'à l’instant'
+    const l = await estimateLevel(recent.value.filter((a) => selected.value.includes(a.id)))
+    results.value = { ...results.value, level: { ...l, at: new Date().toISOString() } }
   } catch (e) {
     error.value = aiError(e)
   } finally {
@@ -91,7 +98,10 @@ const n = computed(() => selected.value.length)
       </NuxtLink>
     </div>
 
-    <h2 class="h2">Tes records</h2>
+    <div class="section-head">
+      <h2 class="h2">Tes records</h2>
+      <span v-if="fromGarmin" class="label">via Garmin</span>
+    </div>
     <div class="card list">
       <component
         :is="b.activity ? 'NuxtLink' : 'div'"
@@ -103,7 +113,7 @@ const n = computed(() => selected.value.length)
         <span class="tile" :style="{ '--tile': b.time ? 'var(--ok)' : 'var(--muted)' }" aria-hidden="true"><Trophy :size="22" /></span>
         <span class="row__main">
           <span class="title">{{ b.label }}</span>
-          <span class="label">{{ b.activity ? `${b.activity.garminName} · ${shortDate.format(new Date(b.activity.startedAt))}` : 'Pas encore couru' }}</span>
+          <span class="label">{{ b.time ? [b.activity?.garminName ?? b.name, b.date ? shortDate.format(new Date(b.date)) : ''].filter(Boolean).join(' · ') : 'Pas encore couru' }}</span>
         </span>
         <span class="num pr">{{ b.time ? formatDuration(b.time) : '–' }}</span>
       </component>

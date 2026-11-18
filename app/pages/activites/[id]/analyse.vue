@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Gauge, HeartPulse, Lightbulb, ArrowRight, Check, RefreshCw } from 'lucide-vue-next'
-import { aiError, type Analysis } from '~/composables/useAi'
+import { aiError, useAiResults, type Analysis } from '~/composables/useAi'
 
 const route = useRoute()
 const { byId, setStravaDescription } = useActivities()
@@ -23,26 +23,31 @@ const PLACEHOLDER: Analysis = {
     { kind: 'tip' as const, title: 'Pour la prochaine fois', text: 'Un conseil pour ta prochaine séance.' },
   ],
 }
-const result = ref<Analysis>(PLACEHOLDER)
+// Analyse déjà faite pour cette course : on la reprend telle quelle (gardée dans le navigateur)
+const results = useAiResults()
+const saved = computed(() => (a.value ? results.value.analyses[a.value.id] : undefined))
+const fresh = ref<Analysis>()
+const result = computed<Analysis>(() => fresh.value ?? saved.value ?? PLACEHOLDER)
+const done = computed(() => Boolean(fresh.value ?? saved.value))
 const loading = ref(false)
-const done = ref(false)
 const error = ref('')
 
-async function load() {
-  if (!a.value || !aiConnected.value) return
+async function load(again = false) {
+  if (!a.value || !aiConnected.value || (done.value && !again)) return
   loading.value = true
   error.value = ''
   try {
-    result.value = await analyse(a.value)
-    done.value = true
+    const r = await analyse(a.value)
+    fresh.value = r
+    results.value = { ...results.value, analyses: { ...results.value.analyses, [a.value.id]: { ...r, at: new Date().toISOString() } } }
   } catch (e) {
     error.value = aiError(e)
   } finally {
     loading.value = false
   }
 }
-onMounted(load)
-watch(aiConnected, load)
+onMounted(() => load())
+watch(aiConnected, () => load())
 const ICONS = {
   ok: { icon: Gauge, color: 'var(--ok)' },
   ko: { icon: HeartPulse, color: 'var(--ko)' },
@@ -94,12 +99,15 @@ function addToStrava() {
 
       <template v-if="error">
         <p class="err" role="alert">{{ error }}</p>
-        <button type="button" class="link retry" @click="load"><RefreshCw :size="18" aria-hidden="true" /> Réessayer</button>
+        <button type="button" class="link retry" @click="load(true)"><RefreshCw :size="18" aria-hidden="true" /> Réessayer</button>
       </template>
 
       <button v-if="aiConnected && done" type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
         {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
         <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
+      </button>
+      <button v-if="aiConnected && done && !loading" type="button" class="link retry" @click="load(true)">
+        <RefreshCw :size="18" aria-hidden="true" /> Relancer l’analyse
       </button>
     </template>
   </div>

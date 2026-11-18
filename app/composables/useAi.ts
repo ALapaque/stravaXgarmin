@@ -26,7 +26,15 @@ export interface Level {
   count: number
 }
 
-/** Ce qui part chez OpenAI : les chiffres de la course, rien d'autre. */
+/** Derniers résultats IA, gardés dans le navigateur pour ne pas les perdre en changeant de page. */
+export function useAiResults() {
+  return useState<{ level: (Level & { at: string }) | null; analyses: Record<string, Analysis & { at: string }> }>(
+    'aiResults',
+    () => ({ level: null, analyses: {} }),
+  )
+}
+
+/** Ce qui part chez l'IA : les chiffres de la course, rien d'autre. */
 const toRun = (a: Activity) => ({
   type: a.type,
   startedAt: a.startedAt,
