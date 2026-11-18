@@ -9,6 +9,8 @@ const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { synced } = useSync()
 const hasData = computed(() => sorted.value.length > 0)
+// En démo, un prénom fictif et flouté ; sinon le prénom du compte Strava
+const firstName = computed(() => (demo.value ? 'Alex' : (accounts.value.strava.name ?? '').split(' ')[0]))
 
 /*
  * Sans compte ni démo, la présentation s'affiche directement ici plutôt que par une
@@ -31,14 +33,16 @@ const firstToReview = computed(() => toReview.value[0])
     <header class="head">
       <div>
         <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
-        <h1 class="h1">Salut Arlioz</h1>
+        <h1 class="h1">
+          Salut<template v-if="firstName">&nbsp;<span :class="{ masked: demo }" :aria-label="demo ? 'nom masqué' : undefined">{{ firstName }}</span></template>
+        </h1>
       </div>
       <div class="head-actions">
         <NuxtLink to="/notifications" class="bell" :aria-label="unread ? `Notifications, ${unread} non lues` : 'Notifications'">
           <Bell :size="22" aria-hidden="true" />
           <span v-if="unread" :key="unread" class="badge" aria-hidden="true">{{ unread }}</span>
         </NuxtLink>
-        <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
+        <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte"><span :class="{ masked: demo }">{{ (firstName || '?').charAt(0) }}</span></NuxtLink>
       </div>
     </header>
 
@@ -115,6 +119,11 @@ const firstToReview = computed(() => toReview.value[0])
 
 .head .h1 {
   font-size: 28px;
+}
+
+.masked {
+  filter: blur(7px);
+  user-select: none;
 }
 
 .head-actions {
