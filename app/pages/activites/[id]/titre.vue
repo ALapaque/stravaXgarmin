@@ -56,14 +56,24 @@ function pickCustom() {
   field.value?.focus()
 }
 
+const { connected: aiConnected } = useChatGpt()
+
 async function load() {
   if (!a.value) return
+  // Aucune proposition IA sans compte ChatGPT connecté
+  if (!aiConnected.value) {
+    ideas.value = []
+    if (chosen.value !== CUSTOM && !special.value.some((s) => s.title === chosen.value)) chosen.value = special.value[0]?.title ?? ''
+    return
+  }
   loading.value = true
   ideas.value = await suggestTitles(a.value, style.value, round.value)
   const all = [...special.value.map((s) => s.title), ...ideas.value]
   if (chosen.value !== CUSTOM && !all.includes(chosen.value)) chosen.value = all[0] ?? ''
   loading.value = false
 }
+
+watch(aiConnected, () => load())
 
 watch(style, () => {
   round.value = 0
@@ -109,18 +119,6 @@ async function publish() {
         </p>
       </div>
 
-      <div class="segmented" role="group" aria-label="Style du titre">
-        <button
-          v-for="s in TITLE_STYLES"
-          :key="s.id"
-          type="button"
-          :aria-pressed="style === s.id"
-          @click="style = s.id"
-        >
-          {{ s.label }}
-        </button>
-      </div>
-
       <fieldset class="card list ideas" :aria-busy="loading">
         <legend class="sr">Choisis un titre</legend>
         <label v-for="s in special" :key="s.tag" class="row">
@@ -130,11 +128,6 @@ async function publish() {
           </span>
           <input v-model="chosen" class="radio" type="radio" name="title" :value="s.title">
         </label>
-        <label v-for="t in aiIdeas" :key="t" class="row">
-          <span class="row__main"><span class="title">{{ t }}</span></span>
-          <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
-        </label>
-
         <div class="row custom" :class="{ on: chosen === CUSTOM }" @click="pickCustom">
           <span class="row__main">
             <label for="custom-title" class="label">Mon propre titre</label>
@@ -166,17 +159,49 @@ async function publish() {
         </div>
       </fieldset>
 
+      <section class="ai" aria-labelledby="ai-title">
+        <div class="ai-head">
+          <h2 id="ai-title" class="h2">Idées IA</h2>
+          <span class="label via">via ChatGPT</span>
+        </div>
+        <AiLock text="Connecte ton compte ChatGPT pour recevoir trois idées de titre par course.">
+          <template #default="{ locked }">
+            <div class="ai-body">
+              <div class="segmented" role="group" aria-label="Style du titre">
+                <button
+                  v-for="s in TITLE_STYLES"
+                  :key="s.id"
+                  type="button"
+                  :aria-pressed="style === s.id"
+                  @click="style = s.id"
+                >
+                  {{ s.label }}
+                </button>
+              </div>
+              <fieldset class="card list ideas" :aria-busy="loading">
+                <legend class="sr">Idées de titres proposées par l’IA</legend>
+                <!-- Sans connexion : des lignes d'exemple floutées, aucune vraie proposition -->
+                <template v-if="locked">
+                  <div v-for="n in 3" :key="n" class="row"><span class="row__main"><span class="title">Titre proposé par l’IA</span></span><span class="radio" /></div>
+                </template>
+                <label v-for="t in aiIdeas" v-else :key="t" class="row">
+                  <span class="row__main"><span class="title">{{ t }}</span></span>
+                  <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
+                </label>
+              </fieldset>
+              <button v-if="!locked" type="button" class="link more" @click="more">
+                <RefreshCw :size="18" aria-hidden="true" /> Trois autres idées
+              </button>
+            </div>
+          </template>
+        </AiLock>
+      </section>
+
       <button type="button" class="btn btn--primary" :disabled="!finalTitle || publishing" @click="publish">
         {{ publishing ? 'Publication…' : alsoGarmin ? 'Publier sur Strava et Garmin' : 'Publier sur Strava' }}
         <ArrowRight :size="20" aria-hidden="true" />
       </button>
 
-      <div class="foot">
-        <button type="button" class="link more" @click="more">
-          <RefreshCw :size="18" aria-hidden="true" /> Trois autres idées
-        </button>
-        <span class="label via">via ChatGPT</span>
-      </div>
     </template>
   </div>
 </template>
@@ -272,10 +297,22 @@ async function publish() {
   clip: rect(0 0 0 0);
 }
 
-.foot {
+.ai {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-head {
+  display: flex;
+  align-items: baseline;
   justify-content: space-between;
+}
+
+.ai-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .more {

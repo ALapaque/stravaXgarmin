@@ -21,11 +21,6 @@ async function logout(provider: 'strava' | 'garmin') {
 
 onMounted(syncPermission)
 
-function connectChatGpt() {
-  // TODO: flux « Sign in with ChatGPT » (vérifier l'ouverture du programme aux développeurs)
-  settings.value.accounts.chatgpt = true
-  show('ChatGPT connecté')
-}
 
 /** Activer les notifications système demande d'abord l'autorisation au navigateur. */
 const systemNotif = computed({
@@ -162,12 +157,9 @@ const descriptionParts = [
         <BrandMark brand="chatgpt" />
         <span class="row__main">
           <span class="title">ChatGPT</span>
-          <span class="hint">Titres et analyses via ton abonnement</span>
+          <span class="hint">Titres et analyses IA, avec un abonnement Plus ou Pro</span>
         </span>
-        <StatusChip v-if="settings.accounts.chatgpt" ok label="Connecté" />
-        <button v-else type="button" class="btn btn--sm btn--brand" style="--brand: var(--chatgpt)" @click="connectChatGpt">
-          Connecter
-        </button>
+        <span class="soon">Bientôt</span>
       </div>
       <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync">
         <span class="row__main">
@@ -208,6 +200,16 @@ const descriptionParts = [
 
 .sub {
   padding-left: 28px;
+}
+
+.soon {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--chatgpt);
+  background: color-mix(in srgb, var(--chatgpt) 16%, transparent);
 }
 
 .warn {

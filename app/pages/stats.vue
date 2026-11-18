@@ -4,6 +4,7 @@ import { ArrowRight, Trophy, CalendarRange, CalendarDays } from 'lucide-vue-next
 useHead({ title: 'Stats · stravaXgarmin' })
 
 const { sorted } = useActivities()
+const { connected: aiConnected } = useChatGpt()
 const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { estimateLevel } = useAi()
@@ -18,7 +19,7 @@ const selected = ref<string[]>(recent.value.filter((a) => a.type !== 'recovery')
 const shortDate = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' })
 // Valeurs d'exemple seulement en démo ; avec de vraies données, rien tant qu'aucune analyse n'est lancée
 const level = ref<{ vma: number; vo2max: number; threshold: string; half: string; count: number } | null>(
-  demo.value ? { vma: 16.2, vo2max: 52, threshold: '4:38', half: '1:42', count: 3 } : null,
+  null,
 )
 const estimatedOn = ref('le 16 novembre')
 const loading = ref(false)
@@ -43,7 +44,15 @@ const n = computed(() => selected.value.length)
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
 
     <template v-else>
-    <p v-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
+    <AiLock v-if="!aiConnected" text="Connecte ton compte ChatGPT pour estimer ta VMA, ta VO2max et ton allure seuil.">
+      <dl class="grid-2 metrics">
+        <div v-for="l in ['VMA · km/h', 'VO2max', 'Seuil · /km', 'Semi estimé']" :key="l" class="card metric">
+          <dt class="label">{{ l }}</dt>
+          <dd class="num">00,0</dd>
+        </div>
+      </dl>
+    </AiLock>
+    <p v-else-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
     <dl v-else class="grid-2 metrics" :aria-busy="loading">
       <div class="block block--primary metric">
         <dt class="label">VMA · km/h</dt>
@@ -108,7 +117,7 @@ const n = computed(() => selected.value.length)
       </label>
     </fieldset>
 
-    <button type="button" class="btn btn--primary" :disabled="!n || loading" @click="run">
+    <button v-if="aiConnected" type="button" class="btn btn--primary" :disabled="!n || loading" @click="run">
       {{ loading ? 'Analyse en cours…' : `Analyser ${n} course${n > 1 ? 's' : ''}` }}
       <ArrowRight :size="20" aria-hidden="true" />
     </button>

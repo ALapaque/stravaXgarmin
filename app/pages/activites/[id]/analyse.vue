@@ -11,7 +11,18 @@ if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité int
 
 useHead({ title: 'Analyse · stravaXgarmin' })
 
-const result = await analyse(a.value)
+const { connected: aiConnected } = useChatGpt()
+// Analyse demandée seulement avec ChatGPT connecté ; sinon un exemple flouté, jamais un faux résultat
+const PLACEHOLDER = {
+  score: 0,
+  verdict: 'Analyse de ta séance',
+  findings: [
+    { kind: 'ok' as const, title: 'Régularité', text: 'Ce que l’IA a remarqué sur ton allure.' },
+    { kind: 'ko' as const, title: 'Fréquence cardiaque', text: 'Ce que l’IA a remarqué sur ton cœur.' },
+    { kind: 'tip' as const, title: 'Pour la prochaine fois', text: 'Un conseil pour ta prochaine séance.' },
+  ],
+}
+const result = aiConnected.value ? await analyse(a.value) : PLACEHOLDER
 const ICONS = {
   ok: { icon: Gauge, color: 'var(--ok)' },
   ko: { icon: HeartPulse, color: 'var(--ko)' },
@@ -34,6 +45,8 @@ function addToStrava() {
       <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
       <h1 class="h1">Analyse de la séance</h1>
 
+      <AiLock text="Connecte ton compte ChatGPT pour analyser tes séances.">
+      <div class="stack inner">
       <section class="block block--primary score">
         <div>
           <p class="num value"><CountUp :value="result.score" :delay="200" /></p>
@@ -54,7 +67,10 @@ function addToStrava() {
         </li>
       </ul>
 
-      <button type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
+      </div>
+      </AiLock>
+
+      <button v-if="aiConnected" type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
         {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
         <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
       </button>
@@ -63,6 +79,10 @@ function addToStrava() {
 </template>
 
 <style scoped>
+.inner {
+  gap: 16px;
+}
+
 .score {
   display: flex;
   align-items: center;
