@@ -1,4 +1,9 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { existsSync } from 'node:fs'
+
+// Logos officiels déposés dans public/brands/ (détectés au build)
+const brands = ['strava', 'garmin', 'chatgpt'].filter((b) => existsSync(`public/brands/${b}.svg`))
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   devtools: { enabled: false },
@@ -12,6 +17,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sessionPassword: '',
     strava: { clientId: '', clientSecret: '' },
+    public: { brands },
   },
 
   app: {

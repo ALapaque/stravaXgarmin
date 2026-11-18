@@ -1,5 +1,6 @@
 <template>
   <div class="app">
+    <DemoBanner />
     <main class="screen">
       <slot />
     </main>

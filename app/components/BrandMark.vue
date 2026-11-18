@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /*
- * Emplacement de logo aux couleurs de la marque.
- * À remplacer par les fichiers officiels (kits presse / guides de marque) :
- * mettre le SVG dans public/brands/<marque>.svg et l'afficher ici.
- * Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava ».
+ * Logo d'un service. Dépose les fichiers officiels (kits presse / guides de marque)
+ * dans public/brands/strava.svg, garmin.svg, chatgpt.svg : au prochain build, ils
+ * remplacent automatiquement la pastille de couleur. Respecte les règles de chaque marque
+ * (Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava »).
  */
 const props = withDefaults(
   defineProps<{ brand: 'strava' | 'garmin' | 'chatgpt'; size?: number; inverse?: boolean }>(),
@@ -17,10 +17,25 @@ const BRANDS = {
 }
 
 const b = computed(() => BRANDS[props.brand])
+const src = computed(() => `/brands/${props.brand}.svg`)
+
+// Logos présents dans public/brands/, détectés au build (voir nuxt.config.ts)
+const available = computed(() => (useRuntimeConfig().public.brands as string[]).includes(props.brand))
 </script>
 
 <template>
+  <img
+    v-if="available"
+    class="brand brand--img"
+    :src="src"
+    alt=""
+    :width="size"
+    :height="size"
+    :style="{ '--s': `${size}px` }"
+    aria-hidden="true"
+  >
   <span
+    v-else
     class="brand"
     :class="{ 'brand--inverse': inverse }"
     :style="{ '--brand-c': b.color, '--s': `${size}px` }"
@@ -42,6 +57,11 @@ const b = computed(() => BRANDS[props.brand])
   font-weight: 700;
   font-size: calc(var(--s) * 0.45);
   line-height: 1;
+}
+
+.brand--img {
+  object-fit: contain;
+  background: none;
 }
 
 .brand--inverse {

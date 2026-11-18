@@ -22,28 +22,30 @@ export const SOURCE_LABELS: Record<ChangeSource, string> = {
   strava: 'Depuis Strava',
 }
 
+export const demoHistory = (): HistoryEntry[] => [
+  {
+    id: 'seed-1',
+    activityId: 'a1',
+    field: 'name',
+    before: 'Morning Run',
+    after: 'Sortie longue',
+    source: 'garmin',
+    at: '2026-11-15T10:42:00+01:00',
+  },
+  {
+    id: 'seed-2',
+    activityId: 'a3',
+    field: 'name',
+    before: 'Morning Run',
+    after: 'Footing récup',
+    source: 'garmin',
+    at: '2026-11-16T08:01:00+01:00',
+  },
+]
+
 /** Journal de tout ce que l'appli a modifié sur Strava, avec annulation. */
 export function useHistory() {
-  const entries = useState<HistoryEntry[]>('history', () => [
-    {
-      id: 'seed-1',
-      activityId: 'a1',
-      field: 'name',
-      before: 'Morning Run',
-      after: 'Sortie longue',
-      source: 'garmin',
-      at: '2026-11-15T10:42:00+01:00',
-    },
-    {
-      id: 'seed-2',
-      activityId: 'a3',
-      field: 'name',
-      before: 'Morning Run',
-      after: 'Footing récup',
-      source: 'garmin',
-      at: '2026-11-16T08:01:00+01:00',
-    },
-  ])
+  const entries = useState<HistoryEntry[]>('history', () => (isDemoCookie() ? demoHistory() : []))
 
   function record(e: Omit<HistoryEntry, 'id' | 'at'>) {
     const entry: HistoryEntry = { ...e, id: `h${Date.now()}${Math.random().toString(36).slice(2, 6)}`, at: new Date().toISOString() }

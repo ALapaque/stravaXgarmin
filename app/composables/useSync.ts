@@ -100,7 +100,11 @@ export function useSync() {
   const { notify } = useNotifications()
   const settings = useSettings()
   const { show } = useToast()
+  const demo = useDemo()
+  const historyState = useHistory().entries
+  const notifState = useNotifications().list
   const syncing = useState('syncing', () => false)
+  const synced = useState('synced', () => false)
 
   async function run() {
     if (syncing.value) return
@@ -108,10 +112,11 @@ export function useSync() {
     try {
       await refresh()
       if (!accounts.value.strava.connected) {
-        // Déconnecté après avoir utilisé de vraies données : retour à la démo
-        if (activities.value.some((a) => a.stravaId)) activities.value = demoActivities()
+        // Pas de compte : données fictives seulement si la démo est activée, sinon rien
+        demo.reset()
         return
       }
+      demo.leaveSilently()
 
       const [strava, garmin] = await Promise.all([
         $fetch<StravaRun[]>('/api/strava/activities'),
@@ -127,16 +132,15 @@ export function useSync() {
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
       // Les exemples de la démo n'ont plus de sens avec de vraies données
-      const history = useHistory().entries
-      history.value = history.value.filter((e) => !e.id.startsWith('seed-'))
-      const notifs = useNotifications().list
-      notifs.value = notifs.value.filter((n) => !/^n\d$/.test(n.id))
+      historyState.value = historyState.value.filter((e) => !e.id.startsWith('seed-'))
+      notifState.value = notifState.value.filter((n) => !/^n\d$/.test(n.id))
 
       if (settings.value.autoSync) await autoApply()
     } catch (e) {
       show((e as { data?: { statusMessage?: string } }).data?.statusMessage ?? 'Synchro impossible pour le moment')
     } finally {
       syncing.value = false
+      synced.value = true
     }
   }
 
@@ -165,5 +169,5 @@ export function useSync() {
     }
   }
 
-  return { run, syncing }
+  return { run, syncing, synced }
 }

@@ -10,11 +10,14 @@ const prefix = `sxg:v${VERSION}:`
 
 export default defineNuxtPlugin(() => {
   onNuxtReady(() => {
+    // Les données ne sont reprises que si elles ont un sens : démo active ou Strava connecté
+    const accounts = useState<{ strava?: { connected?: boolean } }>('accounts')
+    const dataAllowed = isDemoCookie() || Boolean(accounts.value?.strava?.connected)
     for (const key of KEYS) {
       const state = useState<unknown>(key)
       try {
         const saved = localStorage.getItem(prefix + key)
-        if (saved) {
+        if (saved && (key === 'settings' || dataAllowed)) {
           const value = JSON.parse(saved)
           // Fusion douce pour les réglages : les nouvelles options gardent leur valeur par défaut
           state.value = key === 'settings' && state.value && typeof state.value === 'object'

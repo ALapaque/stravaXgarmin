@@ -4,6 +4,8 @@ import { ArrowRight, Trophy, CalendarRange, CalendarDays } from 'lucide-vue-next
 useHead({ title: 'Stats · stravaXgarmin' })
 
 const { sorted } = useActivities()
+const { accounts } = useAccounts()
+const { active: demo } = useDemo()
 const { estimateLevel } = useAi()
 const { bests } = useRecords()
 
@@ -14,7 +16,10 @@ const recent = computed(() => sorted.value.filter((a) => a.startedAt.slice(0, 10
 // Les séances intenses donnent de meilleures estimations : cochées par défaut
 const selected = ref<string[]>(recent.value.filter((a) => a.type !== 'recovery').map((a) => a.id))
 const shortDate = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' })
-const level = ref({ vma: 16.2, vo2max: 52, threshold: '4:38', half: '1:42', count: 3 })
+// Valeurs d'exemple seulement en démo ; avec de vraies données, rien tant qu'aucune analyse n'est lancée
+const level = ref<{ vma: number; vo2max: number; threshold: string; half: string; count: number } | null>(
+  demo.value ? { vma: 16.2, vo2max: 52, threshold: '4:38', half: '1:42', count: 3 } : null,
+)
 const estimatedOn = ref('le 16 novembre')
 const loading = ref(false)
 
@@ -32,10 +37,14 @@ const n = computed(() => selected.value.length)
   <div class="stack">
     <div class="title-block">
       <h1 class="h1">Ton niveau</h1>
-      <p class="label">Estimé {{ estimatedOn }} sur {{ level.count }} courses</p>
+      <p v-if="level" class="label">Estimé {{ estimatedOn }} sur {{ level.count }} courses</p>
     </div>
 
-    <dl class="grid-2 metrics" :aria-busy="loading">
+    <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
+
+    <template v-else>
+    <p v-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
+    <dl v-else class="grid-2 metrics" :aria-busy="loading">
       <div class="block block--primary metric">
         <dt class="label">VMA · km/h</dt>
         <dd class="num"><CountUp :value="level.vma" :decimals="1" /></dd>
@@ -104,6 +113,7 @@ const n = computed(() => selected.value.length)
       <ArrowRight :size="20" aria-hidden="true" />
     </button>
     <p class="fine">Estimations par IA à partir de tes courses, pas un test en laboratoire.</p>
+    </template>
   </div>
 </template>
 

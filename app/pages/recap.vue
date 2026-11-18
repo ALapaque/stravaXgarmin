@@ -9,6 +9,9 @@ const kind = ref<RecapKind>(route.query.p === 'mois' ? 'mois' : 'semaine')
 const recap = useRecap(kind)
 const { show } = useToast()
 const sharing = ref(false)
+const { sorted } = useActivities()
+const { accounts } = useAccounts()
+const { active: demo } = useDemo()
 
 const maxBar = computed(() => Math.max(...recap.value.bars.map((b) => b.km), 1))
 const deltaText = computed(() => {
@@ -53,6 +56,9 @@ async function share() {
     <BackLink to="/stats" label="Stats" />
     <h1 class="h1">Récap</h1>
 
+    <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Ton récap de la semaine et du mois apparaîtra ici une fois Strava connecté." />
+
+    <template v-else>
     <div class="segmented" role="group" aria-label="Période du récap">
       <button type="button" :aria-pressed="kind === 'semaine'" @click="kind = 'semaine'">Semaine</button>
       <button type="button" :aria-pressed="kind === 'mois'" @click="kind = 'mois'">Mois</button>
@@ -110,6 +116,7 @@ async function share() {
         <Share2 :size="20" aria-hidden="true" />
       </button>
     </div>
+    </template>
   </div>
 </template>
 

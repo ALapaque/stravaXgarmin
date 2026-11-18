@@ -198,7 +198,7 @@ export const demoActivities = (): Activity[] =>
   [...RECENT, ...generateHistory()].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
 export function useActivities() {
-  const activities = useState<Activity[]>('activities', demoActivities)
+  const activities = useState<Activity[]>('activities', () => (isDemoCookie() ? demoActivities() : []))
 
   const byId = (id: string) => activities.value.find((a) => a.id === id)
   const isSynced = (a: Activity) => a.garminName === a.stravaName
@@ -297,4 +297,10 @@ export async function pushField(a: Activity, field: 'name' | 'description' | 'ga
     useToast().show(msg ?? (field === 'garminName' ? 'Garmin a refusé la modification' : 'Strava a refusé la modification'))
     return false
   }
+}
+
+/** Le cookie de démo est lisible côté serveur : pas de flash entre démo et état vide. */
+export const DEMO_COOKIE = 'sxg-demo'
+export function isDemoCookie() {
+  return useCookie<boolean>(DEMO_COOKIE).value === true
 }

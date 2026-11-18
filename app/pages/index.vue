@@ -5,7 +5,10 @@ useHead({ title: 'Accueil · stravaXgarmin' })
 
 const { sorted, toReview, lastWeek } = useActivities()
 const { unread } = useNotifications()
-const { isDemo, accounts } = useAccounts()
+const { accounts } = useAccounts()
+const { active: demo } = useDemo()
+const { synced } = useSync()
+const hasData = computed(() => sorted.value.length > 0)
 const recap = useRecap(ref('semaine'))
 const week = lastWeek
 const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
@@ -29,14 +32,20 @@ const firstToReview = computed(() => toReview.value[0])
       </div>
     </header>
 
-    <NuxtLink v-if="accounts.loaded && isDemo" to="/connexion" class="card demo">
-      <span class="row__main">
-        <span class="title">Mode démo</span>
-        <span class="label">Connecte Strava pour voir tes vraies courses</span>
-      </span>
-      <ChevronRight :size="20" aria-hidden="true" />
-    </NuxtLink>
+    <!-- Aucun compte, pas de démo : on n'affiche rien de fictif -->
+    <ConnectPrompt v-if="!hasData && !accounts.strava.connected && !demo" />
 
+    <section v-else-if="!hasData && accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
+      <span class="spinner" aria-hidden="true" />
+      <p class="lead">Chargement de tes courses Strava…</p>
+    </section>
+
+    <section v-else-if="!hasData" class="card card--pad">
+      <h2 class="h2">Aucune course sur les 60 derniers jours</h2>
+      <p class="lead">Dès qu’une course arrive sur Strava, elle apparaîtra ici.</p>
+    </section>
+
+    <template v-else>
     <section class="block block--primary week" aria-labelledby="week-title">
       <p id="week-title" class="label">7 derniers jours</p>
       <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /> km</p>
@@ -85,6 +94,7 @@ const firstToReview = computed(() => toReview.value[0])
     <div class="card list">
       <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
     </div>
+    </template>
   </div>
 </template>
 
@@ -134,12 +144,26 @@ const firstToReview = computed(() => toReview.value[0])
   animation: pop 0.5s var(--ease-spring) 0.6s backwards;
 }
 
-.demo {
+.loading {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-style: dashed;
+  gap: 14px;
+}
+
+.spinner {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--accent-text);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .recap {

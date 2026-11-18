@@ -99,7 +99,11 @@ public/           icônes PWA et favicon
 
 ## Logos des marques
 
-`BrandMark.vue` affiche pour l'instant un emplacement aux couleurs de Strava (#FC4C02), Garmin (#007CC3) et ChatGPT (#10A37F). Remplace-les par les fichiers officiels des kits presse, en respectant les guides de marque (Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava »).
+Dépose les fichiers officiels dans `public/brands/` sous les noms `strava.svg`, `garmin.svg` et `chatgpt.svg` (depuis les kits presse / guides de marque, en respectant leurs règles ; Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava »). Ils sont détectés au build et remplacent les pastilles de couleur. Sans fichier, `BrandMark.vue` affiche une pastille aux couleurs de la marque.
+
+## Démo et page d'accueil
+
+Sans Strava connecté, toutes les pages mènent à `/connexion`, qui présente l'appli. Le bouton « Démo » active des données fictives (cookie `sxg-demo`), signalées par un bandeau jaune en haut de chaque écran avec un bouton « Quitter ».
 
 ## Prochaines étapes
 
