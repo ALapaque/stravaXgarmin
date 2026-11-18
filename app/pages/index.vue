@@ -9,6 +9,15 @@ const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { synced } = useSync()
 const hasData = computed(() => sorted.value.length > 0)
+
+/*
+ * Sans compte ni démo, la présentation s'affiche directement ici plutôt que par une
+ * redirection : sur iPhone, une app installée dont la page de départ redirige
+ * s'ouvre avec la barre du navigateur.
+ */
+const showLanding = computed(() => !accounts.value.strava.connected && !demo.value && !hasData.value)
+// Le layout initial est choisi par le middleware ; ici on suit les changements (démo, connexion)
+watch(showLanding, (v) => setPageLayout(v ? 'bare' : 'default'))
 const recap = useRecap(ref('semaine'))
 const week = lastWeek
 const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
@@ -17,7 +26,8 @@ const firstToReview = computed(() => toReview.value[0])
 </script>
 
 <template>
-  <div class="stack">
+  <LandingPage v-if="showLanding" />
+  <div v-else class="stack">
     <header class="head">
       <div>
         <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
@@ -32,10 +42,7 @@ const firstToReview = computed(() => toReview.value[0])
       </div>
     </header>
 
-    <!-- Aucun compte, pas de démo : on n'affiche rien de fictif -->
-    <ConnectPrompt v-if="!hasData && !accounts.strava.connected && !demo" />
-
-    <section v-else-if="!hasData && accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
+    <section v-if="!hasData && accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
       <span class="spinner" aria-hidden="true" />
       <p class="lead">Chargement de tes courses Strava…</p>
     </section>

@@ -16,7 +16,7 @@ async function logout(provider: 'strava' | 'garmin') {
   if (provider === 'garmin') settings.value.garmin.rename = false
   show(provider === 'strava' ? 'Strava déconnecté' : 'Garmin déconnecté')
   await sync()
-  if (provider === 'strava') await navigateTo('/connexion')
+  if (provider === 'strava') await navigateTo('/')
 }
 
 onMounted(syncPermission)

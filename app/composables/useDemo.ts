@@ -19,7 +19,7 @@ export function useDemo() {
   async function exit() {
     flag.value = false
     fill(false)
-    await navigateTo('/connexion')
+    await navigateTo('/')
   }
 
   /** Aligne les données sur le drapeau (au démarrage, sans compte connecté). */
