@@ -1,5 +1,5 @@
 /*
- * IA avec la clé de l'utilisateur : Gemini ou Mistral (gratuits) ou OpenAI (payant à l'usage).
+ * IA avec la clé de l'utilisateur : Gemini (gratuit) ou OpenAI (payant à l'usage).
  * « Sign in with ChatGPT » n'est ouvert qu'aux applis locales ou approuvées par OpenAI ;
  * en attendant, c'est la clé qui débloque les titres et analyses. Rien n'est simulé.
  */

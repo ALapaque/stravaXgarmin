@@ -13,7 +13,7 @@ interface ProviderConfig {
   base: string
   /** Modèles rapides et peu chers (ou gratuits), par ordre de préférence */
   preferred: string[]
-  /** Sinon, premier modèle disponible qui correspond */
+  /** Autres modèles acceptés, essayés du plus récent au plus ancien */
   fallback: RegExp
   billing: string
 }
@@ -22,8 +22,9 @@ export const PROVIDERS: Record<AiProvider, ProviderConfig> = {
   gemini: {
     label: 'Gemini',
     base: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    preferred: ['gemini-3-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-2.0-flash'],
-    fallback: /^gemini-[\d.]+-flash(-lite)?$/,
+    // Google retire vite les anciens modèles aux nouveaux comptes : on prend les plus récents de la liste
+    preferred: ['gemini-flash-lite-latest'],
+    fallback: /^gemini-\d+(\.\d+)?-flash(-lite)?(-preview)?$/,
     billing: 'quota gratuit de Gemini atteint pour aujourd’hui, réessaie plus tard',
   },
   mistral: {
@@ -76,16 +77,57 @@ function apiError(p: AiProvider, status: number, body: ErrBody): never {
   throw createError({ statusCode: 502, statusMessage: `${label} ne répond pas comme prévu${message ? ` : ${message.slice(0, 120)}` : ''}` })
 }
 
-/** Vérifie la clé et choisit le modèle. */
-export async function checkAiKey(p: AiProvider, key: string) {
+const version = (id: string) => Number(id.match(/-(\d+(?:\.\d+)?)/)?.[1] ?? 0)
+
+/** Modèles candidats : la liste préférée, puis les légers du plus récent au plus ancien, puis les standards. */
+function candidates(cfg: ProviderConfig, ids: string[]) {
+  const others = ids
+    .filter((id) => cfg.fallback.test(id) && !cfg.preferred.includes(id))
+    .sort((a, b) => {
+      const preview = Number(a.includes('preview')) - Number(b.includes('preview'))
+      if (preview) return preview
+      // Les « lite » d'abord : moins chers, quotas gratuits plus larges, assez bons pour des titres
+      const lite = Number(b.includes('lite')) - Number(a.includes('lite'))
+      return lite || version(b) - version(a)
+    })
+  return [...cfg.preferred.filter((m) => ids.includes(m)), ...others]
+}
+
+const gone = (message: string) => /no longer available|not found|does not exist|deprecated|not supported|unknown model|invalid model/i.test(message)
+
+/** Petit essai : le modèle répond-il vraiment avec cette clé ? (une liste de modèles peut en contenir de fermés) */
+async function works(p: AiProvider, key: string, model: string) {
+  const cfg = PROVIDERS[p]
+  const res = await call(
+    `${cfg.base}/chat/completions`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Réponds juste « ok ».' }], ...(p === 'openai' ? { store: false } : {}) }),
+    },
+    cfg.label,
+  )
+  if (res.ok) return true
+  const body = await res.json().catch(() => undefined)
+  const { message } = errorInfo(body)
+  if ((res.status === 404 || res.status === 400) && gone(message)) return false
+  // Limite atteinte : le modèle existe bien, on le garde
+  if (res.status === 429 && !/limit: 0|free_tier.*0/i.test(message)) return true
+  if (res.status === 429 || res.status === 403 || res.status === 404) return false
+  apiError(p, res.status, body)
+}
+
+/** Vérifie la clé et choisit le premier modèle qui répond vraiment. */
+export async function checkAiKey(p: AiProvider, key: string, skip: string[] = []) {
   const cfg = PROVIDERS[p]
   const res = await call(`${cfg.base}/models`, { headers: { Authorization: `Bearer ${key}` } }, cfg.label)
   const body = await res.json().catch(() => undefined)
   if (!res.ok) apiError(p, res.status, body)
   const ids = ((body?.data ?? []) as { id: string }[]).map((m) => m.id.replace(/^models\//, ''))
-  const model = cfg.preferred.find((m) => ids.includes(m)) ?? ids.find((id) => cfg.fallback.test(id))
-  if (!model) throw createError({ statusCode: 422, statusMessage: `Cette clé n’a accès à aucun modèle ${cfg.label} adapté` })
-  return model
+  for (const model of candidates(cfg, ids).filter((m) => !skip.includes(m)).slice(0, 6)) {
+    if (await works(p, key, model)) return model
+  }
+  throw createError({ statusCode: 422, statusMessage: `Aucun modèle ${cfg.label} utilisable avec cette clé pour le moment` })
 }
 
 export async function aiJson<T>(
@@ -93,7 +135,8 @@ export async function aiJson<T>(
   opts: { name: string; schema: Record<string, unknown>; instructions: string; input: string },
 ): Promise<T> {
   const session = await aiSession(event)
-  const { provider, key, model } = session.data
+  const { provider, key } = session.data
+  let model = session.data.model
   if (!provider || !key || !model || !isProvider(provider)) {
     throw createError({ statusCode: 401, statusMessage: 'Active d’abord l’IA dans les réglages' })
   }
@@ -128,7 +171,17 @@ export async function aiJson<T>(
   let res = await send(true)
   // Schéma strict pas accepté par ce fournisseur ou ce modèle : JSON simple, schéma dans la consigne
   if (res.status === 400) res = await send(false)
-  const body = await res.json().catch(() => undefined)
+  let body = await res.json().catch(() => undefined)
+
+  // Modèle retiré entre-temps (Google le fait souvent) : on en choisit un autre et on réessaie une fois
+  if ((res.status === 404 || res.status === 400) && gone(errorInfo(body).message)) {
+    const next = await checkAiKey(provider, key, [model])
+    await session.update({ model: next })
+    model = next
+    res = await send(true)
+    if (res.status === 400) res = await send(false)
+    body = await res.json().catch(() => undefined)
+  }
   if (!res.ok) {
     // Clé révoquée : on l'oublie pour que l'appli en redemande une
     if (res.status === 401) await session.clear()

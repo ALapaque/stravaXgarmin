@@ -4,7 +4,8 @@ import { ArrowRight, ShieldCheck, ExternalLink } from 'lucide-vue-next'
 definePageMeta({ layout: 'bare' })
 useHead({ title: 'Activer l’IA · stravaXgarmin' })
 
-type Provider = 'gemini' | 'mistral' | 'openai'
+// Mistral reste possible côté serveur, mais sa clé API n'est plus gratuite : pas proposé ici
+type Provider = 'gemini' | 'openai'
 
 const PROVIDERS: Record<Provider, { label: string; tag: string; url: string; site: string; steps: string[]; placeholder: string; note: string }> = {
   gemini: {
@@ -15,15 +16,6 @@ const PROVIDERS: Record<Provider, { label: string; tag: string; url: string; sit
     steps: ['Connecte-toi avec ton compte Google.', 'Touche « Create API key » (« Créer une clé API »), puis copie-la.'],
     placeholder: 'AIza…',
     note: 'Gratuit, sans carte, avec un quota quotidien largement suffisant. En gratuit, Google peut utiliser les demandes pour améliorer ses produits.',
-  },
-  mistral: {
-    label: 'Mistral',
-    tag: 'Gratuit',
-    url: 'https://console.mistral.ai/api-keys',
-    site: 'console.mistral.ai',
-    steps: ['Crée un compte et choisis l’offre gratuite « Experiment » (vérification par SMS).', 'Dans « API Keys », crée une clé et copie-la.'],
-    placeholder: 'Clé Mistral',
-    note: 'Gratuit, sans carte. En gratuit, Mistral peut utiliser les demandes pour entraîner ses modèles.',
   },
   openai: {
     label: 'OpenAI',
@@ -140,7 +132,7 @@ async function save() {
 
 .providers {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
