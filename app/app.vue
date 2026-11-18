@@ -1,8 +1,8 @@
 <script setup lang="ts">
-const { theme, current } = useTheme()
+const { theme, current, style } = useTheme()
 
 useHead({
-  htmlAttrs: { 'data-theme': theme },
+  htmlAttrs: { 'data-theme': theme, style },
   meta: [{ name: 'theme-color', content: () => current.value.bg }],
 })
 </script>

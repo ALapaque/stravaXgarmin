@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ChevronRight, History, Type, Sparkles } from 'lucide-vue-next'
+import { ChevronRight, History, Type, Sparkles, Palette } from 'lucide-vue-next'
 
 useHead({ title: 'Réglages · stravaXgarmin' })
 
 const settings = useSettings()
-const { theme, themes } = useTheme()
+const { theme, themes, customized } = useTheme()
 const { show } = useToast()
 const { permission, syncPermission, requestPermission } = useNotifications()
 const { entries } = useHistory()
@@ -196,6 +196,14 @@ const descriptionParts = [
         <span class="hint">{{ t.description }}</span>
       </label>
     </div>
+    <NuxtLink to="/reglages/apparence" class="card row custom">
+      <span class="tile" aria-hidden="true"><Palette :size="22" /></span>
+      <span class="row__main">
+        <span class="title">Personnaliser</span>
+        <span class="hint">{{ customized ? 'Réglages sur mesure actifs' : 'Couleur, arrondis, police, fond animé' }}</span>
+      </span>
+      <ChevronRight :size="20" aria-hidden="true" />
+    </NuxtLink>
   </div>
 </template>
 
