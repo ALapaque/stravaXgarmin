@@ -11,7 +11,7 @@ const { show } = useToast()
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
 
-useHead({ title: 'Titre IA · stravaXgarmin' })
+useHead({ title: 'Titre · stravaXgarmin' })
 
 const style = ref<TitleStyle>('epique')
 const round = ref(0)
@@ -19,11 +19,23 @@ const ideas = ref<string[]>([])
 const chosen = ref('')
 const loading = ref(false)
 
+// Titre saisi à la main, sélectionné comme une idée de plus
+const CUSTOM = '__custom__'
+const MAX = 100
+const custom = ref('')
+const field = ref<HTMLInputElement>()
+const finalTitle = computed(() => (chosen.value === CUSTOM ? custom.value.trim() : chosen.value))
+
+function pickCustom() {
+  chosen.value = CUSTOM
+  field.value?.focus()
+}
+
 async function load() {
   if (!a.value) return
   loading.value = true
   ideas.value = await suggestTitles(a.value, style.value, round.value)
-  chosen.value = ideas.value[0] ?? ''
+  if (chosen.value !== CUSTOM) chosen.value = ideas.value[0] ?? ''
   loading.value = false
 }
 
@@ -40,57 +52,89 @@ function more() {
 }
 
 async function publish() {
-  if (!a.value || !chosen.value) return
+  if (!a.value || !finalTitle.value) return
   // TODO: PUT /activities/{id} sur l'API Strava avec { name }
-  setStravaName(a.value.id, chosen.value)
+  setStravaName(a.value.id, finalTitle.value)
   show('Titre publié sur Strava')
   await router.push(`/activites/${a.value.id}`)
 }
 </script>
 
 <template>
-  <template v-if="a">
-    <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
+  <div class="stack">
+    <template v-if="a">
+      <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
 
-    <div class="title-block">
-      <h1 class="h1">Un titre pour {{ formatDay(a.startedAt).split(' ')[0]!.toLowerCase() }}</h1>
-      <p class="label">
-        {{ formatKm(a.distanceKm) }} km · {{ formatDuration(a.durationSec) }} · {{ formatPace(a.durationSec, a.distanceKm) }} /km
-      </p>
-    </div>
+      <div class="title-block">
+        <h1 class="h1">Un titre pour {{ formatDay(a.startedAt).split(' ')[0]!.toLowerCase() }}</h1>
+        <p class="label">
+          {{ formatKm(a.distanceKm) }} km · {{ formatDuration(a.durationSec) }} · {{ formatPace(a.durationSec, a.distanceKm) }} /km
+        </p>
+      </div>
 
-    <div class="segmented" role="group" aria-label="Style du titre">
-      <button
-        v-for="s in TITLE_STYLES"
-        :key="s.id"
-        type="button"
-        :aria-pressed="style === s.id"
-        @click="style = s.id"
-      >
-        {{ s.label }}
+      <div class="segmented" role="group" aria-label="Style du titre">
+        <button
+          v-for="s in TITLE_STYLES"
+          :key="s.id"
+          type="button"
+          :aria-pressed="style === s.id"
+          @click="style = s.id"
+        >
+          {{ s.label }}
+        </button>
+      </div>
+
+      <fieldset class="card list ideas" :aria-busy="loading">
+        <legend class="sr">Choisis un titre</legend>
+        <label v-for="t in ideas" :key="t" class="row">
+          <span class="row__main"><span class="title">{{ t }}</span></span>
+          <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
+        </label>
+
+        <div class="row custom" :class="{ on: chosen === CUSTOM }" @click="pickCustom">
+          <span class="row__main">
+            <label for="custom-title" class="label">Mon propre titre</label>
+            <input
+              id="custom-title"
+              ref="field"
+              v-model="custom"
+              class="field"
+              type="text"
+              :maxlength="MAX"
+              :placeholder="a.garminName"
+              autocomplete="off"
+              enterkeyhint="done"
+              @focus="chosen = CUSTOM"
+              @keydown.enter.prevent="publish"
+            >
+            <span v-if="chosen === CUSTOM" class="count label" aria-live="polite">{{ custom.length }}/{{ MAX }}</span>
+          </span>
+          <input
+            v-model="chosen"
+            class="radio"
+            type="radio"
+            name="title"
+            :value="CUSTOM"
+            aria-label="Utiliser mon propre titre"
+            @click.stop
+            @change="field?.focus()"
+          >
+        </div>
+      </fieldset>
+
+      <button type="button" class="btn btn--primary" :disabled="!finalTitle" @click="publish">
+        Publier sur Strava
+        <ArrowRight :size="20" aria-hidden="true" />
       </button>
-    </div>
 
-    <fieldset class="card list ideas" :aria-busy="loading">
-      <legend class="sr">Choisis un titre</legend>
-      <label v-for="t in ideas" :key="t" class="row">
-        <span class="row__main"><span class="title">{{ t }}</span></span>
-        <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
-      </label>
-    </fieldset>
-
-    <button type="button" class="btn btn--primary" :disabled="!chosen" @click="publish">
-      Publier sur Strava
-      <ArrowRight :size="20" aria-hidden="true" />
-    </button>
-
-    <div class="foot">
-      <button type="button" class="link more" @click="more">
-        <RefreshCw :size="18" aria-hidden="true" /> Trois autres idées
-      </button>
-      <span class="label via">via ChatGPT</span>
-    </div>
-  </template>
+      <div class="foot">
+        <button type="button" class="link more" @click="more">
+          <RefreshCw :size="18" aria-hidden="true" /> Trois autres idées
+        </button>
+        <span class="label via">via ChatGPT</span>
+      </div>
+    </template>
+  </div>
 </template>
 
 <style scoped>
@@ -117,6 +161,47 @@ async function publish() {
 
 .ideas .title {
   white-space: normal;
+}
+
+.custom {
+  align-items: center;
+  cursor: text;
+}
+
+.custom .label {
+  cursor: text;
+}
+
+.field {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 2px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: var(--title-weight);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.field::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.custom.on .field,
+.field:focus {
+  border-bottom-color: var(--focus);
+}
+
+.count {
+  align-self: flex-end;
+  font-size: 13px;
 }
 
 .sr {

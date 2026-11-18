@@ -30,35 +30,37 @@ function addToStrava() {
 </script>
 
 <template>
-  <template v-if="a">
-    <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
-    <h1 class="h1">Analyse de la séance</h1>
+  <div class="stack">
+    <template v-if="a">
+      <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
+      <h1 class="h1">Analyse de la séance</h1>
 
-    <section class="block block--primary score">
-      <div>
-        <p class="num value">{{ result.score }}</p>
-        <p class="label">Régularité /100</p>
-      </div>
-      <p class="verdict">{{ result.verdict }}</p>
-    </section>
+      <section class="block block--primary score">
+        <div>
+          <p class="num value"><CountUp :value="result.score" :delay="200" /></p>
+          <p class="label">Régularité /100</p>
+        </div>
+        <p class="verdict">{{ result.verdict }}</p>
+      </section>
 
-    <ul class="card list findings">
-      <li v-for="f in result.findings" :key="f.title" class="row">
-        <span class="tile" :style="{ '--tile': ICONS[f.kind].color }" aria-hidden="true">
-          <component :is="ICONS[f.kind].icon" :size="22" />
-        </span>
-        <span class="row__main">
-          <span class="title">{{ f.title }}</span>
-          <span class="text">{{ f.text }}</span>
-        </span>
-      </li>
-    </ul>
+      <ul class="card list findings">
+        <li v-for="f in result.findings" :key="f.title" class="row">
+          <span class="tile" :style="{ '--tile': ICONS[f.kind].color }" aria-hidden="true">
+            <component :is="ICONS[f.kind].icon" :size="22" />
+          </span>
+          <span class="row__main">
+            <span class="title">{{ f.title }}</span>
+            <span class="text">{{ f.text }}</span>
+          </span>
+        </li>
+      </ul>
 
-    <button type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
-      {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
-      <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
-    </button>
-  </template>
+      <button type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
+        {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
+        <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
+      </button>
+    </template>
+  </div>
 </template>
 
 <style scoped>

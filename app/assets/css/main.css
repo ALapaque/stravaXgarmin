@@ -34,6 +34,15 @@ button {
   border-radius: 8px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* ───── Coque de l'appli ───── */
 .app {
   position: relative;
@@ -71,13 +80,104 @@ button {
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 120px);
 }
 
 .screen--bare {
   min-height: 100dvh;
   padding-bottom: calc(env(safe-area-inset-bottom) + 28px);
+}
+
+/* Racine de chaque page (une seule, pour que les transitions de page fonctionnent) */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+/* ───── Animations ───── */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+}
+
+/* Changement de page : la page sortante s'efface, la nouvelle monte doucement */
+.page-enter-active,
+.layout-enter-active {
+  transition: opacity 0.28s ease, transform 0.32s var(--ease-out);
+}
+
+.page-leave-active,
+.layout-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.page-enter-from,
+.layout-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-leave-to,
+.layout-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Apparition en cascade : chaque bloc de la page, puis chaque ligne des listes.
+   « backwards » pour ne pas bloquer les transform des états :active une fois fini. */
+.stack > *,
+.list > * {
+  animation: rise 0.5s var(--ease-out) backwards;
+}
+
+.stack > :nth-child(2) { animation-delay: 50ms; }
+.stack > :nth-child(3) { animation-delay: 100ms; }
+.stack > :nth-child(4) { animation-delay: 150ms; }
+.stack > :nth-child(5) { animation-delay: 200ms; }
+.stack > :nth-child(6) { animation-delay: 250ms; }
+.stack > :nth-child(7) { animation-delay: 300ms; }
+.stack > :nth-child(n + 8) { animation-delay: 350ms; }
+
+.list > * { animation-duration: 0.45s; animation-delay: 180ms; }
+.list > :nth-child(2) { animation-delay: 230ms; }
+.list > :nth-child(3) { animation-delay: 280ms; }
+.list > :nth-child(4) { animation-delay: 330ms; }
+.list > :nth-child(n + 5) { animation-delay: 380ms; }
+
+@media (hover: hover) {
+  a.block,
+  a.card {
+    transition: transform 0.2s var(--ease-out), box-shadow 0.2s ease;
+  }
+
+  a.block:hover,
+  a.card:hover {
+    transform: translateY(-2px);
+  }
 }
 
 /* ───── Typo ───── */
@@ -226,7 +326,8 @@ button.row {
 }
 
 a.row:active,
-button.row:active {
+button.row:active,
+label.row:active {
   background: var(--line);
 }
 
@@ -369,6 +470,7 @@ button.row:active {
 .radio:checked {
   border: 0;
   background: var(--select);
+  animation: pop 0.35s var(--ease-spring);
 }
 
 .check:checked::after {
@@ -408,6 +510,11 @@ button.row:active {
   color: var(--muted);
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.25s var(--ease-out), color 0.25s ease, transform 0.12s ease;
+}
+
+.segmented button:active {
+  transform: scale(0.96);
 }
 
 .segmented button[aria-pressed='true'] {

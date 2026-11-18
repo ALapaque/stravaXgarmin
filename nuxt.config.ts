@@ -8,6 +8,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/themes.css', '~/assets/css/main.css'],
 
   app: {
+    // Transitions entre pages et entre layouts (styles dans main.css)
+    pageTransition: { name: 'page', mode: 'out-in' },
+    layoutTransition: { name: 'layout', mode: 'out-in' },
     head: {
       title: 'stravaXgarmin',
       htmlAttrs: { lang: 'fr' },

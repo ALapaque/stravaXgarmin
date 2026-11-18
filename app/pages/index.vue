@@ -11,50 +11,52 @@ const firstToReview = computed(() => toReview.value[0])
 </script>
 
 <template>
-  <header class="head">
-    <div>
-      <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
-      <h1 class="h1">Salut Arlioz</h1>
+  <div class="stack">
+    <header class="head">
+      <div>
+        <p class="label">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
+        <h1 class="h1">Salut Arlioz</h1>
+      </div>
+      <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
+    </header>
+
+    <section class="block block--primary week" aria-labelledby="week-title">
+      <p id="week-title" class="label">7 derniers jours</p>
+      <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /> km</p>
+      <p class="label">
+        {{ week.count }} courses · {{ formatHours(week.sec) }} · {{ week.synced }} sur {{ week.count }} synchronisées
+      </p>
+      <ol class="bars" aria-label="Kilomètres par jour">
+        <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
+          <span class="bar-zone">
+            <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 8}%` }" />
+          </span>
+          <span class="label day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
+        </li>
+      </ol>
+    </section>
+
+    <NuxtLink
+      v-if="firstToReview"
+      :to="`/activites/${firstToReview.id}/titre`"
+      class="block block--secondary ai"
+    >
+      <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
+      <span class="row__main">
+        <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
+        <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
+      </span>
+      <ChevronRight :size="20" aria-hidden="true" />
+    </NuxtLink>
+
+    <div class="section-head">
+      <h2 class="h2">Dernières courses</h2>
+      <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
     </div>
-    <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
-  </header>
 
-  <section class="block block--primary week" aria-labelledby="week-title">
-    <p id="week-title" class="label">7 derniers jours</p>
-    <p class="num big">{{ formatKm(week.km) }} km</p>
-    <p class="label">
-      {{ week.count }} courses · {{ formatHours(week.sec) }} · {{ week.synced }} sur {{ week.count }} synchronisées
-    </p>
-    <ol class="bars" aria-label="Kilomètres par jour">
-      <li v-for="d in week.days" :key="d.key">
-        <span class="bar-zone">
-          <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 8}%` }" />
-        </span>
-        <span class="label day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
-      </li>
-    </ol>
-  </section>
-
-  <NuxtLink
-    v-if="firstToReview"
-    :to="`/activites/${firstToReview.id}/titre`"
-    class="block block--secondary ai"
-  >
-    <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
-    <span class="row__main">
-      <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
-      <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
-    </span>
-    <ChevronRight :size="20" aria-hidden="true" />
-  </NuxtLink>
-
-  <div class="section-head">
-    <h2 class="h2">Dernières courses</h2>
-    <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
-  </div>
-
-  <div class="card list">
-    <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
+    <div class="card list">
+      <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
+    </div>
   </div>
 </template>
 
@@ -122,6 +124,9 @@ const firstToReview = computed(() => toReview.value[0])
   border-radius: 6px;
   background: currentColor;
   opacity: 0.9;
+  transform-origin: bottom;
+  animation: grow 0.7s var(--ease-spring) backwards;
+  animation-delay: calc(300ms + var(--b) * 55ms);
 }
 
 .bar.off {
@@ -140,6 +145,7 @@ const firstToReview = computed(() => toReview.value[0])
 }
 
 .ai-icon {
+  animation: pop 0.6s var(--ease-spring) 0.45s backwards;
   display: grid;
   place-items: center;
   width: 44px;
