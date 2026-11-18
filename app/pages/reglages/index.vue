@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, History, Type } from 'lucide-vue-next'
+import { ChevronRight, History, Type, Sparkles } from 'lucide-vue-next'
 
 useHead({ title: 'Réglages · stravaXgarmin' })
 
@@ -8,6 +8,7 @@ const { theme, themes } = useTheme()
 const { show } = useToast()
 const { permission, syncPermission, requestPermission } = useNotifications()
 const { entries } = useHistory()
+const { current: appVersion, showHistory } = useUpdates()
 const { accounts, disconnect } = useAccounts()
 const { run: sync, syncing } = useSync()
 
@@ -166,6 +167,18 @@ const descriptionParts = [
           <span class="title">{{ syncing ? 'Synchro en cours…' : 'Synchroniser maintenant' }}</span>
           <span class="hint">Se fait aussi à chaque ouverture de l’appli</span>
         </span>
+      </button>
+    </div>
+
+    <h2 class="label group">Application</h2>
+    <div class="card list">
+      <button type="button" class="row" @click="showHistory">
+        <span class="tile" aria-hidden="true"><Sparkles :size="22" /></span>
+        <span class="row__main">
+          <span class="title">Quoi de neuf</span>
+          <span class="hint">Version {{ appVersion }} · notes de version</span>
+        </span>
+        <ChevronRight :size="20" aria-hidden="true" />
       </button>
     </div>
 

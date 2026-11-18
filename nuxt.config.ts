@@ -1,5 +1,9 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+
+// Version (mise à jour par semantic-release) et notes de version, figées au build
+const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
+const changelog = existsSync('CHANGELOG.md') ? readFileSync('CHANGELOG.md', 'utf8') : ''
 
 // Logos officiels déposés dans public/brands/ (svg, png ou webp, détectés au build)
 const brands: Record<string, string> = {}
@@ -21,7 +25,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     sessionPassword: '',
     strava: { clientId: '', clientSecret: '' },
-    public: { brands },
+    changelog,
+    public: { brands, version: pkg.version },
   },
 
   app: {
@@ -51,7 +56,8 @@ export default defineNuxtConfig({
   },
 
   pwa: {
-    registerType: 'autoUpdate',
+    // « prompt » : l'appli propose la mise à jour (popup) au lieu de recharger toute seule
+    registerType: 'prompt',
     manifest: {
       name: 'stravaXgarmin',
       short_name: 'stravaXgarmin',

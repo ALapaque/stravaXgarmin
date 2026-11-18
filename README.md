@@ -105,6 +105,24 @@ Les logos sont dans `public/brands/` (`strava`, `garmin`, `chatgpt`, en svg, png
 
 Sans Strava connecté, toutes les pages mènent à `/connexion`, qui présente l'appli. Le bouton « Démo » active des données fictives (cookie `sxg-demo`), signalées par un bandeau jaune en haut de chaque écran avec un bouton « Quitter ».
 
+## Versions et notes de version
+
+[semantic-release](https://semantic-release.gitbook.io/) tourne à chaque push sur `main` (`.github/workflows/release.yml`) : il lit les messages de commit, choisit la version, écrit `CHANGELOG.md` (sections en français) et crée la release GitHub. Le commit `chore(release): x.y.z` qu'il pousse est ensuite déployé par Vercel avec la nouvelle version.
+
+Les messages de commit suivent [Conventional Commits](https://www.conventionalcommits.org/fr/) :
+
+| Préfixe | Effet |
+|---|---|
+| `feat: …` | version mineure (1.**2**.0), rubrique « Nouveautés » |
+| `fix: …` | correctif (1.2.**1**), rubrique « Corrections » |
+| `perf: …` | correctif, rubrique « Performances » |
+| `feat!: …` ou `BREAKING CHANGE:` | version majeure (**2**.0.0) |
+| `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:` | pas de version, n'apparaît pas |
+
+Le titre du commit est la ligne affichée dans l'appli : écris-le pour les utilisateurs.
+
+Dans l'appli : quand une nouvelle version est déployée pendant qu'elle est ouverte, une popup propose de l'installer avec ses notes ; à la première ouverture après une mise à jour, « Quoi de neuf ? » liste les nouveautés depuis la dernière visite. Tout l'historique est dans Réglages → Quoi de neuf.
+
 ## Prochaines étapes
 
 1. **Strava** : créer l'appli API, OAuth (`activity:read_all`, `activity:write`), webhook sur les nouvelles activités, `PUT /activities/{id}` pour le nom et la description.
