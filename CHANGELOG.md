@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.1...v1.0.2) (2026-11-18)
+
+### Corrections
+
+* code 2FA Garmin demandé aussi quand Garmin passe par sa page web ([baea9bc](https://github.com/ALapaque/stravaXgarmin/commit/baea9bcb459a8ec20207d75dad3d89060c330cb0))
+
 ## [1.0.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.0...v1.0.1) (2026-11-18)
 
 ### Corrections
