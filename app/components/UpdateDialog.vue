@@ -114,7 +114,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   width: min(100%, 480px);
   max-height: 88dvh;
   padding: 28px 20px calc(env(safe-area-inset-bottom) + 20px);
-  border-radius: 32px 32px 0 0;
+  border-radius: var(--r-card) var(--r-card) 0 0;
   background: var(--bg);
   border: 1px solid var(--surface-border);
   border-bottom: 0;
@@ -155,7 +155,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 .icon-wrap img {
   position: relative;
-  border-radius: 16px;
+  border-radius: var(--r-ctrl);
   animation: pop 0.7s var(--ease-spring) 0.15s backwards;
 }
 
@@ -163,7 +163,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 .halo {
   position: absolute;
   inset: 0;
-  border-radius: 28px;
+  border-radius: var(--r-card);
   background: conic-gradient(from 0deg, #ff5a1f, #ff2e93, #2b6bff, #00e0c6, #ff5a1f);
   filter: blur(14px);
   opacity: 0.7;

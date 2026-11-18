@@ -242,7 +242,7 @@ const firstToReview = computed(() => toReview.value[0])
   flex-direction: column;
   gap: 2px;
   padding: 22px 22px 18px;
-  border-radius: 30px;
+  border-radius: calc(var(--r-card) + 4px);
 }
 
 .week > * {
@@ -266,7 +266,7 @@ const firstToReview = computed(() => toReview.value[0])
   border-radius: 99px;
   font-size: 12px;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, currentColor 20%, transparent);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -336,15 +336,15 @@ const firstToReview = computed(() => toReview.value[0])
   width: 100%;
   max-width: 26px;
   border-radius: 8px;
-  background: linear-gradient(180deg, #fff, rgba(255, 255, 255, 0.55));
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
+  background: linear-gradient(180deg, currentColor, color-mix(in srgb, currentColor 55%, transparent));
+  box-shadow: 0 0 18px color-mix(in srgb, currentColor 35%, transparent);
   transform-origin: bottom;
   animation: grow 0.8s var(--ease-spring) backwards;
   animation-delay: calc(300ms + var(--b) * 55ms);
 }
 
 .bar.off {
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, currentColor 22%, transparent);
   box-shadow: none;
 }
 
@@ -375,7 +375,7 @@ const firstToReview = computed(() => toReview.value[0])
   flex-shrink: 0;
   width: 42px;
   height: 42px;
-  border-radius: 14px;
+  border-radius: var(--r-ctrl);
   color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-text) 16%, transparent);
 }
@@ -499,7 +499,7 @@ const firstToReview = computed(() => toReview.value[0])
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: var(--r-ctrl);
   background: color-mix(in srgb, currentColor 18%, transparent);
 }
 

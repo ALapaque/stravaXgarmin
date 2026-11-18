@@ -125,7 +125,7 @@ const flat = (lines: PlanLine[]) => lines
   place-items: center;
   width: 52px;
   height: 52px;
-  border-radius: 16px;
+  border-radius: var(--r-ctrl);
   color: var(--accent-text);
   background: color-mix(in srgb, var(--accent-text) 16%, transparent);
 }

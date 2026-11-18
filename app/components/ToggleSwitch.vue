@@ -24,7 +24,7 @@ defineProps<{ label: string }>()
   height: 32px;
   padding: 0;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--r-pill, 16px);
   background: var(--line-strong);
   cursor: pointer;
   transition: background 0.2s ease;
@@ -40,7 +40,7 @@ defineProps<{ label: string }>()
   left: 3px;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: var(--r-knob, 50%);
   background: var(--ink);
   transition: transform 0.2s ease;
 }

@@ -49,7 +49,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;800;900&family=Urbanist:wght@400;500;600;700&display=swap',
+          href: 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;800;900&family=JetBrains+Mono:wght@400;500&family=Sora:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Unbounded:wght@600;700&display=swap',
         },
       ],
     },

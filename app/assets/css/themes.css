@@ -1,9 +1,9 @@
 /*
  * stravaXgarmin — thèmes
  *
- * Chaque thème ne fait que redéfinir des variables. Les composants n'utilisent
- * jamais de couleur en dur : pour ajouter un thème, copie un bloc ci-dessous,
- * change son id et ajoute-le dans app/composables/useTheme.ts.
+ * Chaque thème ne fait que redéfinir des variables : couleurs, polices et arrondis.
+ * Les composants n'utilisent jamais de couleur en dur : pour ajouter un thème, copie un bloc
+ * ci-dessous, change son id et ajoute-le dans app/composables/useTheme.ts.
  */
 
 /* Couleurs de marque, communes à tous les thèmes */
@@ -13,73 +13,9 @@
   --chatgpt: #10a37f;
 }
 
-/* ───────────── Vibe (V4) — thème par défaut ─────────────
-   Mise en page V3, couleurs V1 : bleu nuit, dégradés orange → rose et bleu → turquoise */
+/* ───────────── Néon — thème par défaut ─────────────
+   Verre dépoli, grosses typos, halos très présents */
 :root,
-[data-theme='vibe'] {
-  --bg: #06070d;
-  --ink: #ffffff;
-  --ink-2: rgba(255, 255, 255, 0.8);
-  --muted: rgba(255, 255, 255, 0.62);
-  --line: rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
-
-  --surface: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
-  --surface-2: rgba(255, 255, 255, 0.07);
-  --surface-border: transparent;
-  --surface-blur: blur(24px) saturate(160%);
-  --surface-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.7);
-  --edge: linear-gradient(165deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.02) 70%, rgba(255, 255, 255, 0.12));
-  --aurora-1: #ff5a1f;
-  --aurora-2: #ff2e93;
-  --aurora-3: #2b6bff;
-  --aurora-4: #00e0c6;
-  --aurora-strength: 0.5;
-
-  --primary: linear-gradient(120deg, #ff5a1f, #ff2e93);
-  --primary-solid: #ff5a1f;
-  --on-primary: #ffffff;
-  --primary-shadow: 0 14px 34px -8px rgba(255, 46, 147, 0.55);
-  --secondary: linear-gradient(120deg, #2b6bff, #00e0c6);
-  --on-secondary: #ffffff;
-  --select: linear-gradient(120deg, #10a37f, #2b6bff);
-  --on-select: #ffffff;
-
-  --accent-text: #ff8a3d;
-  --link: #4da3ff;
-  --ok: #16e08a;
-  --ko: #ff3b6b;
-  --info: #4da3ff;
-  --type-long: #4da3ff;
-  --type-interval: #ff8a3d;
-  --type-recovery: #16e08a;
-  --type-easy: #ffd166;
-  --type-tempo: #ff2e93;
-
-  --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.55), rgba(255, 46, 147, 0.25), transparent);
-  --glow-b: radial-gradient(closest-side, rgba(43, 107, 255, 0.5), rgba(0, 224, 198, 0.2), transparent);
-
-  --font-display: 'Urbanist', system-ui, sans-serif;
-  --font-body: 'Urbanist', system-ui, sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
-  --display-weight: 700;
-  --title-weight: 600;
-  --tracking-display: -0.035em;
-
-  --r-card: 24px;
-  --r-btn: 16px;
-  --r-ctrl: 12px;
-
-  --tab-bg: rgba(14, 16, 28, 0.62);
-  --tab-border: rgba(255, 255, 255, 0.12);
-  --tab-active: var(--primary);
-  --on-tab-active: #ffffff;
-  --focus: #ff8a3d;
-  color-scheme: dark;
-}
-
-/* ───────────── Néon (V1) ─────────────
-   Le premier design : cartes en verre dépoli, grosses typos, halos très présents */
 [data-theme='neon'] {
   --bg: #0b0d17;
   --ink: #ffffff;
@@ -133,139 +69,316 @@
   --r-card: 26px;
   --r-btn: 24px;
   --r-ctrl: 14px;
+  --r-tab: 36px;
+  --r-pill: 15px;
+  --r-knob: 50%;
 
   --tab-bg: rgba(255, 255, 255, 0.1);
   --tab-border: rgba(255, 255, 255, 0.2);
   --tab-active: var(--primary);
   --on-tab-active: #ffffff;
   --focus: #ff8a3d;
+  --map-style: dark;
   color-scheme: dark;
 }
 
-/* ───────────── OLED (V3) ─────────────
-   Noir profond, un seul accent orange en aplat, aucun dégradé */
-[data-theme='oled'] {
-  --bg: #07090d;
-  --ink: #f2f4f7;
-  --ink-2: rgba(242, 244, 247, 0.8);
-  --muted: rgba(242, 244, 247, 0.62);
-  --line: rgba(242, 244, 247, 0.07);
-  --line-strong: rgba(242, 244, 247, 0.14);
-
-  --surface: #0f1219;
-  --surface-2: #1a202b;
-  --surface-border: transparent;
+/* ───────────── Carbone — brut et tranchant : noir, blanc et vert acide, angles vifs ───────────── */
+[data-theme='carbone'] {
+  --bg: #0a0a0a;
+  --ink: #f5f5f0;
+  --ink-2: rgba(245, 245, 240, 0.8);
+  --muted: rgba(245, 245, 240, 0.55);
+  --line: rgba(245, 245, 240, 0.1);
+  --line-strong: rgba(245, 245, 240, 0.28);
+  --surface: #121212;
+  --surface-2: #1c1c1c;
+  --surface-border: rgba(245, 245, 240, 0.16);
   --surface-blur: none;
   --surface-shadow: none;
-  --edge: linear-gradient(165deg, rgba(242, 244, 247, 0.16), rgba(242, 244, 247, 0.04) 50%, rgba(242, 244, 247, 0.06));
-  --aurora-1: #ff6b2c;
-  --aurora-2: #ff6b2c;
-  --aurora-3: #12161e;
-  --aurora-4: #12161e;
-  --aurora-strength: 0.16;
-
-  --primary: #ff6b2c;
-  --primary-solid: #ff6b2c;
-  --on-primary: #07090d;
-  --primary-shadow: none;
-  --secondary: #1a202b;
-  --on-secondary: #f2f4f7;
-  --select: #ff6b2c;
-  --on-select: #07090d;
-
-  --accent-text: #ff6b2c;
-  --link: #ff6b2c;
-  --ok: #34d399;
-  --ko: #f87171;
-  --info: #60a5fa;
-  --type-long: #60a5fa;
-  --type-interval: #ff6b2c;
-  --type-recovery: #34d399;
-  --type-easy: #fbbf24;
-  --type-tempo: #f472b6;
-
+  --edge: transparent;
+  --aurora-1: #d4ff3a;
+  --aurora-2: #0a0a0a;
+  --aurora-3: #0a0a0a;
+  --aurora-4: #d4ff3a;
+  --aurora-strength: 0.07;
+  --primary: #d4ff3a;
+  --primary-solid: #d4ff3a;
+  --on-primary: #0a0a0a;
+  --primary-shadow: 4px 4px 0 rgba(245, 245, 240, 0.9);
+  --secondary: #f5f5f0;
+  --on-secondary: #0a0a0a;
+  --select: #d4ff3a;
+  --on-select: #0a0a0a;
+  --accent-text: #d4ff3a;
+  --link: #d4ff3a;
+  --ok: #4ade80;
+  --ko: #ff4d2e;
+  --info: #f5f5f0;
+  --type-long: #f5f5f0;
+  --type-easy: #a3a3a3;
+  --type-interval: #d4ff3a;
+  --type-recovery: #4ade80;
+  --type-tempo: #ff4d2e;
   --glow-a: none;
   --glow-b: none;
-
-  --font-display: 'Urbanist', system-ui, sans-serif;
-  --font-body: 'Urbanist', system-ui, sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
-  --display-weight: 500;
-  --title-weight: 500;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --display-weight: 700;
+  --title-weight: 600;
   --tracking-display: -0.04em;
-
-  --r-card: 24px;
-  --r-btn: 16px;
-  --r-ctrl: 12px;
-
-  --tab-bg: #07090d;
-  --tab-border: rgba(242, 244, 247, 0.1);
-  --tab-active: rgba(255, 107, 44, 0.16);
-  --on-tab-active: #ff6b2c;
-  --focus: #ff6b2c;
+  --r-card: 4px;
+  --r-btn: 2px;
+  --r-ctrl: 2px;
+  --r-tab: 6px;
+  --r-pill: 2px;
+  --r-knob: 2px;
+  --tab-bg: #0a0a0a;
+  --tab-border: rgba(245, 245, 240, 0.28);
+  --tab-active: #d4ff3a;
+  --on-tab-active: #0a0a0a;
+  --focus: #d4ff3a;
+  --map-style: dark;
   color-scheme: dark;
 }
 
-/* ───────────── Calme (V2) ─────────────
-   Sobre : fond quasi noir, un accent bleu ciel, cartes à peine marquées */
-[data-theme='calme'] {
-  --bg: #0a0d14;
-  --ink: #e9edf3;
-  --ink-2: rgba(233, 237, 243, 0.84);
-  --muted: rgba(233, 237, 243, 0.62);
-  --line: rgba(233, 237, 243, 0.08);
-  --line-strong: rgba(233, 237, 243, 0.18);
-
-  --surface: linear-gradient(180deg, rgba(233, 237, 243, 0.06), rgba(233, 237, 243, 0.025));
-  --surface-2: #1d2433;
+/* ───────────── Papier — clair et éditorial : crème, terre cuite, titres à empattements ───────────── */
+[data-theme='papier'] {
+  --bg: #f4efe6;
+  --ink: #1d1a16;
+  --ink-2: rgba(29, 26, 22, 0.78);
+  --muted: rgba(29, 26, 22, 0.56);
+  --line: rgba(29, 26, 22, 0.08);
+  --line-strong: rgba(29, 26, 22, 0.2);
+  --surface: #fffdf8;
+  --surface-2: #ece5d8;
   --surface-border: transparent;
-  --surface-blur: blur(20px);
-  --surface-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.7);
-  --edge: linear-gradient(165deg, rgba(233, 237, 243, 0.2), rgba(233, 237, 243, 0.04) 45%, rgba(233, 237, 243, 0.08));
-  --aurora-1: #5ab9fc;
-  --aurora-2: #2a5d9c;
-  --aurora-3: #3ecf8e;
-  --aurora-4: #1d2433;
-  --aurora-strength: 0.28;
-
-  --primary: #5ab9fc;
-  --primary-solid: #5ab9fc;
-  --on-primary: #0a0d14;
-  --primary-shadow: none;
-  --secondary: #1d2433;
-  --on-secondary: #e9edf3;
-  --select: #5ab9fc;
-  --on-select: #0a0d14;
-
-  --accent-text: #5ab9fc;
-  --link: #5ab9fc;
-  --ok: #3ecf8e;
-  --ko: #ff6b6b;
-  --info: #5ab9fc;
-  --type-long: #5ab9fc;
-  --type-interval: #e9edf3;
-  --type-recovery: #3ecf8e;
-  --type-easy: #c9d4e0;
-  --type-tempo: #e9edf3;
-
+  --surface-blur: none;
+  --surface-shadow: 0 16px 32px -20px rgba(70, 45, 20, 0.4);
+  --edge: linear-gradient(165deg, rgba(29, 26, 22, 0.1), rgba(29, 26, 22, 0.03) 50%, rgba(29, 26, 22, 0.08));
+  --aurora-1: #f7c59f;
+  --aurora-2: #f2a07b;
+  --aurora-3: #c9d6c3;
+  --aurora-4: #f6dfb8;
+  --aurora-strength: 0.55;
+  --primary: linear-gradient(120deg, #d9573a, #e8893c);
+  --primary-solid: #d9573a;
+  --on-primary: #ffffff;
+  --primary-shadow: 0 14px 28px -10px rgba(217, 87, 58, 0.5);
+  --secondary: #1d1a16;
+  --on-secondary: #f4efe6;
+  --select: #d9573a;
+  --on-select: #ffffff;
+  --accent-text: #c2410c;
+  --link: #c2410c;
+  --ok: #2f855a;
+  --ko: #c53030;
+  --info: #2b6cb0;
+  --type-long: #2b6cb0;
+  --type-easy: #b7791f;
+  --type-interval: #d9573a;
+  --type-recovery: #2f855a;
+  --type-tempo: #9b2c2c;
   --glow-a: none;
   --glow-b: none;
-
-  --font-display: 'Urbanist', system-ui, sans-serif;
-  --font-body: 'Urbanist', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'DM Mono', ui-monospace, monospace;
-  --display-weight: 500;
-  --title-weight: 500;
+  --display-weight: 600;
+  --title-weight: 600;
+  --tracking-display: -0.02em;
+  --r-card: 28px;
+  --r-btn: 999px;
+  --r-ctrl: 14px;
+  --r-tab: 999px;
+  --r-pill: 999px;
+  --r-knob: 50%;
+  --tab-bg: rgba(255, 253, 248, 0.78);
+  --tab-border: rgba(29, 26, 22, 0.1);
+  --tab-active: #1d1a16;
+  --on-tab-active: #f4efe6;
+  --focus: #c2410c;
+  --map-style: light;
+  --title-shadow: none;
+  color-scheme: light;
+}
+
+/* ───────────── Abysse — océan profond : cyan et turquoise, tout en rondeurs ───────────── */
+[data-theme='abysse'] {
+  --bg: #03141c;
+  --ink: #e6fbff;
+  --ink-2: rgba(230, 251, 255, 0.82);
+  --muted: rgba(230, 251, 255, 0.58);
+  --line: rgba(120, 230, 255, 0.1);
+  --line-strong: rgba(120, 230, 255, 0.24);
+  --surface: linear-gradient(180deg, rgba(120, 230, 255, 0.09), rgba(120, 230, 255, 0.025));
+  --surface-2: rgba(120, 230, 255, 0.08);
+  --surface-border: transparent;
+  --surface-blur: blur(24px) saturate(160%);
+  --surface-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.8);
+  --edge: linear-gradient(165deg, rgba(120, 230, 255, 0.4), rgba(120, 230, 255, 0.06) 45%, rgba(0, 255, 195, 0.18));
+  --aurora-1: #00c2ff;
+  --aurora-2: #00ffc3;
+  --aurora-3: #1452ff;
+  --aurora-4: #0b5c6e;
+  --aurora-strength: 0.5;
+  --primary: linear-gradient(120deg, #00c2ff, #00ffc3);
+  --primary-solid: #00c2ff;
+  --on-primary: #022029;
+  --primary-shadow: 0 14px 34px -8px rgba(0, 220, 255, 0.55);
+  --secondary: linear-gradient(120deg, #1452ff, #00a3ff);
+  --on-secondary: #ffffff;
+  --select: linear-gradient(120deg, #00c2ff, #00ffc3);
+  --on-select: #022029;
+  --accent-text: #3ee8ff;
+  --link: #3ee8ff;
+  --ok: #3dffb0;
+  --ko: #ff6b8a;
+  --info: #5aa9ff;
+  --type-long: #3ee8ff;
+  --type-easy: #8ab4ff;
+  --type-interval: #ffb84d;
+  --type-recovery: #3dffb0;
+  --type-tempo: #ff6b9a;
+  --glow-a: none;
+  --glow-b: none;
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Sora', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --display-weight: 600;
+  --title-weight: 600;
   --tracking-display: -0.04em;
+  --r-card: 32px;
+  --r-btn: 999px;
+  --r-ctrl: 18px;
+  --r-tab: 999px;
+  --r-pill: 999px;
+  --r-knob: 50%;
+  --tab-bg: rgba(3, 28, 38, 0.6);
+  --tab-border: rgba(120, 230, 255, 0.18);
+  --tab-active: linear-gradient(120deg, #00c2ff, #00ffc3);
+  --on-tab-active: #022029;
+  --focus: #3ee8ff;
+  --map-style: dark;
+  color-scheme: dark;
+}
 
-  --r-card: 24px;
-  --r-btn: 16px;
-  --r-ctrl: 12px;
+/* ───────────── Rétro 84 — synthwave : couchers de soleil, néons rose et cyan ───────────── */
+[data-theme='retro'] {
+  --bg: #120a1f;
+  --ink: #fff3fb;
+  --ink-2: rgba(255, 243, 251, 0.82);
+  --muted: rgba(255, 243, 251, 0.58);
+  --line: rgba(255, 113, 206, 0.12);
+  --line-strong: rgba(255, 113, 206, 0.28);
+  --surface: linear-gradient(180deg, rgba(255, 113, 206, 0.09), rgba(5, 217, 232, 0.03));
+  --surface-2: rgba(255, 113, 206, 0.1);
+  --surface-border: transparent;
+  --surface-blur: blur(18px);
+  --surface-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  --edge: linear-gradient(135deg, #ff71ce, rgba(255, 113, 206, 0.1) 40%, rgba(5, 217, 232, 0.1) 60%, #05d9e8);
+  --aurora-1: #ff2a6d;
+  --aurora-2: #7b2cff;
+  --aurora-3: #05d9e8;
+  --aurora-4: #ff9e2c;
+  --aurora-strength: 0.55;
+  --primary: linear-gradient(120deg, #ff2a6d, #ff9e2c);
+  --primary-solid: #ff2a6d;
+  --on-primary: #ffffff;
+  --primary-shadow: 0 0 30px -4px rgba(255, 42, 109, 0.7);
+  --secondary: linear-gradient(120deg, #05d9e8, #7b2cff);
+  --on-secondary: #ffffff;
+  --select: linear-gradient(120deg, #ff2a6d, #ff9e2c);
+  --on-select: #ffffff;
+  --accent-text: #ff71ce;
+  --link: #05d9e8;
+  --ok: #05ffa1;
+  --ko: #ff2a6d;
+  --info: #05d9e8;
+  --type-long: #05d9e8;
+  --type-easy: #b967ff;
+  --type-interval: #ff9e2c;
+  --type-recovery: #05ffa1;
+  --type-tempo: #ff71ce;
+  --glow-a: none;
+  --glow-b: none;
+  --font-display: 'Unbounded', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --display-weight: 700;
+  --title-weight: 600;
+  --tracking-display: -0.03em;
+  --r-card: 18px;
+  --r-btn: 10px;
+  --r-ctrl: 10px;
+  --r-tab: 20px;
+  --r-pill: 8px;
+  --r-knob: 6px;
+  --tab-bg: rgba(26, 12, 44, 0.7);
+  --tab-border: rgba(255, 113, 206, 0.3);
+  --tab-active: linear-gradient(120deg, #ff2a6d, #ff9e2c);
+  --on-tab-active: #ffffff;
+  --focus: #05d9e8;
+  --map-style: dark;
+  color-scheme: dark;
+}
 
-  --tab-bg: #0a0d14;
-  --tab-border: rgba(233, 237, 243, 0.1);
-  --tab-active: transparent;
-  --on-tab-active: #5ab9fc;
-  --focus: #5ab9fc;
+/* ───────────── Trail — sentier et forêt : vert sombre, ambre, typo condensée ───────────── */
+[data-theme='trail'] {
+  --bg: #0d1410;
+  --ink: #eef2e8;
+  --ink-2: rgba(238, 242, 232, 0.8);
+  --muted: rgba(238, 242, 232, 0.56);
+  --line: rgba(238, 242, 232, 0.08);
+  --line-strong: rgba(238, 242, 232, 0.2);
+  --surface: #141d17;
+  --surface-2: #1d2921;
+  --surface-border: transparent;
+  --surface-blur: none;
+  --surface-shadow: 0 18px 36px -22px rgba(0, 0, 0, 0.9);
+  --edge: linear-gradient(165deg, rgba(199, 211, 111, 0.28), rgba(238, 242, 232, 0.04) 45%, rgba(238, 242, 232, 0.06));
+  --aurora-1: #3c5a3f;
+  --aurora-2: #e8a33d;
+  --aurora-3: #24402c;
+  --aurora-4: #5b6b2e;
+  --aurora-strength: 0.35;
+  --primary: linear-gradient(120deg, #f0b44c, #d9822b);
+  --primary-solid: #e8a33d;
+  --on-primary: #17110a;
+  --primary-shadow: 0 12px 26px -10px rgba(232, 163, 61, 0.55);
+  --secondary: #2f4a36;
+  --on-secondary: #eef2e8;
+  --select: #e8a33d;
+  --on-select: #17110a;
+  --accent-text: #f0b44c;
+  --link: #f0b44c;
+  --ok: #8fd16a;
+  --ko: #e5533d;
+  --info: #7fb3d5;
+  --type-long: #7fb3d5;
+  --type-easy: #c7d36f;
+  --type-interval: #f0b44c;
+  --type-recovery: #8fd16a;
+  --type-tempo: #e5533d;
+  --glow-a: none;
+  --glow-b: none;
+  --font-display: 'Barlow Condensed', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --display-weight: 700;
+  --title-weight: 600;
+  --tracking-display: -0.01em;
+  --r-card: 12px;
+  --r-btn: 8px;
+  --r-ctrl: 8px;
+  --r-tab: 16px;
+  --r-pill: 6px;
+  --r-knob: 4px;
+  --tab-bg: rgba(13, 20, 16, 0.88);
+  --tab-border: rgba(238, 242, 232, 0.12);
+  --tab-active: #e8a33d;
+  --on-tab-active: #17110a;
+  --focus: #f0b44c;
+  --map-style: dark;
   color-scheme: dark;
 }

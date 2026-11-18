@@ -59,7 +59,7 @@ const locked = computed(() => !connected.value)
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--r-ctrl);
   color: #fff;
   background: linear-gradient(135deg, var(--primary-solid), var(--accent-text));
   animation: pop 0.6s var(--ease-spring) 0.1s backwards;

@@ -42,7 +42,7 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
   width: 56px;
   height: 56px;
   padding: 7px;
-  border-radius: 16px;
+  border-radius: var(--r-ctrl);
   background:
     radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%),
     var(--surface-2);

@@ -201,7 +201,7 @@ async function addDescription() {
 /* ── Tracé en grand ── */
 .hero {
   overflow: hidden;
-  border-radius: 32px;
+  border-radius: calc(var(--r-card) + 6px);
 }
 
 .hero::after {
@@ -266,7 +266,7 @@ async function addDescription() {
 
 .hero-text .h1 {
   font-size: 30px;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  text-shadow: var(--title-shadow, 0 2px 20px rgba(0, 0, 0, 0.5));
 }
 
 .record {
@@ -287,7 +287,7 @@ async function addDescription() {
   flex-shrink: 0;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--r-ctrl);
   background: color-mix(in srgb, currentColor 18%, transparent);
   animation: pop 0.7s var(--ease-spring) 0.35s backwards;
 }

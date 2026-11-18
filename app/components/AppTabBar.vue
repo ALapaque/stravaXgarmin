@@ -43,7 +43,7 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   padding: 8px 6px;
-  border-radius: 36px;
+  border-radius: var(--r-tab, 36px);
   background: var(--tab-bg);
   border: 1px solid var(--tab-border);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
@@ -77,7 +77,7 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
 .indicator span {
   width: 48px;
   height: 30px;
-  border-radius: 15px;
+  border-radius: var(--r-pill, 15px);
   background: var(--tab-active);
   box-shadow: var(--primary-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
@@ -99,7 +99,7 @@ const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  border-radius: 20px;
+  border-radius: var(--r-ctrl);
   transition: color 0.25s ease;
 }
 

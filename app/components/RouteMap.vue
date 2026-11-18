@@ -40,10 +40,12 @@ onMounted(async () => {
     const lats = pts.map((p) => p[1])
     const color = getComputedStyle(el.value).getPropertyValue('--c').trim() || '#4da3ff'
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // Thème clair (Papier) : fond de carte clair
+    const light = getComputedStyle(el.value).getPropertyValue('--map-style').trim() === 'light'
 
     const m = new ml.Map({
       container: el.value,
-      style: STYLE,
+      style: light ? FALLBACK : STYLE,
       bounds: [
         [Math.min(...lngs), Math.min(...lats)],
         [Math.max(...lngs), Math.max(...lats)],
@@ -57,7 +59,7 @@ onMounted(async () => {
     })
     map = m
 
-    let styled = false
+    let styled = light
     m.on('error', () => {
       // Style sombre indisponible : style clair de secours, puis on abandonne
       if (!styled && map) {
