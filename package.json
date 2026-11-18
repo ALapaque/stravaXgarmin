@@ -1,5 +1,5 @@
 {
-  "name": "runsync",
+  "name": "stravaxgarmin",
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",

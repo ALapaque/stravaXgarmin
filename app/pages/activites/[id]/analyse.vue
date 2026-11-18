@@ -9,7 +9,7 @@ const { show } = useToast()
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
 
-useHead({ title: 'Analyse · RunSync' })
+useHead({ title: 'Analyse · stravaXgarmin' })
 
 const result = await analyse(a.value)
 const ICONS = {

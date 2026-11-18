@@ -8,7 +8,7 @@ const { show } = useToast()
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
 
-useHead({ title: () => `${a.value?.garminName} · RunSync` })
+useHead({ title: () => `${a.value?.garminName} · stravaXgarmin` })
 
 const synced = computed(() => (a.value ? isSynced(a.value) : false))
 const kpis = computed(() => {

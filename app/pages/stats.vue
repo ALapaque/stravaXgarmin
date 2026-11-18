@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowRight } from 'lucide-vue-next'
 
-useHead({ title: 'Stats · RunSync' })
+useHead({ title: 'Stats · stravaXgarmin' })
 
 const { activities } = useActivities()
 const { estimateLevel } = useAi()

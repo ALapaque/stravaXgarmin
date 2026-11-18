@@ -35,7 +35,7 @@ const isTheme = (value: unknown): value is ThemeId => THEMES.some((t) => t.id ==
 
 /** Thème courant, gardé dans un cookie pour être appliqué dès le rendu serveur. */
 export function useTheme() {
-  const cookie = useCookie<string>('runsync-theme', {
+  const cookie = useCookie<string>('stravaxgarmin-theme', {
     default: () => 'vibe',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',

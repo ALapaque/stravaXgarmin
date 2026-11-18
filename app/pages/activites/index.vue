@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'Activités · RunSync' })
+useHead({ title: 'Activités · stravaXgarmin' })
 
 const { activities, toReview } = useActivities()
 const filter = ref<'all' | 'review'>('all')

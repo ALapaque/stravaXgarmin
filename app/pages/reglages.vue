@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'Réglages · RunSync' })
+useHead({ title: 'Réglages · stravaXgarmin' })
 
 const settings = useSettings()
 const { theme, themes } = useTheme()

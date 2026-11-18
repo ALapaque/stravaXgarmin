@@ -11,7 +11,7 @@ const { show } = useToast()
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
 
-useHead({ title: 'Titre IA · RunSync' })
+useHead({ title: 'Titre IA · stravaXgarmin' })
 
 const style = ref<TitleStyle>('epique')
 const round = ref(0)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Sparkles, ChevronRight } from 'lucide-vue-next'
 
-useHead({ title: 'Accueil · RunSync' })
+useHead({ title: 'Accueil · stravaXgarmin' })
 
 const { activities, toReview, lastWeek } = useActivities()
 const week = lastWeek

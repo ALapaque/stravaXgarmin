@@ -1,4 +1,4 @@
-# RunSync
+# stravaXgarmin
 
 PWA Nuxt qui copie le nom de tes courses Garmin Connect vers Strava, avec titres et analyses générés par IA (ChatGPT).
 

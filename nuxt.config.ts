@@ -9,7 +9,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'RunSync',
+      title: 'stravaXgarmin',
       htmlAttrs: { lang: 'fr' },
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
@@ -33,8 +33,8 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'RunSync',
-      short_name: 'RunSync',
+      name: 'stravaXgarmin',
+      short_name: 'stravaXgarmin',
       description: 'Le nom de tes courses Garmin, copié sur Strava.',
       lang: 'fr',
       start_url: '/',

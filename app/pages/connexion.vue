@@ -2,7 +2,7 @@
 import { ArrowLeftRight } from 'lucide-vue-next'
 
 definePageMeta({ layout: 'bare' })
-useHead({ title: 'Connexion · RunSync' })
+useHead({ title: 'Connexion · stravaXgarmin' })
 
 // TODO: remplacer par les flux OAuth Strava et Garmin (routes serveur /api/auth/*)
 </script>
@@ -10,7 +10,7 @@ useHead({ title: 'Connexion · RunSync' })
 <template>
   <div class="logo">
     <span class="mark" aria-hidden="true"><ArrowLeftRight :size="20" /></span>
-    <span class="h2">RunSync</span>
+    <span class="h2">stravaXgarmin</span>
   </div>
 
   <div class="hero">
