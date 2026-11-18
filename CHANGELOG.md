@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.2...v1.1.0) (2026-11-18)
+
+### Nouveautés
+
+* titres et analyses par IA avec ta clé API OpenAI ([fa9e21a](https://github.com/ALapaque/stravaXgarmin/commit/fa9e21a884573735c42b8f037bdebd6b404a8332))
+
 ## [1.0.2](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.1...v1.0.2) (2026-11-18)
 
 ### Corrections
