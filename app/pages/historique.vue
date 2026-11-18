@@ -9,8 +9,8 @@ const { show } = useToast()
 
 const when = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' })
 
-function cancel(id: string) {
-  if (undo(id)) show('Modification annulée sur Strava')
+async function cancel(id: string) {
+  if (await undo(id)) show('Modification annulée')
 }
 </script>
 
@@ -30,7 +30,8 @@ function cancel(id: string) {
             {{ byId(e.activityId)!.garminName }}
           </NuxtLink>
         </div>
-        <p v-if="e.field === 'name'" class="change">
+        <p v-if="e.field !== 'description'" class="change">
+          <span v-if="e.field === 'garminName'" class="label">Garmin</span>
           <s>{{ e.before || 'Sans nom' }}</s>
           <span aria-hidden="true">→</span>
           <span class="after">{{ e.after }}</span>

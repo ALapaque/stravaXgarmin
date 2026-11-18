@@ -1,9 +1,10 @@
 import type { Activity, ChangeSource } from './useActivities'
+import { pushField } from './useActivities'
 
 export interface HistoryEntry {
   id: string
   activityId: string
-  field: 'name' | 'description'
+  field: 'name' | 'description' | 'garminName'
   before: string
   after: string
   source: ChangeSource
@@ -18,6 +19,7 @@ export const SOURCE_LABELS: Record<ChangeSource, string> = {
   manuel: 'Titre manuel',
   record: 'Titre record',
   description: 'Description enrichie',
+  strava: 'Depuis Strava',
 }
 
 /** Journal de tout ce que l'appli a modifié sur Strava, avec annulation. */
@@ -49,15 +51,16 @@ export function useHistory() {
     return entry
   }
 
-  /** Remet l'ancienne valeur sur Strava, sans créer de nouvelle entrée. */
-  function undo(id: string) {
+  /** Remet l'ancienne valeur (sur Strava ou Garmin), sans créer de nouvelle entrée. */
+  async function undo(id: string) {
     const entry = entries.value.find((e) => e.id === id)
     if (!entry || entry.undone) return false
     const activities = useState<Activity[]>('activities')
     const a = activities.value.find((x) => x.id === entry.activityId)
     if (!a) return false
-    // TODO: PUT /activities/{id} sur l'API Strava avec l'ancienne valeur
+    if (!(await pushField(a, entry.field, entry.before))) return false
     if (entry.field === 'name') a.stravaName = entry.before
+    else if (entry.field === 'garminName') a.garminName = entry.before
     else a.stravaDescription = entry.before || undefined
     entry.undone = true
     return true

@@ -5,7 +5,11 @@ import type { ChangeSource } from '~/composables/useActivities'
 
 const route = useRoute()
 const router = useRouter()
-const { byId, setStravaName } = useActivities()
+const { byId, setStravaName, setGarminName } = useActivities()
+const { accounts } = useAccounts()
+const settings = useSettings()
+const alsoGarmin = computed(() => Boolean(settings.value.garmin.rename && accounts.value.garmin.connected && a.value?.garminId))
+const publishing = ref(false)
 const { suggestTitles } = useAi()
 const { show } = useToast()
 const { ruleTitle } = useNaming()
@@ -76,12 +80,16 @@ function more() {
 async function publish() {
   if (!a.value || !finalTitle.value) return
   const title = finalTitle.value
-  setStravaName(a.value.id, title, sourceOf(title))
-  show('Titre publié sur Strava', {
+  publishing.value = true
+  const ok = await setStravaName(a.value.id, title, sourceOf(title))
+  if (ok && alsoGarmin.value) await setGarminName(a.value.id, title, sourceOf(title))
+  publishing.value = false
+  if (!ok) return
+  show(alsoGarmin.value ? 'Titre publié sur Strava et Garmin' : 'Titre publié sur Strava', {
     label: 'Annuler',
-    run: () => {
+    run: async () => {
       const last = entries.value[0]
-      if (last && undo(last.id)) show('Ancien titre remis sur Strava')
+      if (last && (await undo(last.id))) show('Ancien titre remis sur Strava')
     },
   })
   notify({ kind: 'titles', title: 'Titre publié sur Strava', body: title, to: `/activites/${a.value.id}` })
@@ -158,8 +166,8 @@ async function publish() {
         </div>
       </fieldset>
 
-      <button type="button" class="btn btn--primary" :disabled="!finalTitle" @click="publish">
-        Publier sur Strava
+      <button type="button" class="btn btn--primary" :disabled="!finalTitle || publishing" @click="publish">
+        {{ publishing ? 'Publication…' : alsoGarmin ? 'Publier sur Strava et Garmin' : 'Publier sur Strava' }}
         <ArrowRight :size="20" aria-hidden="true" />
       </button>
 

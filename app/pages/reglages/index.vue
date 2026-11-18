@@ -8,6 +8,15 @@ const { theme, themes } = useTheme()
 const { show } = useToast()
 const { permission, syncPermission, requestPermission } = useNotifications()
 const { entries } = useHistory()
+const { accounts, disconnect } = useAccounts()
+const { run: sync, syncing } = useSync()
+
+async function logout(provider: 'strava' | 'garmin') {
+  await disconnect(provider)
+  if (provider === 'garmin') settings.value.garmin.rename = false
+  show(provider === 'strava' ? 'Strava déconnecté' : 'Garmin déconnecté')
+  await sync()
+}
 
 onMounted(syncPermission)
 
@@ -34,7 +43,7 @@ const systemNotif = computed({
 const notifHint = computed(() => {
   if (permission.value === 'unsupported') return 'Non disponible ici. Sur iPhone : installe l’appli sur l’écran d’accueil.'
   if (permission.value === 'denied') return 'Bloquées dans les réglages du navigateur'
-  return 'Même quand l’appli est en arrière-plan'
+  return 'Pendant que l’appli est ouverte ou en arrière-plan'
 })
 
 const descriptionParts = [
@@ -125,13 +134,28 @@ const descriptionParts = [
     <div class="card list">
       <div class="row">
         <BrandMark brand="strava" />
-        <span class="row__main"><span class="title">Strava</span></span>
-        <StatusChip :ok="settings.accounts.strava" :label="settings.accounts.strava ? 'Connecté' : 'Déconnecté'" />
+        <span class="row__main">
+          <span class="title">Strava</span>
+          <span class="hint">{{ accounts.strava.connected ? (accounts.strava.name ?? 'Connecté') : 'Données de démo pour l’instant' }}</span>
+        </span>
+        <button v-if="accounts.strava.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('strava')">Déconnecter</button>
+        <a v-else href="/api/auth/strava/login" class="btn btn--sm btn--brand" style="--brand: var(--strava)">Connecter</a>
       </div>
       <div class="row">
         <BrandMark brand="garmin" />
-        <span class="row__main"><span class="title">Garmin Connect</span></span>
-        <StatusChip :ok="settings.accounts.garmin" :label="settings.accounts.garmin ? 'Connecté' : 'Déconnecté'" />
+        <span class="row__main">
+          <span class="title">Garmin Connect</span>
+          <span class="hint">{{ accounts.garmin.connected ? (accounts.garmin.name ?? 'Connecté') : 'Pour lire les noms de ta montre' }}</span>
+        </span>
+        <button v-if="accounts.garmin.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('garmin')">Déconnecter</button>
+        <NuxtLink v-else to="/connexion/garmin" class="btn btn--sm btn--brand" style="--brand: var(--garmin)">Connecter</NuxtLink>
+      </div>
+      <div v-if="accounts.garmin.connected" class="row sub">
+        <span class="row__main">
+          <span class="title">Renommer aussi sur Garmin</span>
+          <span class="hint warn">API non officielle : peut casser, à tes risques</span>
+        </span>
+        <ToggleSwitch v-model="settings.garmin.rename" label="Renommer aussi sur Garmin" />
       </div>
       <div class="row">
         <BrandMark brand="chatgpt" />
@@ -144,6 +168,12 @@ const descriptionParts = [
           Connecter
         </button>
       </div>
+      <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync">
+        <span class="row__main">
+          <span class="title">{{ syncing ? 'Synchro en cours…' : 'Synchroniser maintenant' }}</span>
+          <span class="hint">Se fait aussi à chaque ouverture de l’appli</span>
+        </span>
+      </button>
     </div>
 
     <h2 id="theme-title" class="label group">Thème</h2>
@@ -177,6 +207,10 @@ const descriptionParts = [
 
 .sub {
   padding-left: 28px;
+}
+
+.warn {
+  color: var(--ko);
 }
 
 .themes {

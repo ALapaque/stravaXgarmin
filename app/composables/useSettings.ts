@@ -21,7 +21,11 @@ export function useSettings() {
       system: false,
       kinds: { titles: true, records: true, review: true, recap: true } as Record<NotifKind, boolean>,
     },
-    accounts: { strava: true, garmin: true, chatgpt: false },
+    garmin: {
+      /** Renommer aussi dans Garmin Connect (API non officielle) */
+      rename: false,
+    },
+    accounts: { chatgpt: false },
   }))
 }
 

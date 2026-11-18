@@ -7,6 +7,13 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/themes.css', '~/assets/css/main.css'],
 
+  // Secrets serveur, remplis par les variables d'environnement Vercel :
+  // NUXT_SESSION_PASSWORD, NUXT_STRAVA_CLIENT_ID, NUXT_STRAVA_CLIENT_SECRET
+  runtimeConfig: {
+    sessionPassword: '',
+    strava: { clientId: '', clientSecret: '' },
+  },
+
   app: {
     // Transitions entre pages et entre layouts (styles dans main.css)
     pageTransition: { name: 'page', mode: 'out-in' },
@@ -22,7 +29,7 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-        { rel: 'apple-touch-icon', href: '/pwa-192.png' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {

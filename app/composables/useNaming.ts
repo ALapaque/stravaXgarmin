@@ -39,14 +39,16 @@ export function renderTemplate(a: Activity, template: string) {
     distance: formatKm(a.distanceKm),
     durée: formatDuration(a.durationSec),
     allure: formatPace(a.durationSec, a.distanceKm),
-    lieu: a.place.charAt(0).toUpperCase() + a.place.slice(1),
+    lieu: a.place ? a.place.charAt(0).toUpperCase() + a.place.slice(1) : '',
     jour: formatDay(a.startedAt).split(' ')[0]!,
     moment: moment(a.startedAt),
-    météo: `${a.weather.tempC} °C, ${a.weather.sky}`,
+    météo: a.weather ? `${a.weather.tempC} °C, ${a.weather.sky}` : '',
   }
   return template
     .replace(/\{([^}]+)\}/g, (m, k: string) => values[k.toLowerCase()] ?? m)
     .replace(/\s+/g, ' ')
+    .replace(/\s*·\s*$/, '')
+    .replace(/^\s*·\s*/, '')
     .trim()
 }
 

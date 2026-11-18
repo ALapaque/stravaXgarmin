@@ -2,7 +2,8 @@
 import { Sparkles, ChartLine, Check, Trophy, Heart } from 'lucide-vue-next'
 
 const route = useRoute()
-const { byId, isSynced, setStravaName, setStravaDescription } = useActivities()
+const { byId, isSynced, setStravaName, setStravaDescription, setGarminName } = useActivities()
+const { accounts } = useAccounts()
 const { recordsOf } = useRecords()
 const { describe } = useDescription()
 const { undo, entries } = useHistory()
@@ -24,24 +25,37 @@ const descriptionAdded = computed(() => Boolean(a.value?.stravaDescription))
 function undoLast(message: string) {
   return {
     label: 'Annuler',
-    run: () => {
+    run: async () => {
       const last = entries.value[0]
-      if (last && undo(last.id)) show(message)
+      if (last && (await undo(last.id))) show(message)
     },
   }
 }
 
-function copyName() {
+const canRenameGarmin = computed(() => Boolean(settings.value.garmin.rename && accounts.value.garmin.connected && a.value?.garminId))
+const busy = ref(false)
+
+async function copyToGarmin() {
   if (!a.value) return
-  setStravaName(a.value.id, a.value.garminName, 'garmin')
+  busy.value = true
+  const ok = await setGarminName(a.value.id, a.value.stravaName, 'strava')
+  busy.value = false
+  if (ok) show('Nom copié vers Garmin', undoLast('Ancien nom remis sur Garmin'))
+}
+
+async function copyName() {
+  if (!a.value) return
+  busy.value = true
+  const ok = await setStravaName(a.value.id, a.value.garminName, 'garmin')
+  busy.value = false
+  if (!ok) return
   show('Nom copié vers Strava', undoLast('Ancien nom remis sur Strava'))
   notify({ kind: 'titles', title: 'Nom copié vers Strava', body: a.value.garminName, to: `/activites/${a.value.id}` })
 }
 
-function addDescription() {
+async function addDescription() {
   if (!a.value || !description.value) return
-  setStravaDescription(a.value.id, description.value)
-  show('Description ajoutée sur Strava', undoLast('Description retirée de Strava'))
+  if (await setStravaDescription(a.value.id, description.value)) show('Description ajoutée sur Strava', undoLast('Description retirée de Strava'))
 }
 </script>
 
@@ -114,9 +128,12 @@ function addDescription() {
         </NuxtLink>
       </div>
 
-      <button v-if="!synced" type="button" class="btn btn--primary" @click="copyName">
+      <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
         Copier le nom vers Strava
         <Check :size="20" aria-hidden="true" />
+      </button>
+      <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
+        Ou copier le nom Strava vers Garmin
       </button>
 
       <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">

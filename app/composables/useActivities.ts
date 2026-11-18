@@ -6,7 +6,7 @@
 
 export type RunType = 'long' | 'interval' | 'recovery' | 'tempo'
 export type EffortKey = '5k' | '10k' | 'half'
-export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description'
+export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava'
 
 export interface Weather {
   tempC: number
@@ -25,13 +25,21 @@ export interface Activity {
   elevationM: number
   /** Temps de chaque kilomètre complet, en secondes */
   splits: number[]
-  weather: Weather
-  shoeId: keyof typeof SHOES
+  weather?: Weather
+  shoe?: Shoe
   /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
   bestEfforts: Partial<Record<EffortKey, number>>
   garminName: string
   stravaName: string
   stravaDescription?: string
+  /** Identifiants réels quand les données viennent des API (absents en mode démo) */
+  stravaId?: number
+  garminId?: number
+}
+
+export interface Shoe {
+  name: string
+  km: number
 }
 
 export const RUN_TYPES: Record<RunType, { label: string; color: string }> = {
@@ -41,13 +49,13 @@ export const RUN_TYPES: Record<RunType, { label: string; color: string }> = {
   tempo: { label: 'Tempo', color: 'var(--type-tempo)' },
 }
 
-export const SHOES = {
+export const SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },
   vf: { name: 'Nike Vaporfly 3', km: 188 },
-} as const
+}
 
-/** Date du jour figée tant que les données sont fictives. */
-export const TODAY = '2026-11-18'
+/** Date du jour à Bruxelles (AAAA-MM-JJ). Les données de démo sont datées autour du 18 novembre 2026. */
+export const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date())
 
 /* ───── Générateur déterministe pour l'historique d'octobre-novembre ───── */
 
@@ -105,7 +113,7 @@ function generateHistory(): Activity[] {
       elevationM: Math.round(type === 'interval' ? 5 : 30 + rand() * 140),
       splits: makeSplits(pace, km, rand),
       weather: { tempC: Math.round(6 + rand() * 9), sky: SKIES[Math.floor(rand() * SKIES.length)]!, windKmh: Math.round(5 + rand() * 20) },
-      shoeId: type === 'tempo' || type === 'interval' ? 'vf' : 'peg',
+      shoe: type === 'tempo' || type === 'interval' ? SHOES.vf : SHOES.peg,
       bestEfforts: efforts,
       garminName: name,
       stravaName: name,
@@ -131,7 +139,7 @@ const RECENT: Activity[] = [
     elevationM: 4,
     splits: [312, 330, 309, 334, 314, 328, 316, 332],
     weather: { tempC: 9, sky: 'pluie fine', windKmh: 20 },
-    shoeId: 'vf',
+    shoe: SHOES.vf,
     bestEfforts: { '5k': 1590 },
     garminName: 'Fractionné piste 10×400',
     stravaName: 'Morning Run',
@@ -147,7 +155,7 @@ const RECENT: Activity[] = [
     elevationM: 42,
     splits: makeSplits(339, 6.2, rand),
     weather: { tempC: 6, sky: 'brouillard', windKmh: 8 },
-    shoeId: 'peg',
+    shoe: SHOES.peg,
     bestEfforts: { '5k': 1690 },
     garminName: 'Footing récup',
     stravaName: 'Footing récup',
@@ -163,7 +171,7 @@ const RECENT: Activity[] = [
     elevationM: 168,
     splits: makeSplits(315, 12.4, rand),
     weather: { tempC: 11, sky: 'ensoleillé', windKmh: 12 },
-    shoeId: 'peg',
+    shoe: SHOES.peg,
     bestEfforts: { '5k': 1560, '10k': 3130 },
     garminName: 'Sortie longue',
     stravaName: 'Sortie longue',
@@ -179,18 +187,18 @@ const RECENT: Activity[] = [
     elevationM: 18,
     splits: [283, 280, 282, 279, 281],
     weather: { tempC: 8, sky: 'nuageux', windKmh: 14 },
-    shoeId: 'vf',
+    shoe: SHOES.vf,
     bestEfforts: { '5k': 1405 },
     garminName: 'Tempo 5 km',
     stravaName: 'Afternoon Run',
   },
 ]
 
-const SEED = (): Activity[] =>
+export const demoActivities = (): Activity[] =>
   [...RECENT, ...generateHistory()].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
 export function useActivities() {
-  const activities = useState<Activity[]>('activities', SEED)
+  const activities = useState<Activity[]>('activities', demoActivities)
 
   const byId = (id: string) => activities.value.find((a) => a.id === id)
   const isSynced = (a: Activity) => a.garminName === a.stravaName
@@ -213,24 +221,48 @@ export function useActivities() {
     }
   })
 
-  /** Change le nom sur Strava et garde la trace pour pouvoir annuler. */
-  function setStravaName(id: string, name: string, source: ChangeSource) {
+  /** Change le nom sur Strava (et l'envoie à l'API en mode réel), avec trace pour annuler. */
+  async function setStravaName(id: string, name: string, source: ChangeSource) {
     const a = byId(id)
-    if (!a || a.stravaName === name) return
-    // TODO: PUT /activities/{id} sur l'API Strava avec { name }
-    useHistory().record({ activityId: id, field: 'name', before: a.stravaName, after: name, source })
+    if (!a || a.stravaName === name) return true
+    const before = a.stravaName
     a.stravaName = name
+    if (!(await pushField(a, 'name', name))) {
+      a.stravaName = before
+      return false
+    }
+    useHistory().record({ activityId: id, field: 'name', before, after: name, source })
+    return true
   }
 
-  function setStravaDescription(id: string, text: string, source: ChangeSource = 'description') {
+  async function setStravaDescription(id: string, text: string, source: ChangeSource = 'description') {
     const a = byId(id)
-    if (!a || a.stravaDescription === text) return
-    // TODO: PUT /activities/{id} sur l'API Strava avec { description }
-    useHistory().record({ activityId: id, field: 'description', before: a.stravaDescription ?? '', after: text, source })
+    if (!a || a.stravaDescription === text) return true
+    const before = a.stravaDescription ?? ''
     a.stravaDescription = text
+    if (!(await pushField(a, 'description', text))) {
+      a.stravaDescription = before || undefined
+      return false
+    }
+    useHistory().record({ activityId: id, field: 'description', before, after: text, source })
+    return true
   }
 
-  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setStravaDescription }
+  /** Renomme l'activité dans Garmin Connect (option, API non officielle). */
+  async function setGarminName(id: string, name: string, source: ChangeSource) {
+    const a = byId(id)
+    if (!a || a.garminName === name) return true
+    const before = a.garminName
+    a.garminName = name
+    if (!(await pushField(a, 'garminName', name))) {
+      a.garminName = before
+      return false
+    }
+    useHistory().record({ activityId: id, field: 'garminName', before, after: name, source })
+    return true
+  }
+
+  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setStravaDescription, setGarminName }
 }
 
 /** Les n derniers jours jusqu'à TODAY inclus, du plus ancien au plus récent. */
@@ -244,4 +276,25 @@ export function lastDays(n: number) {
       letter: new Intl.DateTimeFormat('fr-BE', { weekday: 'narrow', timeZone: 'UTC' }).format(d),
     }
   })
+}
+
+/**
+ * Envoie une modification à Strava ou Garmin quand l'activité vient des API.
+ * En mode démo (pas d'identifiant), ne fait rien et réussit toujours.
+ */
+export async function pushField(a: Activity, field: 'name' | 'description' | 'garminName', value: string) {
+  try {
+    if (field === 'garminName') {
+      if (!a.garminId) return true
+      await $fetch(`/api/garmin/activities/${a.garminId}`, { method: 'PUT', body: { name: value } })
+    } else {
+      if (!a.stravaId) return true
+      await $fetch(`/api/strava/activities/${a.stravaId}`, { method: 'PUT', body: { [field]: value } })
+    }
+    return true
+  } catch (e) {
+    const msg = (e as { statusMessage?: string; data?: { statusMessage?: string } }).data?.statusMessage
+    useToast().show(msg ?? (field === 'garminName' ? 'Garmin a refusé la modification' : 'Strava a refusé la modification'))
+    return false
+  }
 }

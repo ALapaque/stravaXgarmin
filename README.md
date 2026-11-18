@@ -2,7 +2,7 @@
 
 PWA Nuxt qui copie le nom de tes courses Garmin Connect vers Strava, avec titres et analyses générés par IA (ChatGPT).
 
-> État actuel : interface complète avec des **données fictives**. Les appels Strava, Garmin et ChatGPT à brancher sont marqués `TODO` dans le code, et la date du jour est figée (`TODAY` dans `useActivities.ts`).
+> Sans compte connecté, l'appli tourne en **mode démo** avec des données fictives. Une fois Strava connecté, elle charge tes vraies courses (et les noms Garmin si Garmin est connecté). Les titres et analyses IA restent simulés.
 
 ## Démarrer
 
@@ -14,6 +14,30 @@ npm run preview
 ```
 
 Node 20 ou plus récent.
+
+## Mise en ligne sur Vercel
+
+Pas de base de données : les jetons Strava et Garmin sont chiffrés dans des cookies `httpOnly`, et les routes `server/api/*` deviennent des fonctions Vercel.
+
+1. Crée une appli sur [strava.com/settings/api](https://www.strava.com/settings/api), avec **Authorization Callback Domain** = `strava-x-garmin.vercel.app` (ou `localhost` pour tester en local).
+2. Sur Vercel → Settings → Environment Variables :
+
+| Variable | Valeur |
+|---|---|
+| `NUXT_SESSION_PASSWORD` | Une chaîne aléatoire d'au moins 32 caractères (`openssl rand -base64 32`) |
+| `NUXT_STRAVA_CLIENT_ID` | Client ID de l'appli Strava |
+| `NUXT_STRAVA_CLIENT_SECRET` | Client Secret de l'appli Strava |
+
+3. Redéploie. En local, mets les mêmes valeurs dans un fichier `.env`.
+
+**Limites assumées sans stockage serveur** : la synchro et les renommages se font quand l'appli est ouverte ; les notifications « appli fermée » ne sont pas possibles.
+
+### Garmin (API non officielle)
+
+Garmin n'a pas d'API publique pour modifier une activité. La connexion passe par l'API interne de Garmin Connect (bibliothèque `@flow-js/garmin-connect`) :
+- e-mail + mot de passe, puis code 2FA sur un second écran ; le mot de passe n'est jamais stocké, seul un jeton OAuth1 chiffré reste dans un cookie ;
+- le renommage côté Garmin est une option des réglages, désactivée par défaut ;
+- Garmin peut changer son API ou refuser des connexions venant des serveurs Vercel sans prévenir.
 
 ## Écrans
 

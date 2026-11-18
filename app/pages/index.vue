@@ -5,6 +5,7 @@ useHead({ title: 'Accueil · stravaXgarmin' })
 
 const { sorted, toReview, lastWeek } = useActivities()
 const { unread } = useNotifications()
+const { isDemo, accounts } = useAccounts()
 const recap = useRecap(ref('semaine'))
 const week = lastWeek
 const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
@@ -27,6 +28,14 @@ const firstToReview = computed(() => toReview.value[0])
         <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte">A</NuxtLink>
       </div>
     </header>
+
+    <NuxtLink v-if="accounts.loaded && isDemo" to="/connexion" class="card demo">
+      <span class="row__main">
+        <span class="title">Mode démo</span>
+        <span class="label">Connecte Strava pour voir tes vraies courses</span>
+      </span>
+      <ChevronRight :size="20" aria-hidden="true" />
+    </NuxtLink>
 
     <section class="block block--primary week" aria-labelledby="week-title">
       <p id="week-title" class="label">7 derniers jours</p>
@@ -123,6 +132,14 @@ const firstToReview = computed(() => toReview.value[0])
   font-size: 12px;
   font-weight: 700;
   animation: pop 0.5s var(--ease-spring) 0.6s backwards;
+}
+
+.demo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-style: dashed;
 }
 
 .recap {

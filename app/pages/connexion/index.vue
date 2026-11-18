@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { ArrowLeftRight } from 'lucide-vue-next'
-
 definePageMeta({ layout: 'bare' })
 useHead({ title: 'Connexion · stravaXgarmin' })
 
-// TODO: remplacer par les flux OAuth Strava et Garmin (routes serveur /api/auth/*)
+const route = useRoute()
+const { accounts } = useAccounts()
+
+const ERRORS: Record<string, string> = {
+  'strava-refus': 'Connexion Strava annulée.',
+  'strava-etat': 'La connexion Strava a expiré, recommence.',
+  'strava-permissions': 'Coche « modifier tes activités » sur Strava : sans ça, impossible de renommer.',
+}
+const error = computed(() => ERRORS[String(route.query.erreur ?? '')])
 </script>
 
 <template>
   <div class="stack">
     <div class="logo">
-      <span class="mark" aria-hidden="true"><ArrowLeftRight :size="20" /></span>
+      <img class="mark" src="/favicon.svg" alt="" width="36" height="36">
       <span class="h2">stravaXgarmin</span>
     </div>
 
@@ -40,15 +46,18 @@ useHead({ title: 'Connexion · stravaXgarmin' })
     </div>
 
     <div class="actions">
-      <NuxtLink to="/" class="btn btn--brand" style="--brand: var(--strava)">
+      <p v-if="error" class="card card--pad err" role="alert">{{ error }}</p>
+      <!-- Lien externe : la route serveur redirige vers Strava -->
+      <a v-if="!accounts.strava.connected" href="/api/auth/strava/login" class="btn btn--brand" style="--brand: var(--strava)">
         <BrandMark brand="strava" :size="28" inverse />
         Connecter Strava
-      </NuxtLink>
-      <NuxtLink to="/" class="btn btn--brand" style="--brand: var(--garmin)">
+      </a>
+      <NuxtLink v-if="!accounts.garmin.connected" to="/connexion/garmin" class="btn btn--brand" style="--brand: var(--garmin)">
         <BrandMark brand="garmin" :size="28" inverse />
         Connecter Garmin
       </NuxtLink>
-      <p class="fine">Lecture seule côté Garmin. Déconnexion possible à tout moment.</p>
+      <NuxtLink to="/" class="link demo">{{ accounts.strava.connected ? 'Aller à l’accueil' : 'Essayer avec des données de démo' }}</NuxtLink>
+      <p class="fine">Tes identifiants ne sont jamais stockés : seuls des jetons chiffrés restent dans ton navigateur.</p>
     </div>
   </div>
 </template>
@@ -61,13 +70,8 @@ useHead({ title: 'Connexion · stravaXgarmin' })
 }
 
 .mark {
-  display: grid;
-  place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: var(--primary);
-  color: var(--on-primary);
 }
 
 .hero {
@@ -87,6 +91,16 @@ useHead({ title: 'Connexion · stravaXgarmin' })
 
 .demo .label {
   font-size: 13px;
+}
+
+.err {
+  margin: 0;
+  color: var(--ko);
+  font-weight: 600;
+}
+
+.demo {
+  align-self: center;
 }
 
 .actions {
