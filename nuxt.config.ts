@@ -1,8 +1,12 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { existsSync } from 'node:fs'
 
-// Logos officiels déposés dans public/brands/ (détectés au build)
-const brands = ['strava', 'garmin', 'chatgpt'].filter((b) => existsSync(`public/brands/${b}.svg`))
+// Logos officiels déposés dans public/brands/ (svg, png ou webp, détectés au build)
+const brands: Record<string, string> = {}
+for (const b of ['strava', 'garmin', 'chatgpt']) {
+  const ext = ['svg', 'png', 'webp'].find((e) => existsSync(`public/brands/${b}.${e}`))
+  if (ext) brands[b] = `/brands/${b}.${ext}`
+}
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',

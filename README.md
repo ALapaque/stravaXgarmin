@@ -99,7 +99,7 @@ public/           icônes PWA et favicon
 
 ## Logos des marques
 
-Dépose les fichiers officiels dans `public/brands/` sous les noms `strava.svg`, `garmin.svg` et `chatgpt.svg` (depuis les kits presse / guides de marque, en respectant leurs règles ; Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava »). Ils sont détectés au build et remplacent les pastilles de couleur. Sans fichier, `BrandMark.vue` affiche une pastille aux couleurs de la marque.
+Les logos sont dans `public/brands/` (`strava`, `garmin`, `chatgpt`, en svg, png ou webp) (depuis les kits presse / guides de marque, en respectant leurs règles ; Strava impose ses boutons « Connect with Strava » et le logo « Powered by Strava »). Ils sont détectés au build et remplacent les pastilles de couleur. Sans fichier, `BrandMark.vue` affiche une pastille aux couleurs de la marque.
 
 ## Démo et page d'accueil
 
