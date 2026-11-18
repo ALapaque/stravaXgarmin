@@ -1,0 +1,425 @@
+/* RunSync — base et briques communes. Toutes les couleurs viennent de themes.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ───── Coque de l'appli ───── */
+.app {
+  position: relative;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  overflow-x: clip;
+  isolation: isolate;
+}
+
+.app::before,
+.app::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.app::before {
+  width: 420px;
+  height: 420px;
+  top: -180px;
+  left: -170px;
+  background: var(--glow-a);
+}
+
+.app::after {
+  width: 400px;
+  height: 400px;
+  top: -110px;
+  right: -190px;
+  background: var(--glow-b);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 120px);
+}
+
+.screen--bare {
+  min-height: 100dvh;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 28px);
+}
+
+/* ───── Typo ───── */
+.h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 32px;
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+
+.h1--xl {
+  font-size: clamp(36px, 11vw, 44px);
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--title-weight);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.lead {
+  margin: 0;
+  color: var(--ink-2);
+  max-width: 34ch;
+}
+
+.fine {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.num {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--tracking-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.title {
+  font-weight: var(--title-weight);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.link {
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* ───── Cartes et listes ───── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--surface-shadow);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+}
+
+.card--pad {
+  padding: 20px;
+}
+
+.block {
+  border-radius: var(--r-card);
+  padding: 20px;
+}
+
+.block--primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--primary-shadow);
+}
+
+.block--secondary {
+  background: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.block .label {
+  color: currentColor;
+  opacity: 0.78;
+}
+
+.list > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  min-height: 64px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+}
+
+.row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row__main .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.row,
+button.row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+a.row:active,
+button.row:active {
+  background: var(--line);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ───── Boutons ───── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 20px;
+  width: 100%;
+  border-radius: var(--r-btn);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.btn--primary {
+  justify-content: space-between;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--primary-shadow);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+}
+
+.btn--brand {
+  color: #fff;
+  background: var(--brand);
+}
+
+.btn--sm {
+  min-height: 44px;
+  width: auto;
+  padding: 0 16px;
+  font-size: 15px;
+  border-radius: var(--r-ctrl);
+}
+
+.btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.btn-row .btn svg {
+  color: var(--accent-text);
+}
+
+/* ───── Puces de statut ───── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--chip);
+  background: color-mix(in srgb, var(--chip) 14%, transparent);
+}
+
+.chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--chip);
+}
+
+.chip--ok {
+  --chip: var(--ok);
+}
+
+.chip--ko {
+  --chip: var(--ko);
+}
+
+/* ───── Tuiles d'icône ───── */
+.tile {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--tile, var(--ink));
+  background: color-mix(in srgb, var(--tile, var(--ink)) 16%, transparent);
+}
+
+/* ───── Contrôles de sélection ───── */
+.check,
+.radio {
+  appearance: none;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--line-strong);
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.radio {
+  border-radius: 50%;
+}
+
+.check:checked,
+.radio:checked {
+  border: 0;
+  background: var(--select);
+}
+
+.check:checked::after {
+  content: '';
+  width: 6px;
+  height: 11px;
+  margin-top: -2px;
+  border: solid var(--on-select);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+.radio:checked::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--on-select);
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: calc(var(--r-ctrl) + 4px);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+}
+
+.segmented button {
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--r-ctrl);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

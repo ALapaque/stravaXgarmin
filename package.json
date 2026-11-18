@@ -1,0 +1,21 @@
+{
+  "name": "runsync",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^1.0.0",
+    "nuxt": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vite-pwa/nuxt": "^2.0.2",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.14"
+  },
+  "private": true,
+  "type": "module"
+}

@@ -1,0 +1,243 @@
+/*
+ * RunSync — thèmes
+ *
+ * Chaque thème ne fait que redéfinir des variables. Les composants n'utilisent
+ * jamais de couleur en dur : pour ajouter un thème, copie un bloc ci-dessous,
+ * change son id et ajoute-le dans app/composables/useTheme.ts.
+ */
+
+/* Couleurs de marque, communes à tous les thèmes */
+:root {
+  --strava: #fc4c02;
+  --garmin: #007cc3;
+  --chatgpt: #10a37f;
+}
+
+/* ───────────── Vibe (V4) — thème par défaut ─────────────
+   Mise en page V3, couleurs V1 : bleu nuit, dégradés orange → rose et bleu → turquoise */
+:root,
+[data-theme='vibe'] {
+  --bg: #0b0d17;
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.8);
+  --muted: rgba(255, 255, 255, 0.62);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  --surface: #141726;
+  --surface-2: #1e2236;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-blur: none;
+  --surface-shadow: none;
+
+  --primary: linear-gradient(120deg, #ff5a1f, #ff2e93);
+  --primary-solid: #ff5a1f;
+  --on-primary: #ffffff;
+  --primary-shadow: 0 10px 28px rgba(255, 46, 147, 0.35);
+  --secondary: linear-gradient(120deg, #2b6bff, #00e0c6);
+  --on-secondary: #ffffff;
+  --select: linear-gradient(120deg, #10a37f, #2b6bff);
+  --on-select: #ffffff;
+
+  --accent-text: #ff8a3d;
+  --link: #4da3ff;
+  --ok: #16e08a;
+  --ko: #ff3b6b;
+  --info: #4da3ff;
+  --type-long: #4da3ff;
+  --type-interval: #ff8a3d;
+  --type-recovery: #16e08a;
+  --type-tempo: #ff2e93;
+
+  --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.55), rgba(255, 46, 147, 0.25), transparent);
+  --glow-b: radial-gradient(closest-side, rgba(43, 107, 255, 0.5), rgba(0, 224, 198, 0.2), transparent);
+
+  --font-display: 'Urbanist', system-ui, sans-serif;
+  --font-body: 'Urbanist', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --display-weight: 700;
+  --title-weight: 600;
+  --tracking-display: -0.035em;
+
+  --r-card: 24px;
+  --r-btn: 16px;
+  --r-ctrl: 12px;
+
+  --tab-bg: rgba(20, 23, 38, 0.92);
+  --tab-border: rgba(255, 255, 255, 0.08);
+  --tab-active: var(--primary);
+  --on-tab-active: #ffffff;
+  --focus: #ff8a3d;
+  color-scheme: dark;
+}
+
+/* ───────────── Néon (V1) ─────────────
+   Le premier design : cartes en verre dépoli, grosses typos, halos très présents */
+[data-theme='neon'] {
+  --bg: #0b0d17;
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.82);
+  --muted: rgba(255, 255, 255, 0.64);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.24);
+
+  --surface: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  --surface-2: rgba(255, 255, 255, 0.12);
+  --surface-border: rgba(255, 255, 255, 0.22);
+  --surface-blur: blur(28px) saturate(140%);
+  --surface-shadow: 0 12px 32px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  --primary: linear-gradient(120deg, #ff5a1f, #ff2e93);
+  --primary-solid: #ff5a1f;
+  --on-primary: #ffffff;
+  --primary-shadow: 0 10px 28px rgba(255, 90, 31, 0.45);
+  --secondary: linear-gradient(120deg, #2b6bff, #00e0c6);
+  --on-secondary: #ffffff;
+  --select: linear-gradient(120deg, #10a37f, #2b6bff);
+  --on-select: #ffffff;
+
+  --accent-text: #ff8a3d;
+  --link: #3ddba8;
+  --ok: #16e08a;
+  --ko: #ff3b6b;
+  --info: #4da3ff;
+  --type-long: #4da3ff;
+  --type-interval: #ff8a3d;
+  --type-recovery: #16e08a;
+  --type-tempo: #ff2e93;
+
+  --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.85), rgba(255, 46, 147, 0.45), transparent);
+  --glow-b: radial-gradient(closest-side, rgba(43, 107, 255, 0.8), rgba(0, 224, 198, 0.35), transparent);
+
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Inter', system-ui, sans-serif;
+  --display-weight: 900;
+  --title-weight: 800;
+  --tracking-display: -0.04em;
+
+  --r-card: 26px;
+  --r-btn: 24px;
+  --r-ctrl: 14px;
+
+  --tab-bg: rgba(255, 255, 255, 0.1);
+  --tab-border: rgba(255, 255, 255, 0.2);
+  --tab-active: var(--primary);
+  --on-tab-active: #ffffff;
+  --focus: #ff8a3d;
+  color-scheme: dark;
+}
+
+/* ───────────── OLED (V3) ─────────────
+   Noir profond, un seul accent orange en aplat, aucun dégradé */
+[data-theme='oled'] {
+  --bg: #07090d;
+  --ink: #f2f4f7;
+  --ink-2: rgba(242, 244, 247, 0.8);
+  --muted: rgba(242, 244, 247, 0.62);
+  --line: rgba(242, 244, 247, 0.07);
+  --line-strong: rgba(242, 244, 247, 0.14);
+
+  --surface: #12161e;
+  --surface-2: #1a202b;
+  --surface-border: rgba(242, 244, 247, 0.08);
+  --surface-blur: none;
+  --surface-shadow: none;
+
+  --primary: #ff6b2c;
+  --primary-solid: #ff6b2c;
+  --on-primary: #07090d;
+  --primary-shadow: none;
+  --secondary: #1a202b;
+  --on-secondary: #f2f4f7;
+  --select: #ff6b2c;
+  --on-select: #07090d;
+
+  --accent-text: #ff6b2c;
+  --link: #ff6b2c;
+  --ok: #34d399;
+  --ko: #f87171;
+  --info: #60a5fa;
+  --type-long: #60a5fa;
+  --type-interval: #ff6b2c;
+  --type-recovery: #34d399;
+  --type-tempo: #f472b6;
+
+  --glow-a: none;
+  --glow-b: none;
+
+  --font-display: 'Urbanist', system-ui, sans-serif;
+  --font-body: 'Urbanist', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --display-weight: 500;
+  --title-weight: 500;
+  --tracking-display: -0.04em;
+
+  --r-card: 24px;
+  --r-btn: 16px;
+  --r-ctrl: 12px;
+
+  --tab-bg: #07090d;
+  --tab-border: rgba(242, 244, 247, 0.1);
+  --tab-active: rgba(255, 107, 44, 0.16);
+  --on-tab-active: #ff6b2c;
+  --focus: #ff6b2c;
+  color-scheme: dark;
+}
+
+/* ───────────── Calme (V2) ─────────────
+   Sobre : fond quasi noir, un accent bleu ciel, cartes à peine marquées */
+[data-theme='calme'] {
+  --bg: #0a0d14;
+  --ink: #e9edf3;
+  --ink-2: rgba(233, 237, 243, 0.84);
+  --muted: rgba(233, 237, 243, 0.62);
+  --line: rgba(233, 237, 243, 0.08);
+  --line-strong: rgba(233, 237, 243, 0.18);
+
+  --surface: #131824;
+  --surface-2: #1d2433;
+  --surface-border: rgba(233, 237, 243, 0.1);
+  --surface-blur: none;
+  --surface-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --primary: #5ab9fc;
+  --primary-solid: #5ab9fc;
+  --on-primary: #0a0d14;
+  --primary-shadow: none;
+  --secondary: #1d2433;
+  --on-secondary: #e9edf3;
+  --select: #5ab9fc;
+  --on-select: #0a0d14;
+
+  --accent-text: #5ab9fc;
+  --link: #5ab9fc;
+  --ok: #3ecf8e;
+  --ko: #ff6b6b;
+  --info: #5ab9fc;
+  --type-long: #5ab9fc;
+  --type-interval: #e9edf3;
+  --type-recovery: #3ecf8e;
+  --type-tempo: #e9edf3;
+
+  --glow-a: none;
+  --glow-b: none;
+
+  --font-display: 'Urbanist', system-ui, sans-serif;
+  --font-body: 'Urbanist', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --display-weight: 500;
+  --title-weight: 500;
+  --tracking-display: -0.04em;
+
+  --r-card: 24px;
+  --r-btn: 16px;
+  --r-ctrl: 12px;
+
+  --tab-bg: #0a0d14;
+  --tab-border: rgba(233, 237, 243, 0.1);
+  --tab-active: transparent;
+  --on-tab-active: #5ab9fc;
+  --focus: #5ab9fc;
+  color-scheme: dark;
+}
