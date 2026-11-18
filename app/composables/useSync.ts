@@ -23,6 +23,7 @@ interface GarminRun {
   name: string
   startTimeGMT: string
   distance?: number
+  effect?: string | null
 }
 
 export interface Accounts {
@@ -61,16 +62,59 @@ export function useAccounts() {
   return { accounts, refresh, disconnect, isDemo }
 }
 
-function guessType(s: StravaRun): RunType {
+/** Repères personnels : allure et distance habituelles sur les courses chargées. */
+interface Habits {
+  pace: number
+  km: number
+}
+
+const median = (v: number[]) => {
+  const s = [...v].sort((x, y) => x - y)
+  return s.length ? s[Math.floor(s.length / 2)]! : 0
+}
+
+function habitsOf(runs: StravaRun[]): Habits {
+  const ok = runs.filter((r) => r.distance >= 2000 && r.moving_time > 0)
+  if (ok.length < 4) return { pace: 330, km: 8 }
+  return {
+    pace: median(ok.map((r) => r.moving_time / (r.distance / 1000))),
+    km: median(ok.map((r) => r.distance / 1000)),
+  }
+}
+
+/*
+ * Type de séance, du signal le plus sûr au plus approximatif :
+ * 1. ce que tu as indiqué (type « Sortie longue » ou « Entraînement » sur Strava, mots du nom) ;
+ * 2. l'effet principal calculé par ta montre Garmin (sur ta fréquence cardiaque et ton profil) ;
+ * 3. sinon ton allure et ta distance comparées à tes habitudes des 60 derniers jours.
+ */
+function classify(s: StravaRun, g: GarminRun | undefined, h: Habits): { type: RunType; reason: string } {
   const km = s.distance / 1000
   const pace = s.moving_time / Math.max(km, 0.1)
-  if (s.workout_type === 2 || km >= 14) return 'long'
-  if (/fraction|interval|vma|piste|\d+\s*[x×]\s*\d+/i.test(s.name)) return 'interval'
-  if (/tempo|seuil|threshold/i.test(s.name)) return 'tempo'
-  if (pace >= 330) return 'recovery'
-  if (km >= 11) return 'long'
-  if (pace < 300) return 'tempo'
-  return 'recovery'
+  const long = km >= Math.max(12, h.km * 1.6) || km >= 18
+
+  if (s.workout_type === 2) return { type: 'long', reason: 'marquée sortie longue sur Strava' }
+  if (/fraction|interval|vma|piste|\d+\s*[x×]\s*\d+/i.test(s.name)) return { type: 'interval', reason: 'd’après son nom' }
+  if (/tempo|seuil|threshold/i.test(s.name)) return { type: 'tempo', reason: 'd’après son nom' }
+  if (/r[ée]cup|recovery/i.test(s.name)) return { type: 'recovery', reason: 'd’après son nom' }
+  if (/sortie longue|long run/i.test(s.name)) return { type: 'long', reason: 'd’après son nom' }
+
+  const effect = (g?.effect ?? '').toUpperCase()
+  if (effect) {
+    const watch = 'selon ta montre'
+    if (/RECOVERY/.test(effect)) return { type: 'recovery', reason: watch }
+    if (/BASE|AEROBIC/.test(effect) && !/ANAEROBIC/.test(effect)) return { type: long ? 'long' : 'easy', reason: watch }
+    if (/TEMPO|THRESHOLD/.test(effect)) return { type: long ? 'long' : 'tempo', reason: watch }
+    if (/VO2|ANAEROBIC|SPEED|SPRINT/.test(effect)) return { type: 'interval', reason: watch }
+  }
+
+  if (s.workout_type === 3) return { type: pace <= h.pace * 0.97 ? 'interval' : 'tempo', reason: 'marquée entraînement sur Strava' }
+
+  const mine = 'selon ton allure habituelle'
+  if (long) return { type: 'long', reason: 'plus longue que d’habitude' }
+  if (pace <= h.pace * 0.93) return { type: 'tempo', reason: mine }
+  if (pace >= h.pace * 1.07) return { type: 'recovery', reason: mine }
+  return { type: 'easy', reason: mine }
 }
 
 /** Relie une course Strava à l'activité Garmin qui a commencé à moins de 3 minutes d'écart. */
@@ -79,13 +123,15 @@ function matchGarmin(s: StravaRun, garmin: GarminRun[]) {
   return garmin.find((g) => Math.abs(Date.parse(`${g.startTimeGMT.replace(' ', 'T')}Z`) - t) < 180_000)
 }
 
-function toActivity(s: StravaRun, g?: GarminRun): Activity {
+function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits): Activity {
   const km = Math.round(s.distance / 100) / 10
+  const { type, reason } = classify(s, g, h)
   return {
     id: `s${s.id}`,
     stravaId: s.id,
     garminId: g?.id,
-    type: guessType(s),
+    type,
+    typeReason: reason,
     startedAt: s.start_date,
     place: s.location_city ?? '',
     distanceKm: km,
@@ -137,8 +183,9 @@ export function useSync() {
             })
           : Promise.resolve([] as GarminRun[]),
       ])
+      const habits = habitsOf(strava)
       activities.value = strava
-        .map((s) => withDetails(toActivity(s, matchGarmin(s, garmin)), details.value[s.id]))
+        .map((s) => withDetails(toActivity(s, matchGarmin(s, garmin), habits), details.value[s.id]))
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
       // Les exemples de la démo n'ont plus de sens avec de vraies données

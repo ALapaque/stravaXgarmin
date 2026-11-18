@@ -140,9 +140,18 @@ export default defineEventHandler(async (event) => {
     months.map(({ y, m }) => garminCall(() => gc.get<{ calendarItems?: CalendarItem[] }>(`https://connectapi.garmin.com/calendar-service/year/${y}/month/${m}`))),
   )
   const from = today()
+  // Un mois du calendrier Garmin déborde sur les semaines voisines : la même séance revient
+  // dans les deux mois. On garde une seule fois chaque séance (même id, ou même jour et même nom).
+  const seen = new Set<string>()
   const items = cals
     .flatMap((c) => c?.calendarItems ?? [])
     .filter((i) => i.itemType === 'workout' && i.date && i.date >= from && (!i.sportTypeKey || /run/i.test(i.sportTypeKey)))
+    .filter((i) => {
+      const keys = [`id:${i.id}`, `day:${i.date}|${(i.title ?? '').trim().toLowerCase()}|${i.workoutId ?? ''}`]
+      if (keys.some((k) => seen.has(k))) return false
+      keys.forEach((k) => seen.add(k))
+      return true
+    })
     .sort((a, b) => a.date!.localeCompare(b.date!))
     .slice(0, 12)
 

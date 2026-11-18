@@ -108,7 +108,9 @@ export function usePlan() {
     const at = state.value?.at
     if (!force && at && Date.now() - Date.parse(at) < 10 * 60_000) return
     const list = await $fetch<PlanSession[]>('/api/garmin/plan')
-    state.value = { at: new Date().toISOString(), list }
+    // La liste remplace entièrement l'ancienne ; un doublon éventuel n'est gardé qu'une fois
+    const unique = list.filter((s, i) => list.findIndex((o) => o.id === s.id || (o.date === s.date && o.title === s.title)) === i)
+    state.value = { at: new Date().toISOString(), list: unique }
   }
 
   function reset(demo: boolean) {

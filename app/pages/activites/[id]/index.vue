@@ -89,7 +89,7 @@ async function addDescription() {
           <RouteTrace v-if="!hasMap" :activity="a" :width="1.6" :delay="200" />
         </div>
         <div class="hero-text">
-          <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}</p>
+          <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}<span v-if="a.typeReason" class="why"> · {{ a.typeReason }}</span></p>
           <h1 class="h1">{{ a.garminName }}</h1>
           <p class="label">{{ formatDay(a.startedAt) }}<template v-if="a.place"> · {{ a.place }}</template> · {{ formatTime(a.startedAt) }}</p>
         </div>
@@ -257,6 +257,11 @@ async function addDescription() {
 
 .type {
   color: var(--c);
+}
+
+.why {
+  color: var(--muted);
+  letter-spacing: 0.08em;
 }
 
 .hero-text .h1 {

@@ -14,6 +14,7 @@ export const NAMING_TOKENS = [
 export const DEFAULT_TEMPLATES: Record<RunType, string> = {
   long: 'Sortie longue {distance} km · {lieu}',
   interval: 'Fractionné {lieu} · {allure} /km',
+  easy: 'Footing {distance} km · {lieu}',
   recovery: 'Footing récup {distance} km',
   tempo: 'Tempo {distance} km à {allure} /km',
 }

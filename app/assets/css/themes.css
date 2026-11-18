@@ -53,6 +53,7 @@
   --type-long: #4da3ff;
   --type-interval: #ff8a3d;
   --type-recovery: #16e08a;
+  --type-easy: #ffd166;
   --type-tempo: #ff2e93;
 
   --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.55), rgba(255, 46, 147, 0.25), transparent);
@@ -116,6 +117,7 @@
   --type-long: #4da3ff;
   --type-interval: #ff8a3d;
   --type-recovery: #16e08a;
+  --type-easy: #ffd166;
   --type-tempo: #ff2e93;
 
   --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.85), rgba(255, 46, 147, 0.45), transparent);
@@ -179,6 +181,7 @@
   --type-long: #60a5fa;
   --type-interval: #ff6b2c;
   --type-recovery: #34d399;
+  --type-easy: #fbbf24;
   --type-tempo: #f472b6;
 
   --glow-a: none;
@@ -242,6 +245,7 @@
   --type-long: #5ab9fc;
   --type-interval: #e9edf3;
   --type-recovery: #3ecf8e;
+  --type-easy: #c9d4e0;
   --type-tempo: #e9edf3;
 
   --glow-a: none;

@@ -8,5 +8,7 @@ export default defineEventHandler(async (event) => {
     startTimeGMT: a.startTimeGMT,
     distance: a.distance,
     type: a.activityType?.typeKey,
+    // Effet principal calculé par la montre (récupération, endurance, tempo, seuil, VO2max…)
+    effect: (a as { trainingEffectLabel?: string | null }).trainingEffectLabel ?? null,
   }))
 })

@@ -4,7 +4,7 @@
  * Garmin : Activity API (lecture seule, accès développeur à demander).
  */
 
-export type RunType = 'long' | 'interval' | 'recovery' | 'tempo'
+export type RunType = 'long' | 'easy' | 'interval' | 'recovery' | 'tempo'
 export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
 export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava'
 
@@ -29,6 +29,8 @@ export interface Activity {
   shoe?: Shoe
   /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
   bestEfforts: Partial<Record<EffortKey, number>>
+  /** Pourquoi ce type : « selon ta montre », « selon ton allure »… */
+  typeReason?: string
   /** Tracé GPS simplifié (polyline encodée de Strava) */
   route?: string
   /** Distances où Strava a compté cette course comme record personnel (pr_rank = 1) */
@@ -48,6 +50,7 @@ export interface Shoe {
 
 export const RUN_TYPES: Record<RunType, { label: string; color: string }> = {
   long: { label: 'Sortie longue', color: 'var(--type-long)' },
+  easy: { label: 'Footing', color: 'var(--type-easy)' },
   interval: { label: 'Fractionné', color: 'var(--type-interval)' },
   recovery: { label: 'Récupération', color: 'var(--type-recovery)' },
   tempo: { label: 'Tempo', color: 'var(--type-tempo)' },
@@ -82,8 +85,9 @@ const SKIES = ['ensoleillé', 'nuageux', 'couvert', 'pluie fine', 'brouillard']
 function generateHistory(): Activity[] {
   const rand = prng(42)
   const runs: Activity[] = []
-  const plan: Record<number, RunType> = { 2: 'interval', 4: 'recovery', 6: 'tempo', 0: 'long' }
-  const places: Record<RunType, string[]> = {
+  type DemoType = Exclude<RunType, 'easy'>
+  const plan: Record<number, DemoType> = { 2: 'interval', 4: 'recovery', 6: 'tempo', 0: 'long' }
+  const places: Record<DemoType, string[]> = {
     interval: ['piste'],
     recovery: ['route', 'bois'],
     tempo: ['route', 'quais'],
