@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.5.0...v1.6.0) (2026-11-18)
+
+### Nouveautés
+
+* type de séance selon ta montre ou ton allure habituelle, nouveau type Footing ([107bb81](https://github.com/ALapaque/stravaXgarmin/commit/107bb817828d0fdb2d1bedc589b17ebfab195545))
+
 ## [1.5.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.4.0...v1.5.0) (2026-11-18)
 
 ### Nouveautés
