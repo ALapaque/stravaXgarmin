@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.0.0...v1.0.1) (2026-11-18)
+
+### Corrections
+
+* retour de connexion Strava clair sur iPhone ([260952c](https://github.com/ALapaque/stravaXgarmin/commit/260952cfbcfbea289fc190a3d089328f66e64ed3))
+
 ## 1.0.0 (2026-11-18)
 
 ### Nouveautés
