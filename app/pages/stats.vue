@@ -52,41 +52,21 @@ const n = computed(() => selected.value.length)
 <template>
   <div class="stack">
     <div class="title-block">
-      <p class="eyebrow">Stats et records</p>
-      <h1 class="h1 h1--xl">Ton niveau</h1>
-      <p v-if="level" class="label">Estimé {{ estimatedOn }} sur {{ level.count }} courses</p>
+      <p class="eyebrow">Forme, charge et records</p>
+      <h1 class="h1 h1--xl">Stats</h1>
     </div>
 
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
 
     <template v-else>
-    <AiLock v-if="!aiConnected" text="Active l’IA pour estimer ta VMA, ta VO2max et ton allure seuil. C’est gratuit avec Gemini.">
-      <dl class="grid-2 metrics">
-        <div v-for="l in ['VMA · km/h', 'VO2max', 'Seuil · /km', 'Semi estimé']" :key="l" class="card metric">
-          <dt class="label">{{ l }}</dt>
-          <dd class="num">00,0</dd>
-        </div>
-      </dl>
-    </AiLock>
-    <p v-else-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
-    <dl v-else class="grid-2 metrics" :aria-busy="loading">
-      <div class="block block--primary metric">
-        <dt class="label">VMA · km/h</dt>
-        <dd class="num"><CountUp :value="level.vma" :decimals="1" /></dd>
-      </div>
-      <div class="block block--secondary metric">
-        <dt class="label">VO2max</dt>
-        <dd class="num"><CountUp :value="level.vo2max" :delay="200" /></dd>
-      </div>
-      <div class="card metric">
-        <dt class="label">Seuil · /km</dt>
-        <dd class="num">{{ level.threshold }}</dd>
-      </div>
-      <div class="card metric">
-        <dt class="label">Semi estimé</dt>
-        <dd class="num">{{ level.half }}</dd>
-      </div>
-    </dl>
+    <GoalCard />
+
+    <FormePanel />
+    <NuxtLink v-if="!accounts.garmin.connected && !demo" to="/connexion/garmin" class="card card--pad lead hint-card">
+      Connecte Garmin pour voir ta VO2max, ton statut d’entraînement, ta récupération et tes temps prédits.
+    </NuxtLink>
+
+    <LoadChart />
 
     <div class="grid-2">
       <NuxtLink to="/recap" class="card recap-link">
@@ -120,6 +100,40 @@ const n = computed(() => selected.value.length)
       </component>
     </div>
 
+    <ShoeList />
+
+    <div class="section-head ia-head">
+      <h2 class="h2">Niveau estimé par IA</h2>
+      <span v-if="level" class="label">{{ estimatedOn }}</span>
+    </div>
+    <AiLock v-if="!aiConnected" text="Active l’IA pour estimer ta VMA, ta VO2max et ton allure seuil. C’est gratuit avec Gemini.">
+      <dl class="grid-2 metrics">
+        <div v-for="l in ['VMA · km/h', 'VO2max', 'Seuil · /km', 'Semi estimé']" :key="l" class="card metric">
+          <dt class="label">{{ l }}</dt>
+          <dd class="num">00,0</dd>
+        </div>
+      </dl>
+    </AiLock>
+    <p v-else-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
+    <dl v-else class="grid-2 metrics" :aria-busy="loading">
+      <div class="block block--primary metric">
+        <dt class="label">VMA · km/h</dt>
+        <dd class="num"><CountUp :value="level.vma" :decimals="1" /></dd>
+      </div>
+      <div class="block block--secondary metric">
+        <dt class="label">VO2max</dt>
+        <dd class="num"><CountUp :value="level.vo2max" :delay="200" /></dd>
+      </div>
+      <div class="card metric">
+        <dt class="label">Seuil · /km</dt>
+        <dd class="num">{{ level.threshold }}</dd>
+      </div>
+      <div class="card metric">
+        <dt class="label">Semi estimé</dt>
+        <dd class="num">{{ level.half }}</dd>
+      </div>
+    </dl>
+
     <div class="section-head">
       <h2 class="h2">Courses à analyser</h2>
       <span class="label">14 derniers jours</span>
@@ -147,6 +161,16 @@ const n = computed(() => selected.value.length)
 </template>
 
 <style scoped>
+.hint-card {
+  display: block;
+  max-width: none;
+  font-size: 15px;
+}
+
+.ia-head {
+  margin-top: 8px;
+}
+
 .err {
   margin: 0;
   color: var(--ko);

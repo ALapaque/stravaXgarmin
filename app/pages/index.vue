@@ -81,6 +81,8 @@ const firstToReview = computed(() => toReview.value[0])
         </ol>
       </section>
 
+      <GoalCard compact />
+
       <NuxtLink v-if="nextSession" to="/plan" class="card next">
         <div class="next-head">
           <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>

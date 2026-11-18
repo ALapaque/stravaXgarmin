@@ -7,7 +7,7 @@ const tabs = [
   { to: '/', label: 'Accueil', icon: House, match: (p: string) => p === '/' || p.startsWith('/notifications') },
   { to: '/activites', label: 'Activités', icon: Activity, match: (p: string) => p.startsWith('/activites') },
   { to: '/plan', label: 'Plan', icon: CalendarClock, match: (p: string) => p.startsWith('/plan') },
-  { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') || p.startsWith('/recap') },
+  { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') || p.startsWith('/recap') || p.startsWith('/objectif') },
   { to: '/reglages', label: 'Réglages', icon: SlidersHorizontal, match: (p: string) => p.startsWith('/reglages') || p.startsWith('/historique') },
 ]
 

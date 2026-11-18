@@ -29,6 +29,8 @@ export interface Activity {
   shoe?: Shoe
   /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
   bestEfforts: Partial<Record<EffortKey, number>>
+  /** Identifiant Strava de la paire de chaussures utilisée */
+  gearId?: string
   /** Pourquoi ce type : « selon ta montre », « selon ton allure »… */
   typeReason?: string
   /** Tracé GPS simplifié (polyline encodée de Strava) */

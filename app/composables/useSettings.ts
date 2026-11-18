@@ -28,6 +28,10 @@ export function useSettings() {
       rename: false,
     },
     accounts: { chatgpt: false },
+    /** Prochaine course visée (nom, date, distance) */
+    goal: null as { name: string; date: string; distance: '5k' | '10k' | 'half' | 'marathon' } | null,
+    /** Kilométrage à partir duquel une paire de chaussures est considérée usée */
+    shoeLimitKm: 700,
   }))
 }
 
