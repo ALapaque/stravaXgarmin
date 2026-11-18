@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /*
- * Fonctions IA réservées aux comptes ChatGPT connectés : sans connexion, le contenu
+ * Fonctions IA réservées à qui a ajouté sa clé OpenAI : sans clé, le contenu
  * (des lignes d'exemple, jamais de vraies propositions) est flouté sous un bouton de connexion.
  */
 withDefaults(defineProps<{ text?: string }>(), {
-  text: 'Connecte ton compte ChatGPT pour obtenir des propositions.',
+  text: 'Ajoute ta clé OpenAI pour obtenir des propositions.',
 })
 
 const { connected, available, connect } = useChatGpt()
@@ -20,7 +20,7 @@ const locked = computed(() => !connected.value)
       <BrandMark brand="chatgpt" :size="40" />
       <p>{{ text }}</p>
       <button v-if="available" type="button" class="btn btn--brand btn--sm" style="--brand: var(--chatgpt)" @click="connect">
-        Connecter ChatGPT
+        Activer l’IA
       </button>
       <span v-else class="soon">Connexion ChatGPT bientôt disponible</span>
     </div>

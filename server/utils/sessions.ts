@@ -19,6 +19,12 @@ export interface GarminSession {
   displayName?: string
 }
 
+/** Clé API OpenAI de l'utilisateur, chiffrée dans un cookie httpOnly (jamais renvoyée au navigateur). */
+export interface OpenAiSession {
+  key?: string
+  model?: string
+}
+
 /** État temporaire entre le mot de passe et le code 2FA (10 minutes max). */
 export interface GarminMfaSession {
   cookies?: Record<string, string>
@@ -50,3 +56,4 @@ const YEAR = 60 * 60 * 24 * 365
 export const stravaSession = (event: H3Event) => useSession<StravaSession>(event, config('sxg-strava', YEAR))
 export const garminSession = (event: H3Event) => useSession<GarminSession>(event, config('sxg-garmin', YEAR))
 export const garminMfaSession = (event: H3Event) => useSession<GarminMfaSession>(event, config('sxg-garmin-mfa', 600))
+export const openaiSession = (event: H3Event) => useSession<OpenAiSession>(event, config('sxg-openai', YEAR))

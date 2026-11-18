@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ArrowRight, Trophy, CalendarRange, CalendarDays } from 'lucide-vue-next'
+import { aiError } from '~/composables/useAi'
 
 useHead({ title: 'Stats · stravaXgarmin' })
 
@@ -23,12 +24,19 @@ const level = ref<{ vma: number; vo2max: number; threshold: string; half: string
 )
 const estimatedOn = ref('le 16 novembre')
 const loading = ref(false)
+const error = ref('')
 
 async function run() {
   loading.value = true
-  level.value = await estimateLevel(recent.value.filter((a) => selected.value.includes(a.id)))
-  estimatedOn.value = 'à l’instant'
-  loading.value = false
+  error.value = ''
+  try {
+    level.value = await estimateLevel(recent.value.filter((a) => selected.value.includes(a.id)))
+    estimatedOn.value = 'à l’instant'
+  } catch (e) {
+    error.value = aiError(e)
+  } finally {
+    loading.value = false
+  }
 }
 
 const n = computed(() => selected.value.length)
@@ -44,7 +52,7 @@ const n = computed(() => selected.value.length)
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
 
     <template v-else>
-    <AiLock v-if="!aiConnected" text="Connecte ton compte ChatGPT pour estimer ta VMA, ta VO2max et ton allure seuil.">
+    <AiLock v-if="!aiConnected" text="Ajoute ta clé OpenAI pour estimer ta VMA, ta VO2max et ton allure seuil.">
       <dl class="grid-2 metrics">
         <div v-for="l in ['VMA · km/h', 'VO2max', 'Seuil · /km', 'Semi estimé']" :key="l" class="card metric">
           <dt class="label">{{ l }}</dt>
@@ -121,12 +129,19 @@ const n = computed(() => selected.value.length)
       {{ loading ? 'Analyse en cours…' : `Analyser ${n} course${n > 1 ? 's' : ''}` }}
       <ArrowRight :size="20" aria-hidden="true" />
     </button>
+    <p v-if="error" class="err" role="alert">{{ error }}</p>
     <p class="fine">Estimations par IA à partir de tes courses, pas un test en laboratoire.</p>
     </template>
   </div>
 </template>
 
 <style scoped>
+.err {
+  margin: 0;
+  color: var(--ko);
+  font-weight: 600;
+}
+
 .recap-link {
   display: flex;
   flex-direction: column;

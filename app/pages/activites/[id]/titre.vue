@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RefreshCw, ArrowRight } from 'lucide-vue-next'
-import type { TitleStyle } from '~/composables/useAi'
+import { aiError as aiErrorMessage, type TitleStyle } from '~/composables/useAi'
 import type { ChangeSource } from '~/composables/useActivities'
 
 const route = useRoute()
@@ -23,8 +23,10 @@ if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité int
 useHead({ title: 'Titre · stravaXgarmin' })
 
 const style = ref<TitleStyle>('epique')
-const round = ref(0)
 const ideas = ref<string[]>([])
+// Titres déjà proposés pour ce style : « Trois autres idées » demande à l'IA de ne pas les répéter
+const seen = ref<string[]>([])
+const aiError = ref('')
 const chosen = ref('')
 const loading = ref(false)
 
@@ -66,24 +68,32 @@ async function load() {
     if (chosen.value !== CUSTOM && !special.value.some((s) => s.title === chosen.value)) chosen.value = special.value[0]?.title ?? ''
     return
   }
+  if (chosen.value !== CUSTOM && !special.value.some((s) => s.title === chosen.value) && !ideas.value.includes(chosen.value)) {
+    chosen.value = special.value[0]?.title ?? ''
+  }
   loading.value = true
-  ideas.value = await suggestTitles(a.value, style.value, round.value)
-  const all = [...special.value.map((s) => s.title), ...ideas.value]
-  if (chosen.value !== CUSTOM && !all.includes(chosen.value)) chosen.value = all[0] ?? ''
-  loading.value = false
+  aiError.value = ''
+  try {
+    ideas.value = await suggestTitles(a.value, style.value, seen.value)
+    seen.value.push(...ideas.value)
+  } catch (e) {
+    aiError.value = aiErrorMessage(e)
+  } finally {
+    loading.value = false
+  }
 }
 
 watch(aiConnected, () => load())
 
 watch(style, () => {
-  round.value = 0
+  seen.value = []
   load()
 })
 
-await load()
+// Appel à OpenAI seulement dans le navigateur (le cookie de la clé part avec la requête)
+onMounted(load)
 
 function more() {
-  round.value++
   load()
 }
 
@@ -162,9 +172,9 @@ async function publish() {
       <section class="ai" aria-labelledby="ai-title">
         <div class="ai-head">
           <h2 id="ai-title" class="h2">Idées IA</h2>
-          <span class="label via">via ChatGPT</span>
+          <span class="label via">via OpenAI</span>
         </div>
-        <AiLock text="Connecte ton compte ChatGPT pour recevoir trois idées de titre par course.">
+        <AiLock text="Ajoute ta clé OpenAI pour recevoir trois idées de titre par course.">
           <template #default="{ locked }">
             <div class="ai-body">
               <div class="segmented" role="group" aria-label="Style du titre">
@@ -184,13 +194,17 @@ async function publish() {
                 <template v-if="locked">
                   <div v-for="n in 3" :key="n" class="row"><span class="row__main"><span class="title">Titre proposé par l’IA</span></span><span class="radio" /></div>
                 </template>
+                <template v-else-if="loading && !aiIdeas.length">
+                  <div v-for="n in 3" :key="n" class="row"><span class="row__main"><span class="title shimmer">Recherche d’une idée…</span></span></div>
+                </template>
                 <label v-for="t in aiIdeas" v-else :key="t" class="row">
                   <span class="row__main"><span class="title">{{ t }}</span></span>
                   <input v-model="chosen" class="radio" type="radio" name="title" :value="t">
                 </label>
               </fieldset>
-              <button v-if="!locked" type="button" class="link more" @click="more">
-                <RefreshCw :size="18" aria-hidden="true" /> Trois autres idées
+              <p v-if="aiError" class="err" role="alert">{{ aiError }}</p>
+              <button v-if="!locked" type="button" class="link more" :disabled="loading" @click="more">
+                <RefreshCw :size="18" aria-hidden="true" /> {{ aiError ? 'Réessayer' : 'Trois autres idées' }}
               </button>
             </div>
           </template>
@@ -207,6 +221,24 @@ async function publish() {
 </template>
 
 <style scoped>
+.err {
+  margin: 0;
+  color: var(--ko);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.shimmer {
+  color: var(--muted);
+  animation: breathe 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  to {
+    opacity: 0.4;
+  }
+}
+
 .title-block {
   display: flex;
   flex-direction: column;

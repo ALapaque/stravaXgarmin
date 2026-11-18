@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Gauge, HeartPulse, Lightbulb, ArrowRight, Check } from 'lucide-vue-next'
+import { Gauge, HeartPulse, Lightbulb, ArrowRight, Check, RefreshCw } from 'lucide-vue-next'
+import { aiError, type Analysis } from '~/composables/useAi'
 
 const route = useRoute()
 const { byId, setStravaDescription } = useActivities()
 const { analyse } = useAi()
+const { connected: aiConnected } = useChatGpt()
 const { show } = useToast()
 
 const a = computed(() => byId(String(route.params.id)))
@@ -11,9 +13,8 @@ if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité int
 
 useHead({ title: 'Analyse · stravaXgarmin' })
 
-const { connected: aiConnected } = useChatGpt()
 // Analyse demandée seulement avec ChatGPT connecté ; sinon un exemple flouté, jamais un faux résultat
-const PLACEHOLDER = {
+const PLACEHOLDER: Analysis = {
   score: 0,
   verdict: 'Analyse de ta séance',
   findings: [
@@ -22,7 +23,26 @@ const PLACEHOLDER = {
     { kind: 'tip' as const, title: 'Pour la prochaine fois', text: 'Un conseil pour ta prochaine séance.' },
   ],
 }
-const result = aiConnected.value ? await analyse(a.value) : PLACEHOLDER
+const result = ref<Analysis>(PLACEHOLDER)
+const loading = ref(false)
+const done = ref(false)
+const error = ref('')
+
+async function load() {
+  if (!a.value || !aiConnected.value) return
+  loading.value = true
+  error.value = ''
+  try {
+    result.value = await analyse(a.value)
+    done.value = true
+  } catch (e) {
+    error.value = aiError(e)
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+watch(aiConnected, load)
 const ICONS = {
   ok: { icon: Gauge, color: 'var(--ok)' },
   ko: { icon: HeartPulse, color: 'var(--ko)' },
@@ -33,7 +53,8 @@ const added = computed(() => Boolean(a.value?.stravaDescription))
 
 function addToStrava() {
   if (!a.value) return
-  const text = [result.verdict, ...result.findings.map((f) => `${f.title} : ${f.text}`)].join('\n')
+  const r = result.value
+  const text = [r.verdict, ...r.findings.map((f) => `${f.title} : ${f.text}`)].join('\n')
   setStravaDescription(a.value.id, text)
   show('Analyse ajoutée à la description Strava')
 }
@@ -45,8 +66,9 @@ function addToStrava() {
       <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
       <h1 class="h1">Analyse de la séance</h1>
 
-      <AiLock text="Connecte ton compte ChatGPT pour analyser tes séances.">
-      <div class="stack inner">
+      <AiLock text="Ajoute ta clé OpenAI pour analyser tes séances.">
+      <p v-if="aiConnected && loading" class="card card--pad lead thinking">Analyse de ta séance en cours…</p>
+      <div v-else-if="!aiConnected || done" class="stack inner">
       <section class="block block--primary score">
         <div>
           <p class="num value"><CountUp :value="result.score" :delay="200" /></p>
@@ -67,10 +89,15 @@ function addToStrava() {
         </li>
       </ul>
 
-      </div>
+ </div>
       </AiLock>
 
-      <button v-if="aiConnected" type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
+      <template v-if="error">
+        <p class="err" role="alert">{{ error }}</p>
+        <button type="button" class="link retry" @click="load"><RefreshCw :size="18" aria-hidden="true" /> Réessayer</button>
+      </template>
+
+      <button v-if="aiConnected && done" type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
         {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
         <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
       </button>
@@ -79,6 +106,29 @@ function addToStrava() {
 </template>
 
 <style scoped>
+.thinking {
+  animation: breathe 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  to {
+    opacity: 0.5;
+  }
+}
+
+.err {
+  margin: 0;
+  color: var(--ko);
+  font-weight: 600;
+}
+
+.retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+}
+
 .inner {
   gap: 16px;
 }

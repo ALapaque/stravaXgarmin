@@ -27,6 +27,8 @@ export interface Accounts {
   loaded: boolean
   strava: { connected: boolean; name: string | null }
   garmin: { connected: boolean; name: string | null }
+  /** Clé API OpenAI ; « name » est le modèle utilisé */
+  openai: { connected: boolean; name: string | null }
 }
 
 export function useAccounts() {
@@ -34,6 +36,7 @@ export function useAccounts() {
     loaded: false,
     strava: { connected: false, name: null },
     garmin: { connected: false, name: null },
+    openai: { connected: false, name: null },
   }))
 
   async function refresh() {
@@ -46,8 +49,9 @@ export function useAccounts() {
     }
   }
 
-  async function disconnect(provider: 'strava' | 'garmin') {
-    await $fetch(provider === 'strava' ? '/api/auth/strava/logout' : '/api/garmin/logout', { method: 'POST' })
+  async function disconnect(provider: 'strava' | 'garmin' | 'openai') {
+    const url = { strava: '/api/auth/strava/logout', garmin: '/api/garmin/logout', openai: '/api/openai/logout' }[provider]
+    await $fetch(url, { method: 'POST' })
     await refresh()
   }
 

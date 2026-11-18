@@ -12,8 +12,9 @@ const { current: appVersion, showHistory } = useUpdates()
 const { accounts, disconnect } = useAccounts()
 const { run: sync, syncing } = useSync()
 
-async function logout(provider: 'strava' | 'garmin') {
+async function logout(provider: 'strava' | 'garmin' | 'openai') {
   await disconnect(provider)
+  if (provider === 'openai') return show('Clé OpenAI retirée')
   if (provider === 'garmin') settings.value.garmin.rename = false
   show(provider === 'strava' ? 'Strava déconnecté' : 'Garmin déconnecté')
   await sync()
@@ -157,10 +158,11 @@ const descriptionParts = [
       <div class="row">
         <BrandMark brand="chatgpt" />
         <span class="row__main">
-          <span class="title">ChatGPT</span>
-          <span class="hint">Titres et analyses IA, avec un abonnement Plus ou Pro</span>
+          <span class="title">IA OpenAI</span>
+          <span class="hint">{{ accounts.openai.connected ? `Clé active · ${accounts.openai.name}` : 'Titres et analyses, avec ta clé API' }}</span>
         </span>
-        <span class="soon">Bientôt</span>
+        <button v-if="accounts.openai.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('openai')">Retirer</button>
+        <NuxtLink v-else :to="{ path: '/connexion/openai', query: { retour: '/reglages' } }" class="btn btn--sm btn--brand" style="--brand: var(--chatgpt)">Ajouter</NuxtLink>
       </div>
       <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync">
         <span class="row__main">
