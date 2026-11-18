@@ -24,6 +24,8 @@ export interface GarminMfaSession {
   cookies?: Record<string, string>
   loginParams?: Record<string, string>
   mfaMethod?: string
+  /** Connexion passée par la page web de Garmin (secours quand l'API mobile refuse) */
+  widget?: { csrf: string; params: Record<string, string> }
 }
 
 function config(name: string, maxAge: number): SessionConfig {

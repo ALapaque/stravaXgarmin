@@ -18,10 +18,13 @@ import type { IOauth1Token, IOauth2Token } from '@flow-js/garmin-connect/dist/ga
 /** Méthodes internes du client HTTP de la bibliothèque dont on a besoin. */
 interface InternalClient {
   cookies: Record<string, string>
-  url: { MOBILE_SERVICE_URL: string }
+  url: { MOBILE_SERVICE_URL: string; GARMIN_SSO_ORIGIN: string }
   fetchOauthConsumer(): Promise<void>
   handleMFA(loginParams: Record<string, string>, mfaMethod: string, options?: { mfaHandler: () => Promise<string> }): Promise<string>
   getOauth1Token(ticket: string, loginUrl?: string): Promise<unknown>
+  getWidgetLoginTicket(username: string, password: string): Promise<{ ticket: string; loginUrl: string }>
+  get(url: string, config?: Record<string, unknown>): Promise<string>
+  post(url: string, data: unknown, config?: Record<string, unknown>): Promise<string>
   exchange(oauth1: unknown): Promise<void>
   oauth1Token?: IOauth1Token
 }
@@ -29,9 +32,71 @@ interface InternalClient {
 const internal = (gc: GarminConnect) => gc.client as unknown as InternalClient
 
 class MfaRequired extends Error {
-  constructor(public state: { cookies: Record<string, string>; loginParams: Record<string, string>; mfaMethod: string }) {
+  constructor(public state: GarminMfaSession) {
     super('MFA_REQUIRED')
   }
+}
+
+/*
+ * Connexion par la page web de Garmin (« widget »). La bibliothèque s'en sert quand l'API
+ * mobile répond 429, ce qui arrive depuis les serveurs Vercel, mais elle ne gère pas le
+ * code 2FA sur ce chemin : on le refait ici, en s'arrêtant à la page du code.
+ */
+const WIDGET_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+}
+
+function widgetUrls(client: InternalClient) {
+  const base = `${client.url.GARMIN_SSO_ORIGIN}/sso`
+  const embed = `${base}/embed`
+  const embedParams = { id: 'gauth-widget', embedWidget: 'true', gauthHost: base }
+  const params = { ...embedParams, service: embed, source: embed, redirectAfterAccountLoginUrl: embed, redirectAfterAccountCreationUrl: embed }
+  return { base, embed, embedParams, params }
+}
+
+const csrfOf = (html: string) => html.match(/name=["']_csrf["']\s+value=["']([^"']+)["']/i)?.[1]
+const ticketOf = (html: string) => html.match(/[?&]ticket=(ST-[^"'&\s]+)/)?.[1]
+const titleOf = (html: string) => html.match(/<title>([^<]*)<\/title>/i)?.[1]?.trim() ?? ''
+
+async function widgetLogin(client: InternalClient, username: string, password: string) {
+  const { base, embed, embedParams, params } = widgetUrls(client)
+  await client.get(embed, { params: embedParams, headers: WIDGET_HEADERS })
+  const signin = await client.get(`${base}/signin`, { params, headers: { ...WIDGET_HEADERS, Referer: embed } })
+  const csrf = csrfOf(signin)
+  if (!csrf) throw new Error('Garmin SSO widget did not provide a CSRF token')
+  const html = await client.post(
+    `${base}/signin`,
+    new URLSearchParams({ username, password, embed: 'true', _csrf: csrf }).toString(),
+    { params, headers: { ...WIDGET_HEADERS, Referer: `${base}/signin`, 'Content-Type': 'application/x-www-form-urlencoded' } },
+  )
+  const ticket = ticketOf(html)
+  if (ticket) return { ticket, loginUrl: embed }
+  const title = titleOf(html)
+  if (/mfa/i.test(title) || /mfa-code|verifyMFA/i.test(html)) {
+    const mfaCsrf = csrfOf(html)
+    if (!mfaCsrf) throw new Error('page du code 2FA sans jeton CSRF')
+    throw new MfaRequired({ cookies: { ...client.cookies }, widget: { csrf: mfaCsrf, params } })
+  }
+  console.warn('[garmin] connexion widget refusée, page :', title)
+  if (/locked|verrouill/i.test(html)) throw new Error('compte Garmin temporairement verrouillé, réessaie plus tard')
+  throw new Error('login failed (widget)')
+}
+
+async function widgetMfa(client: InternalClient, widget: { csrf: string; params: Record<string, string> }, code: string) {
+  const { base, embed } = widgetUrls(client)
+  const html = await client.post(
+    `${base}/verifyMFA/loginEnterMfaCode`,
+    new URLSearchParams({ 'mfa-code': code.trim(), embed: 'true', _csrf: widget.csrf, fromPage: 'setupEnterMfaCode' }).toString(),
+    { params: widget.params, headers: { ...WIDGET_HEADERS, Referer: `${base}/signin`, 'Content-Type': 'application/x-www-form-urlencoded' } },
+  )
+  const ticket = ticketOf(html)
+  if (!ticket) {
+    console.warn('[garmin] code 2FA refusé, page :', titleOf(html))
+    throw new Error('login failed after MFA')
+  }
+  return { ticket, loginUrl: embed }
 }
 
 function friendly(e: unknown): never {
@@ -39,6 +104,7 @@ function friendly(e: unknown): never {
   const msg = (e as Error).message ?? ''
   if (status === 429) throw createError({ statusCode: 429, statusMessage: 'Garmin limite les connexions, réessaie dans quelques minutes' })
   if (status === 403) throw createError({ statusCode: 403, statusMessage: 'Garmin a bloqué la connexion depuis ce serveur' })
+  if (/locked/i.test(msg)) throw createError({ statusCode: 423, statusMessage: 'Compte Garmin temporairement verrouillé, réessaie plus tard' })
   if (/password|login failed/i.test(msg)) throw createError({ statusCode: 401, statusMessage: 'E-mail, mot de passe ou code incorrect' })
   throw createError({ statusCode: 502, statusMessage: `Garmin ne répond pas comme prévu : ${msg.slice(0, 120)}` })
 }
@@ -51,6 +117,7 @@ export async function startGarminLogin(event: H3Event, email: string, password: 
   client.handleMFA = async (loginParams, mfaMethod) => {
     throw new MfaRequired({ cookies: { ...client.cookies }, loginParams, mfaMethod })
   }
+  client.getWidgetLoginTicket = (u, pw) => widgetLogin(client, u, pw)
   try {
     await gc.login(email, password)
   } catch (e) {
@@ -68,8 +135,8 @@ export async function startGarminLogin(event: H3Event, email: string, password: 
 /** Étape 2 : code 2FA, avec la session SSO gardée à l'étape 1. */
 export async function finishGarminMfa(event: H3Event, code: string) {
   const mfa = await garminMfaSession(event)
-  const { cookies, loginParams, mfaMethod } = mfa.data
-  if (!cookies || !loginParams || !mfaMethod) {
+  const { cookies, loginParams, mfaMethod, widget } = mfa.data
+  if (!cookies || (!widget && (!loginParams || !mfaMethod))) {
     throw createError({ statusCode: 410, statusMessage: 'Code expiré, recommence la connexion' })
   }
   const gc = new GarminConnect({ username: '', password: '' })
@@ -77,8 +144,14 @@ export async function finishGarminMfa(event: H3Event, code: string) {
   try {
     await client.fetchOauthConsumer()
     client.cookies = { ...cookies }
-    const ticket = await client.handleMFA(loginParams, mfaMethod, { mfaHandler: async () => code })
-    const oauth1 = await client.getOauth1Token(ticket, client.url.MOBILE_SERVICE_URL)
+    let oauth1: unknown
+    if (widget) {
+      const { ticket, loginUrl } = await widgetMfa(client, widget, code)
+      oauth1 = await client.getOauth1Token(ticket, loginUrl)
+    } else {
+      const ticket = await client.handleMFA(loginParams!, mfaMethod!, { mfaHandler: async () => code })
+      oauth1 = await client.getOauth1Token(ticket, client.url.MOBILE_SERVICE_URL)
+    }
     await client.exchange(oauth1)
   } catch (e) {
     friendly(e)
