@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.4.0...v1.5.0) (2026-11-18)
+
+### Nouveautés
+
+* vraie carte du parcours avec MapLibre et OpenFreeMap ([0a6109e](https://github.com/ALapaque/stravaXgarmin/commit/0a6109e47955aab13f075690de11c658372a7f75))
+
 ## [1.4.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.3.0...v1.4.0) (2026-11-18)
 
 ### Nouveautés
