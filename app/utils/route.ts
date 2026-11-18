@@ -82,3 +82,18 @@ export function routePath(pts: Pt[], size = 100, pad = 8) {
     .map(([x, y], i) => `${i ? 'L' : 'M'}${(ox + (x - minX) * scale).toFixed(1)} ${(oy + (y - minY) * scale).toFixed(1)}`)
     .join('')
 }
+
+/** Points du tracé ajustés dans un rectangle (pour dessiner sur un canvas), proportions gardées. */
+export function fitRoute(pts: Pt[], w: number, h: number): Pt[] {
+  if (pts.length < 2) return []
+  const lat0 = (pts.reduce((s, p) => s + p[0], 0) / pts.length) * (Math.PI / 180)
+  const k = Math.abs(lat0) > 1e-3 && Math.abs(lat0) < 1.5 ? Math.cos(lat0) : 1
+  const xy = pts.map(([la, lo]) => [lo * k, -la] as Pt)
+  const xs = xy.map((p) => p[0])
+  const ys = xy.map((p) => p[1])
+  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+  const scale = Math.min(w / (maxX - minX || 1), h / (maxY - minY || 1))
+  const ox = (w - (maxX - minX) * scale) / 2
+  const oy = (h - (maxY - minY) * scale) / 2
+  return xy.map(([x, y]) => [ox + (x - minX) * scale, oy + (y - minY) * scale])
+}

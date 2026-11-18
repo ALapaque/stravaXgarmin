@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain } from 'lucide-vue-next'
+import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const { byId, isSynced, setStravaName, setStravaDescription, setGarminName } = useActivities()
@@ -65,6 +65,38 @@ async function copyName() {
   if (!ok) return
   show('Nom copié vers Strava', undoLast('Ancien nom remis sur Strava'))
   notify({ kind: 'titles', title: 'Nom copié vers Strava', body: a.value.garminName, to: `/activites/${a.value.id}` })
+}
+
+const sharing = ref(false)
+
+/** Image au format story : tracé, titre et chiffres, dans le style du thème. */
+async function shareImage() {
+  const r = a.value
+  if (!r) return
+  sharing.value = true
+  try {
+    const rec = records.value[0]
+    const blob = await renderRunImage({
+      title: r.stravaName || r.garminName,
+      type: RUN_TYPES[r.type].label,
+      typeColor: RUN_TYPES[r.type].color,
+      date: `${formatDay(r.startedAt)}${r.place ? ` · ${r.place}` : ''}`,
+      stats: [
+        { label: 'Distance', value: formatKm(r.distanceKm), unit: 'km' },
+        { label: 'Durée', value: formatDuration(r.durationSec) },
+        { label: 'Allure', value: formatPace(r.durationSec, r.distanceKm), unit: '/km' },
+        r.avgHr ? { label: 'Cardio', value: String(r.avgHr), unit: 'bpm' } : { label: 'Dénivelé', value: String(r.elevationM), unit: 'm' },
+      ],
+      highlight: rec ? `Record sur ${rec.label} : ${formatDuration(rec.time)}` : undefined,
+      points: r.route ? decodePolyline(r.route) : r.stravaId ? [] : demoRoute(r.id, r.type),
+    })
+    const how = await shareOrDownload(blob, `course-${r.startedAt.slice(0, 10)}.png`, r.stravaName || r.garminName)
+    if (how === 'downloaded') show('Image de la course téléchargée')
+  } catch (e) {
+    if ((e as Error).name !== 'AbortError') show('Impossible de créer l’image')
+  } finally {
+    sharing.value = false
+  }
 }
 
 async function addDescription() {
@@ -178,6 +210,9 @@ async function addDescription() {
           <ChartLine :size="20" aria-hidden="true" /> Analyser
         </NuxtLink>
       </div>
+      <button type="button" class="btn btn--secondary" :disabled="sharing" @click="shareImage">
+        <Share2 :size="20" aria-hidden="true" /> {{ sharing ? 'Création de l’image…' : 'Partager en image' }}
+      </button>
 
       <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">
         <div class="desc-head">
