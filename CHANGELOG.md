@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.7.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.6.0...v1.7.0) (2026-11-18)
+
+### Nouveautés
+
+* six thèmes au choix (Néon, Carbone, Papier, Abysse, Rétro 84, Trail) avec couleurs, polices et arrondis propres ([cc9f70c](https://github.com/ALapaque/stravaXgarmin/commit/cc9f70c1dd3bab75f95bf0c6280d42a3757dcf46))
+
 ## [1.6.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.5.0...v1.6.0) (2026-11-18)
 
 ### Nouveautés
