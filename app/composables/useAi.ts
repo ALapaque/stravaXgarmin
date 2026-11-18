@@ -18,6 +18,13 @@ export interface Analysis {
   findings: { kind: 'ok' | 'ko' | 'tip'; title: string; text: string }[]
 }
 
+export interface WeekReview {
+  headline: string
+  wins: string[]
+  watch: string[]
+  next: string
+}
+
 export interface Level {
   vma: number
   vo2max: number
@@ -28,10 +35,12 @@ export interface Level {
 
 /** Derniers résultats IA, gardés dans le navigateur pour ne pas les perdre en changeant de page. */
 export function useAiResults() {
-  return useState<{ level: (Level & { at: string }) | null; analyses: Record<string, Analysis & { at: string }> }>(
-    'aiResults',
-    () => ({ level: null, analyses: {} }),
-  )
+  return useState<{
+    level: (Level & { at: string }) | null
+    analyses: Record<string, Analysis & { at: string }>
+    /** Dernier bilan de semaine ; « key » dit pour quelles courses il a été écrit */
+    week?: (WeekReview & { at: string; key: string }) | null
+  }>('aiResults', () => ({ level: null, analyses: {}, week: null }))
 }
 
 /** Ce qui part chez l'IA : les chiffres de la course, rien d'autre. */
@@ -71,6 +80,8 @@ export function useAi() {
 
   const analyse = (a: Activity) => call<Analysis>('/api/ai/analyse', { run: toRun(a) })
   const estimateLevel = (selected: Activity[]) => call<Level>('/api/ai/level', { runs: selected.map(toRun) })
+  const reviewWeek = (runs: Activity[], extra: { previous?: { km: number; count: number }; next?: string[]; goal?: string }) =>
+    call<WeekReview>('/api/ai/week', { runs: runs.map(toRun), ...extra })
 
-  return { suggestTitles, analyse, estimateLevel }
+  return { suggestTitles, analyse, estimateLevel, reviewWeek }
 }

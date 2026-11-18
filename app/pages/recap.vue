@@ -111,6 +111,8 @@ async function share() {
         </NuxtLink>
       </div>
 
+      <WeekReview v-if="kind === 'semaine'" />
+
       <button type="button" class="btn btn--primary" :disabled="sharing" @click="share">
         {{ sharing ? 'Création de l’image…' : 'Partager le récap' }}
         <Share2 :size="20" aria-hidden="true" />
