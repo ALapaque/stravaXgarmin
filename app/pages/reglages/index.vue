@@ -12,9 +12,9 @@ const { current: appVersion, showHistory } = useUpdates()
 const { accounts, disconnect } = useAccounts()
 const { run: sync, syncing } = useSync()
 
-async function logout(provider: 'strava' | 'garmin' | 'openai') {
+async function logout(provider: 'strava' | 'garmin' | 'ai') {
   await disconnect(provider)
-  if (provider === 'openai') return show('Clé OpenAI retirée')
+  if (provider === 'ai') return show('IA désactivée')
   if (provider === 'garmin') settings.value.garmin.rename = false
   show(provider === 'strava' ? 'Strava déconnecté' : 'Garmin déconnecté')
   await sync()
@@ -156,13 +156,14 @@ const descriptionParts = [
         <ToggleSwitch v-model="settings.garmin.rename" label="Renommer aussi sur Garmin" />
       </div>
       <div class="row">
-        <BrandMark brand="chatgpt" />
+        <BrandMark v-if="accounts.ai.provider === 'openai'" brand="chatgpt" />
+        <span v-else class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><Sparkles :size="22" /></span>
         <span class="row__main">
-          <span class="title">IA OpenAI</span>
-          <span class="hint">{{ accounts.openai.connected ? `Clé active · ${accounts.openai.name}` : 'Titres et analyses, avec ta clé API' }}</span>
+          <span class="title">IA</span>
+          <span class="hint">{{ accounts.ai.connected ? accounts.ai.name : 'Titres et analyses, gratuit avec Gemini' }}</span>
         </span>
-        <button v-if="accounts.openai.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('openai')">Retirer</button>
-        <NuxtLink v-else :to="{ path: '/connexion/openai', query: { retour: '/reglages' } }" class="btn btn--sm btn--brand" style="--brand: var(--chatgpt)">Ajouter</NuxtLink>
+        <button v-if="accounts.ai.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('ai')">Retirer</button>
+        <NuxtLink v-else :to="{ path: '/connexion/ia', query: { retour: '/reglages' } }" class="btn btn--sm btn--primary">Activer</NuxtLink>
       </div>
       <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync">
         <span class="row__main">

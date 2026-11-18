@@ -58,7 +58,7 @@ function pickCustom() {
   field.value?.focus()
 }
 
-const { connected: aiConnected } = useChatGpt()
+const { connected: aiConnected, label: aiLabel } = useChatGpt()
 
 async function load() {
   if (!a.value) return
@@ -172,9 +172,9 @@ async function publish() {
       <section class="ai" aria-labelledby="ai-title">
         <div class="ai-head">
           <h2 id="ai-title" class="h2">Idées IA</h2>
-          <span class="label via">via OpenAI</span>
+          <span v-if="aiConnected" class="label via">via {{ aiLabel }}</span>
         </div>
-        <AiLock text="Ajoute ta clé OpenAI pour recevoir trois idées de titre par course.">
+        <AiLock text="Active l’IA pour recevoir trois idées de titre par course. C’est gratuit avec Gemini.">
           <template #default="{ locked }">
             <div class="ai-body">
               <div class="segmented" role="group" aria-label="Style du titre">

@@ -52,7 +52,7 @@ const n = computed(() => selected.value.length)
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
 
     <template v-else>
-    <AiLock v-if="!aiConnected" text="Ajoute ta clé OpenAI pour estimer ta VMA, ta VO2max et ton allure seuil.">
+    <AiLock v-if="!aiConnected" text="Active l’IA pour estimer ta VMA, ta VO2max et ton allure seuil. C’est gratuit avec Gemini.">
       <dl class="grid-2 metrics">
         <div v-for="l in ['VMA · km/h', 'VO2max', 'Seuil · /km', 'Semi estimé']" :key="l" class="card metric">
           <dt class="label">{{ l }}</dt>

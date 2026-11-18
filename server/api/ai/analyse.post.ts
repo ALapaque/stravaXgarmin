@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   if (!body?.run) throw createError({ statusCode: 400, statusMessage: 'Course manquante' })
   const details = await stravaDetails(event, body.run.stravaId)
 
-  return openAiJson<{ score: number; verdict: string; findings: { kind: 'ok' | 'ko' | 'tip'; title: string; text: string }[] }>(event, {
+  return aiJson<{ score: number; verdict: string; findings: { kind: 'ok' | 'ko' | 'tip'; title: string; text: string }[] }>(event, {
     name: 'analyse',
     schema: {
       type: 'object',

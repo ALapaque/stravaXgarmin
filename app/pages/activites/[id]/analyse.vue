@@ -66,7 +66,7 @@ function addToStrava() {
       <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
       <h1 class="h1">Analyse de la séance</h1>
 
-      <AiLock text="Ajoute ta clé OpenAI pour analyser tes séances.">
+      <AiLock text="Active l’IA pour analyser tes séances. C’est gratuit avec Gemini.">
       <p v-if="aiConnected && loading" class="card card--pad lead thinking">Analyse de ta séance en cours…</p>
       <div v-else-if="!aiConnected || done" class="stack inner">
       <section class="block block--primary score">

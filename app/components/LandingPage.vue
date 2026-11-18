@@ -38,7 +38,7 @@ const TITLE = [
 
 const FEATURES = [
   { icon: Type, color: 'var(--accent-text)', title: 'Des noms qui veulent dire quelque chose', text: 'Le nom de ta montre arrive sur Strava. Sinon, tes propres modèles : distance, allure, lieu, météo.' },
-  { icon: Sparkles, color: 'var(--chatgpt)', title: 'Des titres par IA', text: 'Sobre, drôle ou épique : trois idées par course avec ta clé OpenAI, ou le tien écrit à la main.' },
+  { icon: Sparkles, color: 'var(--chatgpt)', title: 'Des titres par IA', text: 'Sobre, drôle ou épique : trois idées par course avec l’IA de ton choix (Gemini gratuit), ou le tien écrit à la main.' },
   { icon: Trophy, color: 'var(--ok)', title: 'Tes records repérés', text: '5 km, 10 km, semi : record battu, titre proposé.' },
   { icon: FileText, color: 'var(--info)', title: 'Une description qui raconte', text: 'Météo, temps au kilomètre et chaussures ajoutés sur Strava.' },
   { icon: RotateCcw, color: 'var(--type-tempo)', title: 'Tout s’annule', text: 'Chaque changement est noté et se défait d’un tap.' },

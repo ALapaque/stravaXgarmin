@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const avoid = (body.avoid ?? []).slice(0, 30).map((t) => String(t).slice(0, 100))
   const details = await stravaDetails(event, body.run.stravaId)
 
-  const { titles } = await openAiJson<{ titles: string[] }>(event, {
+  const { titles } = await aiJson<{ titles: string[] }>(event, {
     name: 'titres',
     schema: {
       type: 'object',

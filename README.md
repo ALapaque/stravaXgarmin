@@ -127,5 +127,5 @@ Dans l'appli : quand une nouvelle version est déployée pendant qu'elle est ouv
 
 1. **Strava** : créer l'appli API, OAuth (`activity:read_all`, `activity:write`), webhook sur les nouvelles activités, `PUT /activities/{id}` pour le nom et la description.
 2. **Garmin** : demander l'accès au Garmin Connect Developer Program, puis lire les activités.
-3. **ChatGPT** : « Sign in with ChatGPT » n'accepte que les applis locales ou approuvées par OpenAI. En attendant, chaque utilisateur colle sa clé API OpenAI (Réglages → IA OpenAI) ; elle est gardée chiffrée dans un cookie httpOnly et les appels passent par `server/api/ai/*`.
+3. **IA** : « Sign in with ChatGPT » n'accepte que les applis locales ou approuvées par OpenAI. En attendant, chaque utilisateur active l'IA avec sa clé Gemini ou Mistral (gratuites) ou OpenAI (Réglages → IA). La clé est gardée chiffrée dans un cookie httpOnly ; les appels passent par `server/api/ai/*` (format chat completions commun aux trois).
 4. Remplacer les données de `useActivities` et `useAi` par des routes serveur (`server/api/…`).

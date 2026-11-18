@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const runs = (body?.runs ?? []).slice(0, 20)
   if (!runs.length) throw createError({ statusCode: 400, statusMessage: 'Choisis au moins une course' })
 
-  const level = await openAiJson<{ vma: number; vo2max: number; threshold: string; half: string }>(event, {
+  const level = await aiJson<{ vma: number; vo2max: number; threshold: string; half: string }>(event, {
     name: 'niveau',
     schema: {
       type: 'object',

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /*
- * Fonctions IA réservées à qui a ajouté sa clé OpenAI : sans clé, le contenu
+ * Fonctions IA réservées à qui a activé l'IA (clé Gemini, Mistral ou OpenAI) : sans clé, le contenu
  * (des lignes d'exemple, jamais de vraies propositions) est flouté sous un bouton de connexion.
  */
+import { Sparkles } from 'lucide-vue-next'
+
 withDefaults(defineProps<{ text?: string }>(), {
-  text: 'Ajoute ta clé OpenAI pour obtenir des propositions.',
+  text: 'Active l’IA pour obtenir des propositions. C’est gratuit avec Gemini.',
 })
 
 const { connected, available, connect } = useChatGpt()
@@ -17,9 +19,9 @@ const locked = computed(() => !connected.value)
       <slot :locked="locked" />
     </div>
     <div v-if="locked" class="overlay">
-      <BrandMark brand="chatgpt" :size="40" />
+      <span class="spark" aria-hidden="true"><Sparkles :size="22" /></span>
       <p>{{ text }}</p>
-      <button v-if="available" type="button" class="btn btn--brand btn--sm" style="--brand: var(--chatgpt)" @click="connect">
+      <button v-if="available" type="button" class="btn btn--primary btn--sm" @click="connect">
         Activer l’IA
       </button>
       <span v-else class="soon">Connexion ChatGPT bientôt disponible</span>
@@ -50,6 +52,17 @@ const locked = computed(() => !connected.value)
   padding: 16px;
   text-align: center;
   animation: rise 0.5s var(--ease-out) backwards;
+}
+
+.spark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-solid), var(--accent-text));
+  animation: pop 0.6s var(--ease-spring) 0.1s backwards;
 }
 
 .soon {
