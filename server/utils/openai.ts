@@ -17,11 +17,17 @@ async function call(url: string, init: RequestInit) {
 /** Modèles rapides et peu chers, par ordre de préférence : on prend le premier que la clé peut utiliser. */
 const PREFERRED = ['gpt-5.4-mini', 'gpt-5-mini', 'gpt-5.4-nano', 'gpt-5-nano', 'gpt-4.1-mini', 'gpt-4o-mini']
 
-function apiError(status: number, body: { error?: { code?: string; message?: string } } | undefined): never {
-  const code = body?.error?.code
+function apiError(status: number, body: { error?: { code?: string; type?: string; message?: string } } | undefined): never {
+  const { code, type, message } = body?.error ?? {}
+  console.warn('[openai]', status, code ?? type ?? '', message?.slice(0, 200) ?? '')
   if (status === 401) throw createError({ statusCode: 401, statusMessage: 'Clé OpenAI refusée : vérifie-la ou crées-en une nouvelle' })
-  if (code === 'insufficient_quota') throw createError({ statusCode: 402, statusMessage: 'Plus de crédit sur ton compte OpenAI (platform.openai.com → Billing)' })
-  if (status === 429) throw createError({ statusCode: 429, statusMessage: 'OpenAI limite les demandes, réessaie dans un instant' })
+  if (code === 'insufficient_quota' || type === 'insufficient_quota' || /quota|billing|credit/i.test(message ?? '')) {
+    throw createError({
+      statusCode: 402,
+      statusMessage: 'Pas de crédit utilisable sur ton compte OpenAI : ajoute-en dans Billing (un crédit tout juste ajouté peut prendre quelques minutes)',
+    })
+  }
+  if (status === 429) throw createError({ statusCode: 429, statusMessage: `OpenAI limite les demandes${message ? ` : ${message.slice(0, 140)}` : ', réessaie dans un instant'}` })
   throw createError({ statusCode: 502, statusMessage: `OpenAI ne répond pas comme prévu${body?.error?.message ? ` : ${body.error.message.slice(0, 120)}` : ''}` })
 }
 
