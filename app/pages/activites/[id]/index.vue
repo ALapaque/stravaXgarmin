@@ -32,6 +32,8 @@ const splitH = (s: number) => {
   const { min, max } = splitRange.value
   return max === min ? 70 : Math.round(35 + ((max - s) / (max - min)) * 65)
 }
+// Vraie carte quand il y a un tracé GPS (ou en démo) ; sinon le dessin stylisé
+const hasMap = computed(() => Boolean(a.value && (a.value.route || !a.value.stravaId)))
 const typeColor = computed(() => (a.value ? RUN_TYPES[a.value.type].color : 'var(--accent-text)'))
 
 function undoLast(message: string) {
@@ -77,8 +79,14 @@ async function addDescription() {
       <BackLink to="/activites" label="Activités" />
 
       <section class="card hero" :style="{ '--c': typeColor }">
-        <div class="map">
-          <RouteTrace :activity="a" :width="1.6" :delay="200" />
+        <div class="map" :class="{ real: hasMap }">
+          <ClientOnly>
+            <RouteMap v-if="hasMap" :activity="a" />
+            <template #fallback>
+              <RouteTrace :activity="a" :width="1.6" :delay="200" />
+            </template>
+          </ClientOnly>
+          <RouteTrace v-if="!hasMap" :activity="a" :width="1.6" :delay="200" />
         </div>
         <div class="hero-text">
           <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}</p>
@@ -199,6 +207,7 @@ async function addDescription() {
 .hero::after {
   content: '';
   position: absolute;
+  z-index: 1;
   inset: 0;
   border-radius: inherit;
   background:
@@ -222,8 +231,17 @@ async function addDescription() {
   mask: radial-gradient(90% 80% at 50% 40%, #000 55%, transparent);
 }
 
-.map :deep(svg) {
+.map.real {
+  padding: 0;
+  aspect-ratio: 1 / 0.95;
+  background: none;
   -webkit-mask: none;
+  mask: none;
+}
+
+/* Le texte du bas laisse passer les gestes vers la carte */
+.hero-text {
+  pointer-events: none;
 }
 
 .hero-text {

@@ -13,6 +13,7 @@
   "dependencies": {
     "@flow-js/garmin-connect": "^1.6.25",
     "lucide-vue-next": "^1.0.0",
+    "maplibre-gl": "^6.16.0",
     "nuxt": "^4.6.4"
   },
   "devDependencies": {
