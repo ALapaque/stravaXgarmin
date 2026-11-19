@@ -60,7 +60,7 @@ const n = computed(() => selected.value.length)
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack stack--wide">
     <div class="title-block">
       <h1 class="h1 h1--xl">Stats</h1>
     </div>
@@ -69,8 +69,8 @@ const n = computed(() => selected.value.length)
 
     <template v-else>
     <Transition :name="`tab-${direction}`" mode="out-in">
-      <div v-if="tab === 'forme'" key="forme" class="panel">
-        <GoalCard />
+      <div v-if="tab === 'forme'" key="forme" class="panel cols">
+        <GoalCard class="span-all" />
 
         <FormePanel />
         <NuxtLink v-if="!accounts.garmin.connected && !demo" to="/connexion/garmin" class="card card--pad lead hint-card">
@@ -80,7 +80,8 @@ const n = computed(() => selected.value.length)
         <LoadChart />
       </div>
 
-      <div v-else-if="tab === 'records'" key="records" class="panel">
+      <div v-else-if="tab === 'records'" key="records" class="panel cols">
+        <div class="col">
         <div class="section-head">
           <h2 class="h2">Tes records</h2>
           <span v-if="fromGarmin" class="label">via Garmin</span>
@@ -101,6 +102,9 @@ const n = computed(() => selected.value.length)
             <span class="num pr">{{ b.time ? formatDuration(b.time) : '–' }}</span>
           </component>
         </div>
+        </div>
+        <div class="col">
+          <h2 class="h2">Tes bilans</h2>
         <div class="grid-2">
           <NuxtLink to="/recap" class="card recap-link">
             <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarDays :size="22" /></span>
@@ -111,9 +115,11 @@ const n = computed(() => selected.value.length)
             <span class="title">Récap mois</span>
           </NuxtLink>
         </div>
+        </div>
       </div>
 
-      <div v-else-if="tab === 'niveau'" key="niveau" class="panel">
+      <div v-else-if="tab === 'niveau'" key="niveau" class="panel cols">
+        <div class="col">
         <div class="section-head ia-head">
           <h2 class="h2">Niveau estimé par IA</h2>
           <span v-if="level" class="label">{{ estimatedOn }}</span>
@@ -126,7 +132,7 @@ const n = computed(() => selected.value.length)
             </div>
           </dl>
         </AiLock>
-        <p v-else-if="!level" class="card card--pad lead">Coche quelques courses plus bas et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
+        <p v-else-if="!level" class="card card--pad lead">Coche quelques courses et lance l’analyse pour estimer ta VMA, ta VO2max et ton allure seuil.</p>
         <dl v-else class="grid-2 metrics" :aria-busy="loading">
           <div class="block block--primary metric">
             <dt class="label">VMA · km/h</dt>
@@ -146,6 +152,8 @@ const n = computed(() => selected.value.length)
           </div>
         </dl>
 
+        </div>
+        <div class="col">
         <div class="section-head">
           <h2 class="h2">Courses à analyser</h2>
           <span class="label">14 derniers jours</span>
@@ -168,9 +176,10 @@ const n = computed(() => selected.value.length)
         </button>
         <p v-if="error" class="err" role="alert">{{ error }}</p>
         <p class="fine">Estimations par IA à partir de tes courses, pas un test en laboratoire.</p>
+        </div>
       </div>
 
-      <div v-else key="chaussures" class="panel">
+      <div v-else key="chaussures" class="panel panel--narrow">
         <ShoeList />
         <p v-if="!shoes.length" class="card card--pad lead">
           Aucune paire trouvée dans tes courses. Associe tes chaussures à tes activités dans Strava : leur kilométrage et leur usure s’afficheront ici.

@@ -10,7 +10,7 @@ const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceK
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack stack--wide">
     <div class="title-block">
       <p class="eyebrow">60 derniers jours<template v-if="activities.length"> · {{ activities.length }} courses · {{ formatKm(totalKm) }} km</template></p>
       <h1 class="h1 h1--xl">Activités</h1>
@@ -26,7 +26,7 @@ const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceK
       </button>
     </div>
 
-    <div v-if="shown.length" class="card list">
+    <div v-if="shown.length" class="card list list--grid">
       <ActivityRow v-for="a in shown" :key="a.id" :activity="a" />
     </div>
     <p v-else class="card card--pad lead">{{ activities.length ? 'Tout est synchronisé, rien à revoir.' : 'Aucune course sur les 60 derniers jours.' }}</p>

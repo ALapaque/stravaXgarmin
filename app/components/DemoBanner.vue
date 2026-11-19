@@ -21,7 +21,7 @@ const { active, exit } = useDemo()
   align-items: center;
   gap: 10px;
   margin: 0 auto;
-  max-width: 480px;
+  width: 100%;
   padding: calc(env(safe-area-inset-top) + 8px) 20px 8px;
   font-size: 14px;
   color: #1a1206;

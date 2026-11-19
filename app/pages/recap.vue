@@ -52,7 +52,7 @@ async function share() {
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack stack--wide">
     <BackLink to="/stats?onglet=records" label="Stats" />
     <h1 class="h1">Récap</h1>
 
@@ -65,7 +65,7 @@ async function share() {
     </div>
 
     <!-- La clé force l'animation d'apparition à chaque changement de période -->
-    <div :key="kind" class="stack">
+    <div :key="kind" class="stack stack--wide recap-grid">
       <section class="block block--primary hero">
         <p class="label">{{ recap.title }}</p>
         <p class="num big"><CountUp :value="recap.km" :decimals="1" :delay="80" /> km</p>
@@ -111,9 +111,9 @@ async function share() {
         </NuxtLink>
       </div>
 
-      <WeekReview v-if="kind === 'semaine'" />
+      <WeekReview v-if="kind === 'semaine'" class="span-all" />
 
-      <button type="button" class="btn btn--primary" :disabled="sharing" @click="share">
+      <button type="button" class="btn btn--primary share" :disabled="sharing" @click="share">
         {{ sharing ? 'Création de l’image…' : 'Partager le récap' }}
         <Share2 :size="20" aria-hidden="true" />
       </button>
@@ -123,6 +123,29 @@ async function share() {
 </template>
 
 <style scoped>
+@media (min-width: 720px) {
+  .recap-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .recap-grid > .span-all,
+  .recap-grid > .share {
+    grid-column: 1 / -1;
+  }
+
+  .share {
+    justify-self: start;
+    min-width: 320px;
+  }
+
+  .segmented {
+    max-width: 360px;
+  }
+}
+
 .hero {
   display: flex;
   flex-direction: column;

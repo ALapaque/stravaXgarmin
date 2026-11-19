@@ -62,11 +62,12 @@ const descriptionParts = [
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack stack--wide">
     <h1 class="h1 h1--xl">Réglages</h1>
 
     <Transition :name="`tab-${direction}`" mode="out-in">
-      <div v-if="tab === 'comptes'" key="comptes" class="panel">
+      <div v-if="tab === 'comptes'" key="comptes" class="panel cols">
+        <div class="col">
         <h2 class="eyebrow group">Comptes</h2>
         <div class="card list">
           <div class="row">
@@ -111,6 +112,8 @@ const descriptionParts = [
             </span>
           </button>
         </div>
+        </div>
+        <div class="col">
         <h2 class="eyebrow group">Application</h2>
         <div class="card list">
           <button type="button" class="row" @click="showHistory">
@@ -122,9 +125,11 @@ const descriptionParts = [
             <ChevronRight :size="20" aria-hidden="true" />
           </button>
         </div>
+        </div>
       </div>
 
-      <div v-else-if="tab === 'synchro'" key="synchro" class="panel">
+      <div v-else-if="tab === 'synchro'" key="synchro" class="panel cols">
+        <div class="col">
         <h2 class="eyebrow group">Synchronisation</h2>
         <div class="card list">
           <div class="row">
@@ -158,6 +163,8 @@ const descriptionParts = [
             <ChevronRight :size="20" aria-hidden="true" />
           </NuxtLink>
         </div>
+        </div>
+        <div class="col">
         <h2 class="eyebrow group">Description Strava</h2>
         <div class="card list">
           <div class="row">
@@ -177,9 +184,10 @@ const descriptionParts = [
             </div>
           </template>
         </div>
+        </div>
       </div>
 
-      <div v-else-if="tab === 'notifs'" key="notifs" class="panel">
+      <div v-else-if="tab === 'notifs'" key="notifs" class="panel panel--narrow">
         <h2 class="eyebrow group">Notifications</h2>
         <div class="card list">
           <div class="row">
@@ -261,6 +269,18 @@ const descriptionParts = [
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .themes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .themes {
+    grid-template-columns: repeat(6, 1fr);
+  }
 }
 
 .theme {

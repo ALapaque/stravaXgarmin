@@ -53,7 +53,7 @@ const STEPS = [
 </script>
 
 <template>
-  <div class="stack landing">
+  <div class="stack stack--wide landing">
     <header class="top">
       <span class="logo">
         <img src="/favicon.svg" alt="" width="34" height="34">
@@ -130,7 +130,7 @@ const STEPS = [
           <KpiPulse kind="pace" :value="281" />
         </div>
       </div>
-      <p class="lead">Le cœur bat à ton vrai rythme, les lignes défilent à ton allure. Et quatre thèmes, de « Néon » à « Calme ».</p>
+      <p class="lead">Le cœur bat à ton vrai rythme, les lignes défilent à ton allure. Et six thèmes, de « Néon » à « Trail », que tu peux régler à ton goût.</p>
     </section>
 
     <!-- Étapes -->
@@ -148,7 +148,7 @@ const STEPS = [
     </section>
 
     <!-- Confidentialité -->
-    <section class="card card--pad privacy">
+    <section class="card card--pad privacy narrow">
       <ShieldCheck :size="26" aria-hidden="true" />
       <div>
         <h2 class="h2">Aucune donnée stockée chez nous</h2>
@@ -161,7 +161,7 @@ const STEPS = [
       </div>
     </section>
 
-    <section class="final">
+    <section class="final narrow">
       <h2 class="h1 sec-title">Prêt pour ta prochaine sortie ?</h2>
       <a v-if="!accounts.strava.connected" href="/api/auth/strava/login" class="btn btn--brand cta">
         <BrandMark brand="strava" :size="28" />
@@ -447,6 +447,104 @@ const STEPS = [
 .foot {
   text-align: center;
   padding: 8px 0 4px;
+}
+
+/*
+ * Tablette et ordinateur : le téléphone passe à droite du titre, le manifeste fait face
+ * à la démo de synchro, et les listes deviennent des grilles.
+ */
+@media (min-width: 720px) {
+  .landing {
+    max-width: 1120px;
+    gap: 32px;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 32px;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .step {
+    flex-direction: column;
+    align-items: flex-start;
+    height: 100%;
+  }
+
+  .sec-title {
+    font-size: 40px;
+    max-width: 18ch;
+  }
+
+  .narrow {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
+
+  .final {
+    align-items: center;
+    text-align: center;
+  }
+
+  .showcase {
+    max-width: 760px;
+  }
+}
+
+@media (min-width: 960px) {
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    column-gap: 56px;
+    align-items: center;
+    margin-top: 32px;
+  }
+
+  .hero > * {
+    grid-column: 1;
+  }
+
+  .hero > :deep(.phone) {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    zoom: 1.3;
+  }
+
+  .hero .title {
+    font-size: 76px;
+    line-height: 0.98;
+  }
+
+  .hero .lead {
+    max-width: 44ch;
+    font-size: 19px;
+  }
+
+  .actions {
+    max-width: 440px;
+  }
+
+  .statement-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: center;
+    gap: 56px;
+    margin-top: 72px;
+  }
+
+  .section {
+    margin-top: 56px;
+  }
+
+  .features {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

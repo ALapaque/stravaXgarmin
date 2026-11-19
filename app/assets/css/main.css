@@ -74,6 +74,171 @@ button {
   flex: 1;
 }
 
+/*
+ * ───── Tablette et ordinateur ─────
+ * Téléphone : une colonne et la barre du bas (par défaut).
+ * Tablette (à partir de 720 px) : contenu élargi, cartes en grilles, barre du bas gardée.
+ * Ordinateur (à partir de 1080 px) : barre latérale à gauche, tableau de bord en colonnes.
+ */
+@media (min-width: 720px) {
+  .app {
+    max-width: 920px;
+  }
+
+  .screen {
+    padding-inline: 32px;
+  }
+
+  /* Pages de lecture et formulaires : une colonne confortable, centrée */
+  .stack {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  /* Connexion et autres pages sans menu : formulaire étroit, centré */
+  .screen--bare .stack:not(.stack--wide) {
+    max-width: 480px;
+  }
+
+  /* Écrans en tableau de bord : toute la largeur */
+  .stack--wide {
+    max-width: none;
+  }
+
+  .h1--xl {
+    font-size: 52px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .app {
+    max-width: none;
+  }
+
+  .app--nav {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .app--nav > .banner {
+    grid-column: 1 / -1;
+  }
+
+  .app--nav .screen {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding: 44px 48px 72px;
+  }
+
+  .app--nav .tabbar {
+    display: none;
+  }
+
+  .screen--bare {
+    padding: 32px 48px 64px;
+  }
+}
+
+/* Deux colonnes dès la tablette : chaque colonne empile ses blocs */
+.cols {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .cols,
+  .panel.cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 20px;
+  }
+
+  .span-all {
+    grid-column: 1 / -1;
+  }
+
+  /* Rubrique à une seule colonne : largeur de lecture */
+  .panel--narrow {
+    max-width: 640px;
+  }
+}
+
+/* Une liste devient une grille de cartes séparées dès la tablette */
+@media (min-width: 720px) {
+  .card.list--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .card.list--grid::before {
+    display: none;
+  }
+
+  /* Les filtres ne s'étirent pas sur toute la largeur */
+  .stack--wide > .segmented {
+    align-self: flex-start;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .list--grid > * {
+    position: relative;
+    border: 1px solid var(--surface-border);
+    border-radius: var(--r-card);
+    background: var(--surface);
+    box-shadow: var(--surface-shadow);
+  }
+
+  .list--grid > * + * {
+    border-top: 1px solid var(--surface-border);
+  }
+
+  .list--grid > *::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--edge, transparent);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .card.list--grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* La barre latérale passe sous le bandeau de démo */
+@media (min-width: 1080px) {
+  .app--nav:has(> .banner) .side {
+    top: 44px;
+    height: calc(100dvh - 44px);
+  }
+}
+
 /* ───── Animations ───── */
 :root {
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);

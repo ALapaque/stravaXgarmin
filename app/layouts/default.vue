@@ -1,7 +1,8 @@
 <template>
-  <div class="app">
+  <div class="app app--nav">
     <AppAurora />
     <DemoBanner />
+    <AppSidebar />
     <main class="screen">
       <slot />
     </main>

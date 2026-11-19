@@ -42,7 +42,7 @@ const hasDetail = (s: { lines: PlanLine[]; description: string | null }) => Bool
 </script>
 
 <template>
-  <div class="stack">
+  <div class="stack stack--wide">
     <div class="title-block">
       <p class="eyebrow">Tes prochaines séances</p>
       <h1 class="h1 h1--xl">Plan</h1>
@@ -248,6 +248,65 @@ const hasDetail = (s: { lines: PlanLine[]; description: string | null }) => Bool
 .s-meta strong {
   font-size: 17px;
   color: var(--ink);
+}
+
+/* Tablette et ordinateur : la prochaine séance en grand, les suivantes en grille */
+@media (min-width: 720px) {
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+    padding-left: 0;
+  }
+
+  .timeline::before,
+  .session::before {
+    display: none;
+  }
+
+  .session:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .session:first-child .body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+    padding: 26px;
+  }
+
+  .session:first-child .s-head,
+  .session:first-child .s-meta,
+  .session:first-child :deep(.profile) {
+    grid-column: 1;
+  }
+
+  .session:first-child .more {
+    display: none;
+  }
+
+  /* Le déroulé de la prochaine séance reste ouvert, à droite du profil */
+  .session:first-child .detail {
+    display: flex !important;
+    grid-column: 2;
+    grid-row: 1 / span 4;
+  }
+
+  .session:first-child .s-title {
+    font-size: 28px;
+  }
+
+  .empty {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .timeline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .more {

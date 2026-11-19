@@ -99,6 +99,20 @@ const eased = computed(() => 1 - Math.pow(1 - p.value, 3))
   transform: translateY(12px);
 }
 
+/* Grand écran : la section n'est plus bord à bord, elle devient un grand panneau */
+@media (min-width: 720px) {
+  .iris {
+    margin: 48px 0 0;
+    padding: 64px 48px;
+    border-radius: calc(var(--r-card) + 8px);
+  }
+
+  .disc {
+    border: 1px solid var(--surface-border);
+    border-radius: inherit;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ring {
     display: none;

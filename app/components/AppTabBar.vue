@@ -5,31 +5,13 @@
  * son sous-menu. Le bouton de gauche la fait pivoter à nouveau vers le menu principal,
  * et toucher l'onglet déjà actif rouvre le sous-menu.
  */
-import {
-  House, Activity, CalendarClock, ChartColumn, SlidersHorizontal, LayoutGrid, Layers,
-  HeartPulse, Trophy, Sparkles, Footprints, Link2, RefreshCw, Bell, Palette, Gauge, PenLine,
-} from 'lucide-vue-next'
+import { LayoutGrid, Layers, Sparkles } from 'lucide-vue-next'
 import type { Subnav } from '~/composables/useSubnav'
 
 const route = useRoute()
-const router = useRouter()
+const tabs = NAV
+const { active, sub, pick } = useNav()
 
-const tabs = [
-  { to: '/', label: 'Accueil', icon: House, match: (p: string) => p === '/' || p.startsWith('/notifications') },
-  { to: '/activites', label: 'Activités', icon: Activity, match: (p: string) => p.startsWith('/activites') },
-  { to: '/plan', label: 'Plan', icon: CalendarClock, match: (p: string) => p.startsWith('/plan') },
-  { to: '/stats', label: 'Stats', icon: ChartColumn, match: (p: string) => p.startsWith('/stats') || p.startsWith('/recap') || p.startsWith('/objectif') },
-  { to: '/reglages', label: 'Réglages', icon: SlidersHorizontal, match: (p: string) => p.startsWith('/reglages') || p.startsWith('/historique') },
-]
-const active = computed(() => tabs.findIndex((t) => t.match(route.path)))
-
-const SUB_ICONS: Record<string, unknown> = {
-  forme: HeartPulse, records: Trophy, ia: Sparkles, shoes: Footprints,
-  accounts: Link2, sync: RefreshCw, bell: Bell, style: Palette,
-  numbers: Gauge, name: PenLine,
-}
-
-const sub = useSubnavState()
 // Dernier sous-menu connu : il reste dessiné pendant que la barre revient au menu principal
 const shown = ref<Subnav | null>(sub.value)
 const flipped = ref(false)
@@ -66,9 +48,6 @@ function onMain(i: number, e: MouseEvent) {
   }
 }
 
-function pick(id: string) {
-  router.replace({ query: { ...route.query, onglet: id } })
-}
 </script>
 
 <template>

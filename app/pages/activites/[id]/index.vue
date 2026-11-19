@@ -113,7 +113,7 @@ async function addDescription() {
 </script>
 
 <template>
-  <div class="stack detail">
+  <div class="stack stack--wide detail">
     <template v-if="a">
       <BackLink to="/activites" label="Activités" />
 
@@ -343,6 +343,45 @@ async function addDescription() {
 .record .sub {
   font-size: 15px;
   opacity: 0.85;
+}
+
+/* Tablette et ordinateur : le parcours reste affiché à gauche pendant qu'on lit à droite */
+@media (min-width: 860px) {
+  .detail {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    column-gap: 24px;
+  }
+
+  .detail > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .detail > .hero {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    position: sticky;
+    top: 24px;
+  }
+
+  .detail > .actions,
+  .detail > .panel {
+    grid-column: 2;
+  }
+
+  .map {
+    aspect-ratio: 1 / 1.05;
+  }
+
+  .map.real {
+    aspect-ratio: 1 / 1.15;
+  }
+
+  .hero-text .h1 {
+    font-size: 36px;
+  }
 }
 
 /* ── Actions ── */

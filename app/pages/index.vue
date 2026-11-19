@@ -32,7 +32,7 @@ const firstToReview = computed(() => toReview.value[0])
 
 <template>
   <LandingPage v-if="showLanding" />
-  <div v-else class="stack home">
+  <div v-else class="stack stack--wide home">
     <header class="head">
       <div class="hello">
         <p class="eyebrow">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
@@ -60,69 +60,70 @@ const firstToReview = computed(() => toReview.value[0])
     </section>
 
     <template v-else>
-      <section class="block block--primary week" aria-labelledby="week-title">
-        <div class="week-top">
-          <p id="week-title" class="eyebrow on">7 derniers jours</p>
-          <span class="sync-pill">{{ week.synced }}/{{ week.count }} synchro</span>
-        </div>
-        <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /><span class="unit">km</span></p>
-        <dl class="week-stats">
-          <div><dt>Courses</dt><dd class="num">{{ week.count }}</dd></div>
-          <div><dt>Temps</dt><dd class="num">{{ formatHours(week.sec) }}</dd></div>
-          <div v-if="recap.deltaPct !== null"><dt>vs sem. passée</dt><dd class="num">{{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</dd></div>
-        </dl>
-        <ol class="bars" aria-label="Kilomètres par jour">
-          <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
-            <span class="bar-zone">
-              <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 6}%` }" />
-            </span>
-            <span class="day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
-          </li>
-        </ol>
-      </section>
-
-      <GoalCard compact />
-
-      <NuxtLink v-if="nextSession" to="/plan" class="card next">
-        <div class="next-head">
-          <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>
-          <span class="row__main">
-            <span class="eyebrow">Prochaine séance · {{ planDay(nextSession.date) }}</span>
-            <span class="title next-title">{{ nextSession.title }}</span>
-          </span>
-          <ArrowUpRight class="go" :size="20" aria-hidden="true" />
-        </div>
-        <WorkoutProfile v-if="nextSession.blocks.length" :blocks="nextSession.blocks" :height="44" />
-        <p class="next-meta">
-          <span v-if="nextSession.durationSec">{{ formatHours(nextSession.durationSec) }}</span>
-          <span v-if="nextSession.distanceM">{{ formatKm(nextSession.distanceM / 1000) }} km</span>
-          <span v-if="nextSession.provider" class="provider">{{ nextSession.provider }}</span>
-        </p>
-      </NuxtLink>
-
-      <NuxtLink v-if="hero" :to="`/activites/${hero.id}`" class="card hero-run" :style="{ '--c': RUN_TYPES[hero.type].color }">
-        <div class="hero-map">
-          <RouteTrace :activity="hero" :width="2.2" :delay="300" />
-        </div>
-        <div class="hero-info">
-          <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}</p>
-          <h2 class="hero-title">{{ hero.garminName }}</h2>
-          <dl class="hero-stats">
-            <div><dd class="num">{{ formatKm(hero.distanceKm) }}</dd><dt>km</dt></div>
-            <div><dd class="num">{{ formatPace(hero.durationSec, hero.distanceKm) }}</dd><dt>/km</dt></div>
-            <div v-if="hero.avgHr"><dd class="num">{{ hero.avgHr }}</dd><dt><Heart :size="11" fill="currentColor" aria-hidden="true" /> bpm</dt></div>
+      <!-- Sur téléphone ces deux colonnes se fondent en une seule, dans l'ordre voulu (voir le style) -->
+      <div class="col-main">
+        <section class="block block--primary week" aria-labelledby="week-title">
+          <div class="week-top">
+            <p id="week-title" class="eyebrow on">7 derniers jours</p>
+            <span class="sync-pill">{{ week.synced }}/{{ week.count }} synchro</span>
+          </div>
+          <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /><span class="unit">km</span></p>
+          <dl class="week-stats">
+            <div><dt>Courses</dt><dd class="num">{{ week.count }}</dd></div>
+            <div><dt>Temps</dt><dd class="num">{{ formatHours(week.sec) }}</dd></div>
+            <div v-if="recap.deltaPct !== null"><dt>vs sem. passée</dt><dd class="num">{{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</dd></div>
           </dl>
-        </div>
-      </NuxtLink>
-
-      <NuxtLink v-if="firstToReview" :to="`/activites/${firstToReview.id}/titre`" class="block block--secondary ai">
-        <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
-        <span class="row__main">
-          <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
-          <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
-        </span>
-        <ChevronRight :size="20" aria-hidden="true" />
-      </NuxtLink>
+          <ol class="bars" aria-label="Kilomètres par jour">
+            <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
+              <span class="bar-zone">
+                <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 6}%` }" />
+              </span>
+              <span class="day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
+            </li>
+          </ol>
+        </section>
+        <NuxtLink v-if="hero" :to="`/activites/${hero.id}`" class="card hero-run" :style="{ '--c': RUN_TYPES[hero.type].color }">
+          <div class="hero-map">
+            <RouteTrace :activity="hero" :width="2.2" :delay="300" />
+          </div>
+          <div class="hero-info">
+            <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}</p>
+            <h2 class="hero-title">{{ hero.garminName }}</h2>
+            <dl class="hero-stats">
+              <div><dd class="num">{{ formatKm(hero.distanceKm) }}</dd><dt>km</dt></div>
+              <div><dd class="num">{{ formatPace(hero.durationSec, hero.distanceKm) }}</dd><dt>/km</dt></div>
+              <div v-if="hero.avgHr"><dd class="num">{{ hero.avgHr }}</dd><dt><Heart :size="11" fill="currentColor" aria-hidden="true" /> bpm</dt></div>
+            </dl>
+          </div>
+        </NuxtLink>
+      </div>
+      <div class="col-side">
+        <GoalCard compact />
+        <NuxtLink v-if="nextSession" to="/plan" class="card next">
+          <div class="next-head">
+            <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>
+            <span class="row__main">
+              <span class="eyebrow">Prochaine séance · {{ planDay(nextSession.date) }}</span>
+              <span class="title next-title">{{ nextSession.title }}</span>
+            </span>
+            <ArrowUpRight class="go" :size="20" aria-hidden="true" />
+          </div>
+          <WorkoutProfile v-if="nextSession.blocks.length" :blocks="nextSession.blocks" :height="44" />
+          <p class="next-meta">
+            <span v-if="nextSession.durationSec">{{ formatHours(nextSession.durationSec) }}</span>
+            <span v-if="nextSession.distanceM">{{ formatKm(nextSession.distanceM / 1000) }} km</span>
+            <span v-if="nextSession.provider" class="provider">{{ nextSession.provider }}</span>
+          </p>
+        </NuxtLink>
+        <NuxtLink v-if="firstToReview" :to="`/activites/${firstToReview.id}/titre`" class="block block--secondary ai">
+          <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
+          <span class="row__main">
+            <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
+            <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
+          </span>
+          <ChevronRight :size="20" aria-hidden="true" />
+        </NuxtLink>
+      </div>
 
       <NuxtLink to="/activites" class="link all">Toutes tes activités <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
     </template>
@@ -462,6 +463,101 @@ const firstToReview = computed(() => toReview.value[0])
 
 .hero-stats dt svg {
   color: var(--ko);
+}
+
+/*
+ * Téléphone : une seule colonne, dans l'ordre semaine, objectif, prochaine séance,
+ * dernière course, titres à revoir. Les deux colonnes n'existent qu'en grand écran.
+ */
+.col-main,
+.col-side {
+  display: contents;
+}
+
+.col-main > *,
+.col-side > * {
+  animation: rise 0.5s var(--ease-out) 120ms backwards;
+}
+
+.week {
+  order: 1;
+}
+
+.col-side > :deep(.goal) {
+  order: 2;
+}
+
+.next {
+  order: 3;
+}
+
+.hero-run {
+  order: 4;
+  animation-delay: 220ms;
+}
+
+.ai {
+  order: 5;
+  animation-delay: 280ms;
+}
+
+.all {
+  order: 6;
+}
+
+/* Tablette et ordinateur : semaine et dernière course à gauche, le reste dans une colonne à droite */
+@media (min-width: 720px) {
+  .home {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+  }
+
+  .home > * {
+    grid-column: 1 / -1;
+  }
+
+  .home > .col-main,
+  .home > .col-side {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+
+  .home > .col-main {
+    grid-column: 1 / span 7;
+  }
+
+  .home > .col-side {
+    grid-column: 8 / -1;
+  }
+
+  .week {
+    padding: 28px 28px 24px;
+  }
+
+  .big {
+    font-size: 96px;
+  }
+
+  .bar-zone {
+    height: 120px;
+  }
+
+  .bar {
+    max-width: 40px;
+  }
+
+  .hero-run {
+    grid-template-columns: 180px 1fr;
+    padding: 22px;
+  }
+
+  .hero-title {
+    font-size: 26px;
+  }
 }
 
 /* ── Titres à revoir, récap ── */
