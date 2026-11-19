@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.8.0...v1.9.0) (2026-11-19)
+
+### Nouveautés
+
+* écrans allégés avec des onglets (Stats, course, Réglages), accueil recentré et plan repliable ([1a69487](https://github.com/ALapaque/stravaXgarmin/commit/1a69487e675cf7651de26366dee359fc370efb00))
+
 ## [1.8.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.7.0...v1.8.0) (2026-11-18)
 
 ### Nouveautés
