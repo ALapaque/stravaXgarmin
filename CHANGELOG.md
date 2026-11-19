@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.11.0...v1.11.1) (2026-11-19)
+
+### Corrections
+
+* kilométrage des chaussures relu à chaque ouverture, identique sur tous les appareils ([2e9e3c6](https://github.com/ALapaque/stravaXgarmin/commit/2e9e3c6ec0f45325cef67f5e12c4ad16e5c2184a))
+
 ## [1.11.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.10.0...v1.11.0) (2026-11-19)
 
 ### Nouveautés
