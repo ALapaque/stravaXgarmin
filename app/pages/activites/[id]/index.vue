@@ -68,10 +68,11 @@ async function copyName() {
 }
 
 const { tab, direction } = useTab(['chiffres', 'nom'] as const, 'chiffres')
-const tabs = computed(() => [
-  { id: 'chiffres', label: 'Chiffres' },
-  { id: 'nom', label: 'Nom et description', dot: !synced.value },
-])
+// Rubriques affichées sur la deuxième face de la barre du bas
+useSubnav(`course-${String(route.params.id)}`, 'Rubriques de la course', () => [
+  { id: 'chiffres', label: 'Chiffres', icon: 'numbers' },
+  { id: 'nom', label: 'Nom', icon: 'name', dot: Boolean(a.value) && !synced.value },
+], tab)
 
 const sharing = ref(false)
 
@@ -148,8 +149,6 @@ async function addDescription() {
           <span>{{ sharing ? 'Création…' : 'Partager' }}</span>
         </button>
       </div>
-
-      <AppTabs v-model="tab" :tabs="tabs" label="Rubriques de la course" />
 
       <Transition :name="`tab-${direction}`" mode="out-in">
         <div v-if="tab === 'chiffres'" key="chiffres" class="panel">

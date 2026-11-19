@@ -12,13 +12,14 @@ const { estimateLevel } = useAi()
 const { bests, fromGarmin } = useRecords()
 const { shoes } = useFitness()
 
-const TABS = [
-  { id: 'forme', label: 'Forme' },
-  { id: 'records', label: 'Records' },
-  { id: 'niveau', label: 'Niveau IA' },
-  { id: 'chaussures', label: 'Chaussures' },
-]
 const { tab, direction } = useTab(['forme', 'records', 'niveau', 'chaussures'] as const, 'forme')
+// Rubriques affichées sur la deuxième face de la barre du bas
+useSubnav('stats', 'Rubriques des stats', [
+  { id: 'forme', label: 'Forme', icon: 'forme' },
+  { id: 'records', label: 'Records', icon: 'records' },
+  { id: 'niveau', label: 'Niveau IA', icon: 'ia' },
+  { id: 'chaussures', label: 'Chaussures', icon: 'shoes' },
+], tab)
 const results = useAiResults()
 
 // Courses des deux dernières semaines
@@ -67,8 +68,6 @@ const n = computed(() => selected.value.length)
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Tes records, ton niveau estimé et tes récaps apparaîtront ici une fois Strava connecté." />
 
     <template v-else>
-    <AppTabs v-model="tab" :tabs="TABS" label="Rubriques des stats" />
-
     <Transition :name="`tab-${direction}`" mode="out-in">
       <div v-if="tab === 'forme'" key="forme" class="panel">
         <GoalCard />

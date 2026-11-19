@@ -21,13 +21,14 @@ async function logout(provider: 'strava' | 'garmin' | 'ai') {
   if (provider === 'strava') await navigateTo('/')
 }
 
-const TABS = [
-  { id: 'comptes', label: 'Comptes' },
-  { id: 'synchro', label: 'Synchro' },
-  { id: 'notifs', label: 'Notifs' },
-  { id: 'style', label: 'Style' },
-]
 const { tab, direction } = useTab(['comptes', 'synchro', 'notifs', 'style'] as const, 'comptes')
+// Rubriques affichées sur la deuxième face de la barre du bas
+useSubnav('reglages', 'Rubriques des réglages', [
+  { id: 'comptes', label: 'Comptes', icon: 'accounts' },
+  { id: 'synchro', label: 'Synchro', icon: 'sync' },
+  { id: 'notifs', label: 'Notifs', icon: 'bell' },
+  { id: 'style', label: 'Style', icon: 'style' },
+], tab)
 
 onMounted(syncPermission)
 
@@ -63,8 +64,6 @@ const descriptionParts = [
 <template>
   <div class="stack">
     <h1 class="h1 h1--xl">Réglages</h1>
-
-    <AppTabs v-model="tab" :tabs="TABS" label="Rubriques des réglages" />
 
     <Transition :name="`tab-${direction}`" mode="out-in">
       <div v-if="tab === 'comptes'" key="comptes" class="panel">
