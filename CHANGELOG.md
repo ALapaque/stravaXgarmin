@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.9.0...v1.10.0) (2026-11-19)
+
+### Nouveautés
+
+* barre du bas à deux faces, elle pivote pour montrer les rubriques de l'écran ([e1c163d](https://github.com/ALapaque/stravaXgarmin/commit/e1c163d26f6dca1d02bfa684bb30f0dd4889427b))
+
 ## [1.9.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.8.0...v1.9.0) (2026-11-19)
 
 ### Nouveautés
