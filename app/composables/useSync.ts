@@ -165,7 +165,9 @@ export function useSync() {
   const syncing = useState('syncing', () => false)
   const synced = useState('synced', () => false)
 
-  async function run() {
+  /** « force » : synchro demandée à la main, on relit tout sans tenir compte de ce qui est gardé. */
+  async function run(force: unknown = false) {
+    const fresh = force === true
     if (syncing.value) return
     syncing.value = true
     try {
@@ -199,11 +201,11 @@ export function useSync() {
 
       // En arrière-plan : records et temps au km, sans bloquer la synchro
       loadDetails().catch(() => {})
-      fitness.loadGear().catch(() => {})
+      fitness.loadGear(fresh).catch(() => {})
       if (accounts.value.garmin.connected) {
-        loadGarminRecords().catch(() => {})
-        plan.load().catch(() => {})
-        fitness.loadForme().catch(() => {})
+        loadGarminRecords(fresh).catch(() => {})
+        plan.load(fresh).catch(() => {})
+        fitness.loadForme(fresh).catch(() => {})
       } else {
         garminRecords.value = null
         plan.reset(false)
@@ -274,10 +276,10 @@ export function useSync() {
     }
   }
 
-  /** Records Garmin : relus au plus toutes les 6 heures. */
-  async function loadGarminRecords() {
+  /** Records Garmin : relus au plus une fois par heure, ou tout de suite sur demande. */
+  async function loadGarminRecords(force = false) {
     const at = garminRecords.value?.at
-    if (at && Date.now() - Date.parse(at) < 6 * 3600_000) return
+    if (!force && at && Date.now() - Date.parse(at) < 3600_000) return
     const list = await $fetch<GarminRecord[]>('/api/garmin/records')
     garminRecords.value = { at: new Date().toISOString(), list }
   }

@@ -51,17 +51,21 @@ export function useFitness() {
 
   async function loadForme(force = false) {
     const at = forme.value?.at
-    if (!force && at && Date.now() - Date.parse(at) < 3600_000) return
+    if (!force && at && Date.now() - Date.parse(at) < 15 * 60_000) return
     forme.value = { at: new Date().toISOString(), data: await $fetch<Forme>('/api/garmin/forme') }
   }
 
-  /** Chaussures des courses chargées : relues une fois par jour, ou dès qu'une paire inconnue apparaît. */
-  async function loadGear() {
+  /*
+   * Chaussures des courses chargées. Le kilométrage change dès qu'on court ou qu'on associe
+   * une paire à d'anciennes courses dans Strava : il est relu à chaque ouverture de l'appli
+   * (au plus toutes les 5 minutes), pour que tous les appareils affichent la même chose.
+   */
+  async function loadGear(force = false) {
     const ids = [...new Set(activities.value.map((a) => a.gearId).filter((id): id is string => Boolean(id)))]
     if (!ids.length) return
     const known = new Set(gear.value?.list.map((g) => g.id))
-    const fresh = gear.value?.at && Date.now() - Date.parse(gear.value.at) < DAY
-    if (fresh && ids.every((id) => known.has(id))) return applyGear()
+    const fresh = gear.value?.at && Date.now() - Date.parse(gear.value.at) < 5 * 60_000
+    if (!force && fresh && ids.every((id) => known.has(id))) return applyGear()
     const list = await $fetch<Gear[]>('/api/strava/gear', { method: 'POST', body: { ids } })
     if (list.length) gear.value = { at: new Date().toISOString(), list }
     applyGear()

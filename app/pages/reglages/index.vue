@@ -105,7 +105,7 @@ const descriptionParts = [
             <button v-if="accounts.ai.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('ai')">Retirer</button>
             <NuxtLink v-else :to="{ path: '/connexion/ia', query: { retour: '/reglages' } }" class="btn btn--sm btn--primary">Activer</NuxtLink>
           </div>
-          <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync">
+          <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync(true)">
             <span class="row__main">
               <span class="title">{{ syncing ? 'Synchro en cours…' : 'Synchroniser maintenant' }}</span>
               <span class="hint">Se fait aussi à chaque ouverture de l’appli</span>

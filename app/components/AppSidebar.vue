@@ -56,7 +56,7 @@ const { current: version } = useUpdates()
         Notifications
         <span v-if="unread" class="count">{{ unread }}</span>
       </NuxtLink>
-      <button v-if="accounts.strava.connected" type="button" class="item" :disabled="syncing" @click="sync">
+      <button v-if="accounts.strava.connected" type="button" class="item" :disabled="syncing" @click="sync(true)">
         <span class="ic"><RefreshCw :size="20" :class="{ spin: syncing }" aria-hidden="true" /></span>
         {{ syncing ? 'Synchronisation…' : 'Synchroniser' }}
       </button>
