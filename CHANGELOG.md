@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.10.0...v1.11.0) (2026-11-19)
+
+### Nouveautés
+
+* vraies versions tablette et ordinateur (barre latérale, tableaux de bord en colonnes, page de présentation large) ([cd8f3ca](https://github.com/ALapaque/stravaXgarmin/commit/cd8f3cad68118cc83799a5f79e34f0a5cd1335bd))
+
 ## [1.10.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.9.0...v1.10.0) (2026-11-19)
 
 ### Nouveautés
