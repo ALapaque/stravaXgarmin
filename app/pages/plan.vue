@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarClock, RefreshCw, Repeat } from 'lucide-vue-next'
+import { CalendarClock, ChevronDown, RefreshCw, Repeat } from 'lucide-vue-next'
 import type { PlanLine } from '~/composables/usePlan'
 
 useHead({ title: 'Plan · stravaXgarmin' })
@@ -33,6 +33,12 @@ const DOT: Record<string, string> = {
   repeat: 'var(--ink)',
 }
 const flat = (lines: PlanLine[]) => lines
+
+// La prochaine séance montre son déroulé ; les suivantes le déplient à la demande
+const opened = ref<Record<string, boolean>>({})
+const isOpen = (id: string, i: number) => opened.value[id] ?? i === 0
+const toggle = (id: string, i: number) => (opened.value = { ...opened.value, [id]: !isOpen(id, i) })
+const hasDetail = (s: { lines: PlanLine[]; description: string | null }) => Boolean(s.lines.length || s.description)
 </script>
 
 <template>
@@ -75,6 +81,18 @@ const flat = (lines: PlanLine[]) => lines
               <span v-if="s.distanceM"><strong class="num">{{ formatKm(s.distanceM / 1000) }}</strong> km</span>
             </p>
             <WorkoutProfile v-if="s.blocks.length" :blocks="s.blocks" :height="i === 0 ? 72 : 48" />
+            <button
+              v-if="hasDetail(s)"
+              type="button"
+              class="more"
+              :aria-expanded="isOpen(s.id, i)"
+              :aria-controls="`detail-${s.id}`"
+              @click="toggle(s.id, i)"
+            >
+              {{ isOpen(s.id, i) ? 'Masquer le déroulé' : 'Voir le déroulé' }}
+              <ChevronDown :size="16" :class="{ up: isOpen(s.id, i) }" aria-hidden="true" />
+            </button>
+            <div v-show="isOpen(s.id, i)" :id="`detail-${s.id}`" class="detail">
             <ul v-if="s.lines.length" class="steps">
               <li v-for="(l, k) in flat(s.lines)" :key="k" class="step">
                 <template v-if="l.kind === 'repeat'">
@@ -91,6 +109,7 @@ const flat = (lines: PlanLine[]) => lines
               </li>
             </ul>
             <p v-if="s.description" class="desc">{{ s.description }}</p>
+            </div>
           </article>
         </li>
       </ol>
@@ -229,6 +248,37 @@ const flat = (lines: PlanLine[]) => lines
 .s-meta strong {
   font-size: 17px;
   color: var(--ink);
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.more svg {
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.more .up {
+  transform: rotate(180deg);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: rise 0.35s var(--ease-out);
 }
 
 .steps {

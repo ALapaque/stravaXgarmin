@@ -36,7 +36,7 @@ function reset() {
 
 <template>
   <div class="stack">
-    <BackLink to="/reglages" label="Réglages" />
+    <BackLink to="/reglages?onglet=synchro" label="Réglages" />
     <div class="title-block">
       <h1 class="h1">Règles de nommage</h1>
       <p class="lead">Quand ta montre envoie un nom générique comme « Morning Run », la règle du type de séance le remplace.</p>

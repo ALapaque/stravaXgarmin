@@ -53,7 +53,7 @@ async function share() {
 
 <template>
   <div class="stack">
-    <BackLink to="/stats" label="Stats" />
+    <BackLink to="/stats?onglet=records" label="Stats" />
     <h1 class="h1">Récap</h1>
 
     <ConnectPrompt v-if="!sorted.length && !accounts.strava.connected && !demo" text="Ton récap de la semaine et du mois apparaîtra ici une fois Strava connecté." />

@@ -587,6 +587,44 @@ label.row:active {
   color: var(--on-primary);
 }
 
+/* Dans un onglet, les lignes arrivent plus vite : on vient de toucher, on veut lire */
+.panel .list > * { animation-delay: 60ms; }
+.panel .list > :nth-child(2) { animation-delay: 100ms; }
+.panel .list > :nth-child(3) { animation-delay: 140ms; }
+.panel .list > :nth-child(n + 4) { animation-delay: 180ms; }
+
+/* Contenu d'un onglet : glisse dans le sens du changement */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tab-next-enter-active,
+.tab-prev-enter-active {
+  transition: opacity 0.3s ease, transform 0.4s var(--ease-out);
+}
+
+.tab-next-leave-active,
+.tab-prev-leave-active {
+  transition: opacity 0.12s ease;
+}
+
+.tab-next-enter-from {
+  opacity: 0;
+  transform: translateX(22px);
+}
+
+.tab-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-22px);
+}
+
+.tab-next-leave-to,
+.tab-prev-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

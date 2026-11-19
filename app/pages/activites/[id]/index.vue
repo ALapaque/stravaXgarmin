@@ -67,6 +67,12 @@ async function copyName() {
   notify({ kind: 'titles', title: 'Nom copié vers Strava', body: a.value.garminName, to: `/activites/${a.value.id}` })
 }
 
+const { tab, direction } = useTab(['chiffres', 'nom'] as const, 'chiffres')
+const tabs = computed(() => [
+  { id: 'chiffres', label: 'Chiffres' },
+  { id: 'nom', label: 'Nom et description', dot: !synced.value },
+])
+
 const sharing = ref(false)
 
 /** Image au format story : tracé, titre et chiffres, dans le style du thème. */
@@ -127,103 +133,111 @@ async function addDescription() {
         </div>
       </section>
 
-      <div v-for="r in records" :key="r.key" class="block block--secondary record">
-        <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
-        <span class="row__main">
-          <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
-          <span v-if="r.previous" class="sub">{{ r.previous - r.time }} s de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
-        </span>
-      </div>
-
-      <dl class="kpis">
-        <div class="card kpi kpi--wide">
-          <dt class="eyebrow">Distance</dt>
-          <dd class="num huge">{{ formatKm(a.distanceKm) }}<span class="unit">km</span></dd>
-        </div>
-        <div class="card kpi">
-          <dt class="eyebrow">Durée</dt>
-          <dd class="num">{{ formatDuration(a.durationSec) }}</dd>
-        </div>
-        <div class="card kpi" style="--k: var(--ok)">
-          <dt class="eyebrow">Allure</dt>
-          <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}<span class="unit">/km</span></dd>
-          <KpiPulse kind="pace" :value="paceSec" />
-        </div>
-        <div v-if="a.avgHr" class="card kpi" :style="{ '--k': 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
-          <dt class="eyebrow"><Heart class="heart" :size="11" fill="currentColor" aria-hidden="true" /> Cardio</dt>
-          <dd class="num">{{ a.avgHr }}<span class="unit">bpm</span></dd>
-          <KpiPulse kind="hr" :value="a.avgHr" />
-        </div>
-        <div v-if="a.elevationM" class="card kpi">
-          <dt class="eyebrow"><Mountain :size="12" aria-hidden="true" /> Dénivelé</dt>
-          <dd class="num">{{ a.elevationM }}<span class="unit">m</span></dd>
-        </div>
-      </dl>
-
-      <section v-if="splits.length > 1" class="card card--pad splits" aria-labelledby="splits-title">
-        <div class="section-head">
-          <h2 id="splits-title" class="eyebrow">Allure au km</h2>
-          <span class="label">meilleur km {{ formatPace(splitRange.min, 1) }}</span>
-        </div>
-        <ol class="split-bars" :style="{ '--n': splits.length }">
-          <li v-for="(sp, k) in splits" :key="k" :style="{ '--k': k }" :aria-label="`Km ${k + 1} : ${formatPace(sp, 1)} par km`">
-            <span class="sb" :class="{ best: sp === splitRange.min }" :style="{ height: `${splitH(sp)}%` }" />
-            <span v-if="splits.length <= 14 || (k + 1) % 5 === 0" class="sk">{{ k + 1 }}</span>
-          </li>
-        </ol>
-      </section>
-
-      <section class="card list" aria-labelledby="names-title">
-        <div class="row names-head">
-          <h2 id="names-title" class="eyebrow">Nom de l’activité</h2>
-          <StatusChip :ok="synced" :label="synced ? 'Identique' : 'Différent'" />
-        </div>
-        <div class="row">
-          <BrandMark brand="garmin" />
-          <span class="row__main">
-            <span class="label">Garmin Connect</span>
-            <span class="title">{{ a.garminName }}</span>
-          </span>
-        </div>
-        <div class="row">
-          <BrandMark brand="strava" />
-          <span class="row__main">
-            <span class="label">Strava</span>
-            <span class="title">{{ a.stravaName }}</span>
-          </span>
-        </div>
-      </section>
-
-      <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
-        Copier le nom vers Strava
-        <Check :size="20" aria-hidden="true" />
-      </button>
-      <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
-        Ou copier le nom Strava vers Garmin
-      </button>
-
-      <div class="btn-row">
-        <NuxtLink :to="`/activites/${a.id}/titre`" class="btn btn--secondary">
-          <Sparkles :size="20" aria-hidden="true" /> Titre
+      <!-- Trois actions toujours sous la main -->
+      <div class="actions">
+        <NuxtLink :to="`/activites/${a.id}/titre`" class="card action">
+          <Sparkles :size="20" aria-hidden="true" />
+          <span>Titre</span>
         </NuxtLink>
-        <NuxtLink :to="`/activites/${a.id}/analyse`" class="btn btn--secondary">
-          <ChartLine :size="20" aria-hidden="true" /> Analyser
+        <NuxtLink :to="`/activites/${a.id}/analyse`" class="card action">
+          <ChartLine :size="20" aria-hidden="true" />
+          <span>Analyse</span>
         </NuxtLink>
-      </div>
-      <button type="button" class="btn btn--secondary" :disabled="sharing" @click="shareImage">
-        <Share2 :size="20" aria-hidden="true" /> {{ sharing ? 'Création de l’image…' : 'Partager en image' }}
-      </button>
-
-      <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">
-        <div class="desc-head">
-          <h2 id="desc-title" class="eyebrow">Description Strava</h2>
-          <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
-        </div>
-        <p class="desc-text">{{ a.stravaDescription || description }}</p>
-        <button v-if="!descriptionAdded" type="button" class="btn btn--secondary btn--sm" @click="addDescription">
-          Ajouter sur Strava
+        <button type="button" class="card action" :disabled="sharing" @click="shareImage">
+          <Share2 :size="20" aria-hidden="true" />
+          <span>{{ sharing ? 'Création…' : 'Partager' }}</span>
         </button>
-      </section>
+      </div>
+
+      <AppTabs v-model="tab" :tabs="tabs" label="Rubriques de la course" />
+
+      <Transition :name="`tab-${direction}`" mode="out-in">
+        <div v-if="tab === 'chiffres'" key="chiffres" class="panel">
+          <div v-for="r in records" :key="r.key" class="block block--secondary record">
+            <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
+            <span class="row__main">
+              <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
+              <span v-if="r.previous" class="sub">{{ r.previous - r.time }} s de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
+            </span>
+          </div>
+          <dl class="kpis">
+            <div class="card kpi kpi--wide">
+              <dt class="eyebrow">Distance</dt>
+              <dd class="num huge">{{ formatKm(a.distanceKm) }}<span class="unit">km</span></dd>
+            </div>
+            <div class="card kpi">
+              <dt class="eyebrow">Durée</dt>
+              <dd class="num">{{ formatDuration(a.durationSec) }}</dd>
+            </div>
+            <div class="card kpi" style="--k: var(--ok)">
+              <dt class="eyebrow">Allure</dt>
+              <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}<span class="unit">/km</span></dd>
+              <KpiPulse kind="pace" :value="paceSec" />
+            </div>
+            <div v-if="a.avgHr" class="card kpi" :style="{ '--k': 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
+              <dt class="eyebrow"><Heart class="heart" :size="11" fill="currentColor" aria-hidden="true" /> Cardio</dt>
+              <dd class="num">{{ a.avgHr }}<span class="unit">bpm</span></dd>
+              <KpiPulse kind="hr" :value="a.avgHr" />
+            </div>
+            <div v-if="a.elevationM" class="card kpi">
+              <dt class="eyebrow"><Mountain :size="12" aria-hidden="true" /> Dénivelé</dt>
+              <dd class="num">{{ a.elevationM }}<span class="unit">m</span></dd>
+            </div>
+          </dl>
+          <section v-if="splits.length > 1" class="card card--pad splits" aria-labelledby="splits-title">
+            <div class="section-head">
+              <h2 id="splits-title" class="eyebrow">Allure au km</h2>
+              <span class="label">meilleur km {{ formatPace(splitRange.min, 1) }}</span>
+            </div>
+            <ol class="split-bars" :style="{ '--n': splits.length }">
+              <li v-for="(sp, k) in splits" :key="k" :style="{ '--k': k }" :aria-label="`Km ${k + 1} : ${formatPace(sp, 1)} par km`">
+                <span class="sb" :class="{ best: sp === splitRange.min }" :style="{ height: `${splitH(sp)}%` }" />
+                <span v-if="splits.length <= 14 || (k + 1) % 5 === 0" class="sk">{{ k + 1 }}</span>
+              </li>
+            </ol>
+          </section>
+        </div>
+
+        <div v-else key="nom" class="panel">
+          <section class="card list" aria-labelledby="names-title">
+            <div class="row names-head">
+              <h2 id="names-title" class="eyebrow">Nom de l’activité</h2>
+              <StatusChip :ok="synced" :label="synced ? 'Identique' : 'Différent'" />
+            </div>
+            <div class="row">
+              <BrandMark brand="garmin" />
+              <span class="row__main">
+                <span class="label">Garmin Connect</span>
+                <span class="title">{{ a.garminName }}</span>
+              </span>
+            </div>
+            <div class="row">
+              <BrandMark brand="strava" />
+              <span class="row__main">
+                <span class="label">Strava</span>
+                <span class="title">{{ a.stravaName }}</span>
+              </span>
+            </div>
+          </section>
+          <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
+            Copier le nom vers Strava
+            <Check :size="20" aria-hidden="true" />
+          </button>
+          <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
+            Ou copier le nom Strava vers Garmin
+          </button>
+          <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">
+            <div class="desc-head">
+              <h2 id="desc-title" class="eyebrow">Description Strava</h2>
+              <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
+            </div>
+            <p class="desc-text">{{ a.stravaDescription || description }}</p>
+            <button v-if="!descriptionAdded" type="button" class="btn btn--secondary btn--sm" @click="addDescription">
+              Ajouter sur Strava
+            </button>
+          </section>
+        </div>
+      </Transition>
     </template>
   </div>
 </template>
@@ -330,6 +344,39 @@ async function addDescription() {
 .record .sub {
   font-size: 15px;
   opacity: 0.85;
+}
+
+/* ── Actions ── */
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.action:active {
+  transform: scale(0.95);
+}
+
+.action svg {
+  color: var(--accent-text);
+}
+
+.action:disabled {
+  opacity: 0.6;
 }
 
 /* ── Chiffres ── */

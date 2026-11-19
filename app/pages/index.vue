@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, ChevronRight, Bell, CalendarRange, CalendarClock, Heart, ArrowUpRight } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight } from 'lucide-vue-next'
 
 useHead({ title: 'Accueil · stravaXgarmin' })
 
@@ -124,24 +124,7 @@ const firstToReview = computed(() => toReview.value[0])
         <ChevronRight :size="20" aria-hidden="true" />
       </NuxtLink>
 
-      <NuxtLink to="/recap" class="card recap">
-        <span class="tile" style="--tile: var(--info)" aria-hidden="true"><CalendarRange :size="22" /></span>
-        <span class="row__main">
-          <span class="title">Récap de la semaine</span>
-          <span class="label">{{ formatKm(recap.km) }} km · {{ recap.count }} courses</span>
-        </span>
-        <ChevronRight :size="20" aria-hidden="true" />
-      </NuxtLink>
-
-      <template v-if="latest.length">
-        <div class="section-head">
-          <h2 class="h2">Avant ça</h2>
-          <NuxtLink to="/activites" class="link">Tout voir</NuxtLink>
-        </div>
-        <div class="card list">
-          <ActivityRow v-for="a in latest" :key="a.id" :activity="a" />
-        </div>
-      </template>
+      <NuxtLink to="/activites" class="link all">Toutes tes activités <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
     </template>
   </div>
 </template>
@@ -510,10 +493,10 @@ const firstToReview = computed(() => toReview.value[0])
   opacity: 0.85;
 }
 
-.recap {
-  display: flex;
+.all {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 4px;
+  align-self: center;
 }
 </style>

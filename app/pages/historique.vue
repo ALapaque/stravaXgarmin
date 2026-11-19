@@ -16,7 +16,7 @@ async function cancel(id: string) {
 
 <template>
   <div class="stack">
-    <BackLink to="/reglages" label="Réglages" />
+    <BackLink to="/reglages?onglet=synchro" label="Réglages" />
     <div class="title-block">
       <h1 class="h1">Historique</h1>
       <p class="lead">Tout ce que l’appli a changé sur Strava. Chaque modification peut être annulée.</p>

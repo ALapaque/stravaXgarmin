@@ -43,7 +43,7 @@ const fontOptions = [
 
 <template>
   <div class="stack">
-    <BackLink to="/reglages" label="Réglages" />
+    <BackLink to="/reglages?onglet=style" label="Réglages" />
     <div class="title-block">
       <p class="eyebrow">Ton appli, ton style</p>
       <h1 class="h1 h1--xl">Apparence</h1>
