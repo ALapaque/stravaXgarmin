@@ -29,6 +29,8 @@ export interface StepResult {
   actual: { sec: number; m: number; hr: number | null } | null
   /** L'étape commence ET finit sur une frontière de tour : ses chiffres sont ceux de la montre, pas une estimation */
   exact: boolean
+  /** Début de l'étape (s, temps en mouvement cumulé depuis le départ de la course), quand elle a été courue */
+  at?: number
 }
 
 /** Tolérances pour reconnaître la fin d'une étape sur une frontière de tour. */
@@ -140,7 +142,7 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
         continue
       }
       const q = { t: tr.T[j]!, d: tr.D[j]! }
-      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap })
+      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap, at: Math.round(p.t) })
       p = q
       onLap = true
       continue
@@ -164,7 +166,7 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
     }
     if (best > 0) {
       const q = { t: tr.T[best]!, d: tr.D[best]! }
-      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap })
+      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap, at: Math.round(p.t) })
       p = q
       onLap = true
       continue
@@ -182,13 +184,14 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
         fraction: Math.min(1, Math.max(0, left / target)),
         actual: some ? segment(tr, p, end) : null,
         exact: false,
+        ...(some ? { at: Math.round(p.t) } : {}),
       })
       continue
     }
 
     // 3. La course continue mais aucune frontière ne tombe juste : on avance « en continu » de la cible
     const q = byDist ? atDist(tr, p.d + target) : atTime(tr, p.t + target)
-    out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: false })
+    out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: false, at: Math.round(p.t) })
     p = q
     onLap = false
   }

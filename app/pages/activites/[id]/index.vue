@@ -1,80 +1,109 @@
 <script setup lang="ts">
-import { ClipboardCheck, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
+/*
+ * Page d'une course, en un seul défilement, pensée pour le tapis :
+ * en-tête visuel (la carte dehors ; sinon la séance réalisée tour par tour, cardio par-dessus),
+ * chiffres, débrief, prévu ↔ réalisé, cardio par zones, kilomètres ou tours, records, chaussures.
+ * Ordinateur (à partir de 860 px) : deux colonnes, l'en-tête visuel et le débrief à gauche.
+ */
+import { ArrowRight, ClipboardCheck, Footprints, Heart, Mountain, Share2, Trophy } from 'lucide-vue-next'
 
-const route = useRoute()
-const { isSynced, setStravaName, setGarminName } = useActivities()
-const { accounts } = useAccounts()
+const router = useRouter()
+const { activities } = useActivities()
 const { recordsOf } = useRecords()
-const { undo, entries } = useHistory()
 const { show } = useToast()
-const { notify } = useNotifications()
 const settings = useSettings()
+const plan = usePlan()
+const convention = useConvention()
 const { get: getDebrief, toDebrief } = useDebriefs()
+const streams = useStreams()
 
 // Course ouverte par son adresse : jamais de 404 avant d'avoir rechargé l'état gardé et synchronisé
 const { run: a, state } = useRunPage()
 
-/** « Débriefer », ou « Modifier le débrief » une fois fait */
-const debriefDone = computed(() => (a.value ? getDebrief(a.value.id)?.status === 'done' : false))
-const debriefDot = computed(() => Boolean(a.value) && toDebrief.value.some((x) => x.id === a.value!.id))
-
 useHead({ title: () => `${a.value ? displayTitle(a.value).title : 'Course'} · stravaXgarmin` })
 
-const synced = computed(() => (a.value ? isSynced(a.value) : false))
 const records = computed(() => (a.value ? recordsOf(a.value) : []))
 const paceSec = computed(() => (a.value ? Math.round(a.value.durationSec / a.value.distanceKm) : 0))
+const typeColor = computed(() => (a.value ? RUN_TYPES[a.value.type].color : 'var(--accent-text)'))
 
-// Temps au km : barre plus haute = km plus rapide, le plus rapide mis en avant
-const splits = computed(() => a.value?.splits ?? [])
-const splitRange = computed(() => {
-  const v = splits.value
-  return { min: Math.min(...v), max: Math.max(...v) }
+/* ───── En-tête ───── */
+
+// Vraie carte quand il y a un tracé GPS (ou en démo) ; jamais sur tapis
+const hasMap = computed(() => Boolean(a.value && !a.value.indoor && (a.value.route || !a.value.stravaId)))
+const laps = computed(() => a.value?.laps ?? [])
+const title = computed(() => (a.value ? displayTitle(a.value) : { title: '', tags: [] }))
+const failed = computed(() => title.value.tags.includes(convention.failTag.value))
+const sources = computed(() => title.value.tags.filter((t) => t !== convention.failTag.value))
+const dateLine = computed(() => (a.value ? [formatDay(a.value.startedAt), placeLabel(a.value), formatTime(a.value.startedAt)].filter(Boolean).join(' · ') : ''))
+const stravaUrl = computed(() => (a.value?.stravaId ? `https://www.strava.com/activities/${a.value.stravaId}` : null))
+
+/* ───── Séance reliée ───── */
+
+const session = computed(() => (a.value ? plan.sessionFor(a.value) : null))
+const result = computed(() => (a.value ? plan.resultFor(a.value) : null))
+const sessionSteps = computed(() => {
+  const s = session.value
+  if (!s) return []
+  return s.steps?.length ? s.steps : (parseWorkoutTitle(s.title)?.steps ?? [])
 })
+const debrief = computed(() => (a.value ? getDebrief(a.value.id) : null))
+/** L'issue choisie dans le débrief passe avant celle proposée d'après les tours */
+const outcome = computed(() => (debrief.value?.status === 'done' && debrief.value.outcome) || result.value?.outcome || null)
+const debriefDone = computed(() => debrief.value?.status === 'done')
+const debriefTodo = computed(() => Boolean(a.value) && toDebrief.value.some((x) => x.id === a.value!.id))
+
+/* ───── Cardio : courbes chargées à l'ouverture ───── */
+
+const stream = computed(() => (a.value ? streams.get(a.value.id) : null))
+const hasHr = computed(() => Boolean(a.value && (a.value.avgHr > 0 || laps.value.some((l) => l.hr))))
+const loadFailed = ref(false)
+const restored = useRestored()
+async function loadStream() {
+  const r = a.value
+  if (!r || !hasHr.value || stream.value || streams.isLoading(r.id)) return
+  loadFailed.value = false
+  const got = await streams.load(r)
+  if (!got) loadFailed.value = true
+}
+/*
+ * Chargement une fois l'état gardé rechargé (il remplace les courbes en mémoire) ; à nouveau si la
+ * course change ou si ses courbes disparaissent, jamais en boucle après un échec (« Réessayer »).
+ */
+watch(
+  () => [a.value?.id, restored.value, Boolean(stream.value)] as const,
+  ([id, ready, have], old) => {
+    if (id !== old?.[0]) loadFailed.value = false
+    if (id && ready && !have && !loadFailed.value) loadStream()
+  },
+  { immediate: true },
+)
+
+const cardioState = computed<'loading' | 'error' | 'none' | 'ready'>(() => {
+  if (!hasHr.value) return 'none'
+  if (stream.value) return stream.value.hr?.length ? 'ready' : 'none'
+  if (loadFailed.value) return 'error'
+  return 'loading'
+})
+const estimated = computed(() => estimateHrMax(activities.value))
+const maxHr = computed(() => settings.value.hrMax || estimated.value)
+const maxHrFrom = computed(() => (settings.value.hrMax ? 'set' : estimated.value ? 'seen' : null))
+/** Le réglage de la FC max arrive avec la page « Coureur » des réglages : le lien n'apparaît qu'une fois qu'elle existe */
+const hrSettings = computed(() => (router.resolve('/reglages/coureur').matched.length ? '/reglages/coureur' : null))
+
+/* ───── Kilomètres ou tours ───── */
+
+const splits = computed(() => a.value?.splits ?? [])
+const showSplits = computed(() => splits.value.length > 1 && result.value?.basis !== 'reps')
+// Tours : sans séance reliée, et seulement s'ils disent autre chose que les kilomètres
+const showLaps = computed(() => laps.value.length > 1 && !session.value && !(showSplits.value && autoKmLaps(laps.value)))
+const splitRange = computed(() => ({ min: Math.min(...splits.value), max: Math.max(...splits.value) }))
 const splitH = (s: number) => {
   const { min, max } = splitRange.value
   return max === min ? 70 : Math.round(35 + ((max - s) / (max - min)) * 65)
 }
-// Vraie carte quand il y a un tracé GPS (ou en démo) ; sinon le dessin stylisé. Jamais sur tapis.
-const hasMap = computed(() => Boolean(a.value && !a.value.indoor && (a.value.route || !a.value.stravaId)))
-const typeColor = computed(() => (a.value ? RUN_TYPES[a.value.type].color : 'var(--accent-text)'))
+const lapDist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${formatKm(m / 1000)} km`)
 
-function undoLast(message: string) {
-  return {
-    label: 'Annuler',
-    run: async () => {
-      const last = entries.value[0]
-      if (last && (await undo(last.id))) show(message)
-    },
-  }
-}
-
-const canRenameGarmin = computed(() => Boolean(settings.value.garmin.rename && accounts.value.garmin.connected && a.value?.garminId))
-const busy = ref(false)
-
-async function copyToGarmin() {
-  if (!a.value) return
-  busy.value = true
-  const ok = await setGarminName(a.value.id, a.value.stravaName, 'strava')
-  busy.value = false
-  if (ok) show('Nom copié vers Garmin', undoLast('Ancien nom remis sur Garmin'))
-}
-
-async function copyName() {
-  if (!a.value) return
-  busy.value = true
-  const ok = await setStravaName(a.value.id, a.value.garminName, 'garmin')
-  busy.value = false
-  if (!ok) return
-  show('Nom copié vers Strava', undoLast('Ancien nom remis sur Strava'))
-  notify({ kind: 'titles', title: 'Nom copié vers Strava', body: a.value.garminName, to: `/activites/${a.value.id}` })
-}
-
-const { tab, direction } = useTab(['chiffres', 'nom'] as const, 'chiffres')
-// Rubriques affichées sur la deuxième face de la barre du bas
-useSubnav(`course-${String(route.params.id)}`, 'Rubriques de la course', () => [
-  { id: 'chiffres', label: 'Chiffres', icon: 'numbers' },
-  { id: 'nom', label: 'Nom', icon: 'name' },
-], tab)
+/* ───── Partage ───── */
 
 const sharing = ref(false)
 
@@ -114,116 +143,171 @@ async function shareImage() {
   <div class="stack stack--wide detail">
     <RunPending v-if="state !== 'ready' || !a" :state="state === 'missing' ? 'missing' : 'loading'" />
     <template v-else>
-      <BackLink to="/activites" label="Activités" />
-
-      <section class="card hero" :style="{ '--c': typeColor }">
-        <div class="map" :class="{ real: hasMap }">
-          <ClientOnly>
-            <RouteMap v-if="hasMap" :activity="a" />
-            <template #fallback>
-              <RouteTrace :activity="a" :width="1.6" :delay="200" />
-            </template>
-          </ClientOnly>
-          <RouteTrace v-if="!hasMap" :activity="a" :width="1.6" :delay="200" />
+      <div class="topbar">
+        <BackLink to="/activites" label="Activités" />
+        <div class="top-actions">
+          <button type="button" class="card icon-btn" :disabled="sharing" :aria-label="sharing ? 'Création de l’image…' : 'Partager en image'" @click="shareImage">
+            <Share2 :size="19" aria-hidden="true" />
+          </button>
+          <a v-if="stravaUrl" :href="stravaUrl" target="_blank" rel="noopener" class="card icon-btn" aria-label="Voir sur Strava (nouvel onglet)">
+            <BrandMark brand="strava" :size="22" />
+          </a>
         </div>
-        <div class="hero-text">
-          <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}<span v-if="a.typeReason" class="why"> · {{ a.typeReason }}</span></p>
-          <h1 class="h1">{{ displayTitle(a).title }}</h1>
-          <p class="label">{{ formatDay(a.startedAt) }}<template v-if="placeLabel(a)"> · {{ placeLabel(a) }}</template> · {{ formatTime(a.startedAt) }}</p>
-        </div>
-      </section>
-
-      <!-- Deux actions toujours sous la main : le Débrief (titre, analyse et publication en un seul écran) et le partage -->
-      <div class="actions">
-        <NuxtLink :to="`/activites/${a.id}/debrief`" class="card action action--main" :class="{ todo: debriefDot }">
-          <ClipboardCheck :size="20" aria-hidden="true" />
-          <span>{{ debriefDone ? 'Modifier le débrief' : 'Débriefer' }}</span>
-          <span v-if="debriefDot" class="todo-dot" aria-label="à faire" />
-        </NuxtLink>
-        <button type="button" class="card action" :disabled="sharing" @click="shareImage">
-          <Share2 :size="20" aria-hidden="true" />
-          <span>{{ sharing ? 'Création…' : 'Partager' }}</span>
-        </button>
       </div>
 
-      <Transition :name="`tab-${direction}`" mode="out-in">
-        <div v-if="tab === 'chiffres'" key="chiffres" class="panel">
-          <DebriefSummary v-if="debriefDone" :activity="a" />
-          <div v-for="r in records" :key="r.key" class="block block--secondary record">
-            <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
-            <span class="row__main">
-              <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
-              <span v-if="r.previous" class="sub">{{ formatGain(r.previous - r.time) }} de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
-            </span>
+      <div class="col-a">
+        <!-- En-tête visuel : la carte dehors -->
+        <section v-if="hasMap" class="card hero hero--map sec" :style="{ '--c': typeColor, '--d': 0 }">
+          <div class="map">
+            <ClientOnly>
+              <RouteMap :activity="a" />
+              <template #fallback>
+                <RouteTrace :activity="a" :width="1.6" :delay="200" />
+              </template>
+            </ClientOnly>
           </div>
-          <dl class="kpis">
-            <div class="card kpi kpi--wide">
-              <dt class="eyebrow">Distance</dt>
-              <dd class="num huge">{{ formatKm(a.distanceKm) }}<span class="unit">km</span></dd>
+          <div class="hero-text">
+            <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}<span v-if="a.typeReason" class="why"> · {{ a.typeReason }}</span></p>
+            <h1 class="h1">{{ title.title }}</h1>
+            <p class="label">{{ dateLine }}</p>
+            <p v-if="sources.length || failed" class="tags">
+              <span v-if="failed" class="tag tag--fail">Ratée</span>
+              <span v-for="s in sources" :key="s" class="tag tag--src">{{ s }}</span>
+            </p>
+          </div>
+        </section>
+
+        <!-- En-tête visuel : la séance réalisée, tour par tour -->
+        <section v-else class="card hero hero--laps sec" :style="{ '--c': typeColor, '--d': 0 }">
+          <div class="hero-head">
+            <div class="hero-id">
+              <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}<span v-if="a.typeReason" class="why"> · {{ a.typeReason }}</span></p>
+              <h1 class="h1">{{ title.title }}</h1>
+              <p class="label">{{ dateLine }}</p>
             </div>
-            <div class="card kpi">
-              <dt class="eyebrow">Durée</dt>
-              <dd class="num">{{ formatDuration(a.durationSec) }}</dd>
-            </div>
-            <div class="card kpi" style="--k: var(--ok)">
-              <dt class="eyebrow">Allure</dt>
-              <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}<span class="unit">/km</span></dd>
-              <KpiPulse kind="pace" :value="paceSec" />
-            </div>
-            <div v-if="a.avgHr" class="card kpi" :style="{ '--k': 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
-              <dt class="eyebrow"><Heart class="heart" :size="11" fill="currentColor" aria-hidden="true" /> Cardio</dt>
-              <dd class="num">{{ a.avgHr }}<span class="unit">bpm</span></dd>
-              <KpiPulse kind="hr" :value="a.avgHr" />
-            </div>
-            <div v-if="a.elevationM" class="card kpi">
-              <dt class="eyebrow"><Mountain :size="12" aria-hidden="true" /> Dénivelé</dt>
-              <dd class="num">{{ a.elevationM }}<span class="unit">m</span></dd>
-            </div>
-          </dl>
-          <section v-if="splits.length > 1" class="card card--pad splits" aria-labelledby="splits-title">
-            <div class="section-head">
-              <h2 id="splits-title" class="eyebrow">Allure au km</h2>
-              <span class="label">meilleur km {{ formatPace(splitRange.min, 1) }}</span>
-            </div>
-            <ol class="split-bars" :style="{ '--n': splits.length }">
-              <li v-for="(sp, k) in splits" :key="k" :style="{ '--k': k }" :aria-label="`Km ${k + 1} : ${formatPace(sp, 1)} par km`">
-                <span class="sb" :class="{ best: sp === splitRange.min }" :style="{ height: `${splitH(sp)}%` }" />
-                <span v-if="splits.length <= 14 || (k + 1) % 5 === 0" class="sk">{{ k + 1 }}</span>
-              </li>
-            </ol>
-          </section>
+            <p class="tags">
+              <span v-if="a.indoor" class="tag tag--place">{{ placeLabel(a) || 'Tapis' }}</span>
+              <span v-if="failed" class="tag tag--fail">Ratée</span>
+              <span v-for="s in sources" :key="s" class="tag tag--src">{{ s }}</span>
+            </p>
+          </div>
+          <LapProfile
+            v-if="laps.length > 1"
+            :laps="laps"
+            :steps="session ? result?.steps : null"
+            :stream="stream"
+            :color="typeColor"
+          />
+          <p v-else class="no-laps fine">Pas de détail des tours pour cette course : seuls ses chiffres sont connus.</p>
+        </section>
+
+        <dl class="kpis sec" :style="{ '--d': 1 }">
+          <div class="card kpi kpi--wide">
+            <dt class="eyebrow">Distance</dt>
+            <dd class="num huge">{{ formatKm(a.distanceKm) }}<span class="unit">km</span></dd>
+          </div>
+          <div class="card kpi">
+            <dt class="eyebrow">Durée</dt>
+            <dd class="num">{{ formatDuration(a.durationSec) }}</dd>
+          </div>
+          <div class="card kpi" style="--k: var(--ok)">
+            <dt class="eyebrow">Allure</dt>
+            <dd class="num">{{ formatPace(a.durationSec, a.distanceKm) }}<span class="unit">/km</span></dd>
+            <KpiPulse kind="pace" :value="paceSec" />
+          </div>
+          <div v-if="a.avgHr" class="card kpi" :class="{ 'kpi--span': !a.elevationM || a.indoor }" :style="{ '--k': 'var(--ko)', '--beat': `${(60 / a.avgHr).toFixed(3)}s` }">
+            <dt class="eyebrow"><Heart class="heart" :size="11" fill="currentColor" aria-hidden="true" /> Cardio</dt>
+            <dd class="num">{{ a.avgHr }}<span class="unit">bpm moy.</span><span v-if="a.maxHr" class="unit max">· max {{ a.maxHr }}</span></dd>
+            <KpiPulse kind="hr" :value="a.avgHr" />
+          </div>
+          <div v-if="a.elevationM && !a.indoor" class="card kpi">
+            <dt class="eyebrow"><Mountain :size="12" aria-hidden="true" /> Dénivelé</dt>
+            <dd class="num">{{ a.elevationM }}<span class="unit">m</span></dd>
+          </div>
+        </dl>
+
+        <div class="sec debrief-slot" :style="{ '--d': 2 }">
+          <DebriefSummary v-if="debriefDone || debriefTodo" :activity="a" />
+          <NuxtLink v-else :to="`/activites/${a.id}/debrief`" class="card row debrief-link">
+            <span class="tile" aria-hidden="true"><ClipboardCheck :size="20" /></span>
+            <span class="row__main">
+              <span class="title">{{ debrief?.status === 'draft' ? 'Reprendre le débrief' : 'Débriefer cette course' }}</span>
+              <span class="fine">Ressenti, analyse et publication sur Strava.</span>
+            </span>
+            <ArrowRight :size="18" aria-hidden="true" />
+          </NuxtLink>
         </div>
 
-        <div v-else key="nom" class="panel">
-          <section class="card list" aria-labelledby="names-title">
-            <div class="row names-head">
-              <h2 id="names-title" class="eyebrow">Nom de l’activité</h2>
-              <StatusChip :ok="synced" :label="synced ? 'Identique' : 'Différent'" />
-            </div>
-            <div class="row">
-              <BrandMark brand="garmin" />
-              <span class="row__main">
-                <span class="label">Garmin Connect</span>
-                <span class="title">{{ a.garminName }}</span>
-              </span>
-            </div>
-            <div class="row">
-              <BrandMark brand="strava" />
-              <span class="row__main">
-                <span class="label">Strava</span>
-                <span class="title">{{ a.stravaName }}</span>
-              </span>
-            </div>
-          </section>
-          <button v-if="!synced" type="button" class="btn btn--primary" :disabled="busy" @click="copyName">
-            Copier le nom vers Strava
-            <Check :size="20" aria-hidden="true" />
-          </button>
-          <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
-            Ou copier le nom Strava vers Garmin
-          </button>
+        <div v-for="r in records" :key="r.key" class="block block--secondary record sec" :style="{ '--d': 6 }">
+          <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
+          <span class="row__main">
+            <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
+            <span v-if="r.previous" class="sub">{{ formatGain(r.previous - r.time) }} de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
+          </span>
         </div>
-      </Transition>
+
+        <section v-if="a.shoe" class="card row shoe sec" :style="{ '--d': 7 }" aria-label="Chaussures">
+          <span class="tile" :style="{ '--tile': 'var(--ink-2)' }" aria-hidden="true"><Footprints :size="20" /></span>
+          <span class="row__main">
+            <span class="eyebrow">Chaussures</span>
+            <span class="title">{{ a.shoe.name }}</span>
+          </span>
+          <span class="shoe-km"><span class="num">{{ Math.round(a.shoe.km) }}</span> km</span>
+        </section>
+      </div>
+
+      <div class="col-b">
+        <PlanDone v-if="session" class="sec" :style="{ '--d': 3 }" :session="session" :steps="sessionSteps" :result="result" :outcome="outcome" />
+
+        <CardioPanel
+          class="sec"
+          :style="{ '--d': 4 }"
+          :stream="stream"
+          :state="cardioState"
+          :max-hr="maxHr"
+          :max-hr-from="maxHrFrom"
+          :settings-to="hrSettings"
+          :avg-hr="a.avgHr || null"
+          :peak-hr="a.maxHr || null"
+          @retry="loadStream"
+        />
+
+        <section v-if="showSplits" class="card card--pad splits sec" :style="{ '--d': 5 }" aria-labelledby="splits-title">
+          <div class="section-head">
+            <h2 id="splits-title" class="eyebrow">Kilomètres</h2>
+            <span class="label">meilleur km {{ formatPace(splitRange.min, 1) }}</span>
+          </div>
+          <ol class="split-bars" :style="{ '--n': splits.length }">
+            <li v-for="(sp, k) in splits" :key="k" :style="{ '--k': k }" :aria-label="`Km ${k + 1} : ${formatPace(sp, 1)} par km`">
+              <span class="sb" :class="{ best: sp === splitRange.min }" :style="{ height: `${splitH(sp)}%` }" />
+              <span v-if="splits.length <= 14 || (k + 1) % 5 === 0" class="sk">{{ k + 1 }}</span>
+            </li>
+          </ol>
+        </section>
+
+        <section v-if="showLaps" class="card card--pad laps sec" :style="{ '--d': 5 }" aria-labelledby="laps-title">
+          <div class="section-head">
+            <h2 id="laps-title" class="eyebrow">Tours</h2>
+            <span class="label">{{ laps.length }} tours</span>
+          </div>
+          <table class="lap-table">
+            <thead>
+              <tr><th scope="col">Tour</th><th scope="col">Distance</th><th scope="col">Temps</th><th scope="col">Allure</th><th scope="col">FC</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(l, k) in laps" :key="k">
+                <td>{{ k + 1 }}</td>
+                <td>{{ lapDist(l.m) }}</td>
+                <td>{{ clock(l.sec) }}</td>
+                <td>{{ l.m > 0 && l.sec >= 10 ? paceText(l.sec, l.m).replace(' /km', '') : '—' }}</td>
+                <td>{{ l.hr ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <p v-if="a.garminName" class="foot fine">Nom sur la montre : {{ a.garminName }}</p>
     </template>
   </div>
 </template>
@@ -233,61 +317,99 @@ async function shareImage() {
   gap: 14px;
 }
 
-/* ── Tracé en grand ── */
+/* Téléphone : les deux colonnes se fondent dans une seule, dans l'ordre de lecture */
+.col-a,
+.col-b {
+  display: contents;
+}
+
+.topbar {
+  order: 0;
+}
+
+.col-a > .hero {
+  order: 1;
+}
+
+.col-a > .kpis {
+  order: 2;
+}
+
+.col-a > .debrief-slot {
+  order: 3;
+}
+
+.col-b > :nth-child(1) {
+  order: 4;
+}
+
+.col-b > :nth-child(2) {
+  order: 5;
+}
+
+.col-b > :nth-child(n + 3) {
+  order: 6;
+}
+
+.col-a > .record {
+  order: 7;
+}
+
+.col-a > .shoe {
+  order: 8;
+}
+
+.foot {
+  order: 9;
+}
+
+.sec {
+  animation: rise 0.5s var(--ease-out) backwards;
+  animation-delay: calc(60ms + var(--d, 0) * 50ms);
+}
+
+/* ── Barre du haut ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--r-btn);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.icon-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.icon-btn:active {
+  transform: scale(0.92);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+}
+
+/* ── En-tête ── */
 .hero {
   overflow: hidden;
   border-radius: calc(var(--r-card) + 6px);
-}
-
-.hero::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(80% 60% at 50% 35%, color-mix(in srgb, var(--c) 26%, transparent), transparent 70%),
-    linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--bg) 85%, transparent));
-  pointer-events: none;
-}
-
-/* Quadrillage discret façon carte */
-.map {
-  position: relative;
-  z-index: 1;
-  aspect-ratio: 1 / 0.82;
-  padding: 26px 30px 70px;
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 28px 28px;
-  background-position: center;
-  -webkit-mask: radial-gradient(90% 80% at 50% 40%, #000 55%, transparent);
-  mask: radial-gradient(90% 80% at 50% 40%, #000 55%, transparent);
-}
-
-.map.real {
-  padding: 0;
-  aspect-ratio: 1 / 0.95;
-  background: none;
-  -webkit-mask: none;
-  mask: none;
-}
-
-/* Le texte du bas laisse passer les gestes vers la carte */
-.hero-text {
-  pointer-events: none;
-}
-
-.hero-text {
-  position: absolute;
-  z-index: 2;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .type {
@@ -299,11 +421,232 @@ async function shareImage() {
   letter-spacing: 0.08em;
 }
 
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.tag--src {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.tag--place {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.tag--fail {
+  color: var(--ko);
+  background: color-mix(in srgb, var(--ko) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ko) 45%, transparent);
+}
+
+/* Séance sur tapis : le profil des tours */
+.hero--laps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 18px 18px;
+}
+
+.hero--laps::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%);
+  pointer-events: none;
+}
+
+.hero--laps > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hero-id {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero--laps .h1 {
+  font-size: 30px;
+}
+
+.no-laps {
+  padding: 14px;
+  border-radius: var(--r-ctrl);
+  background: var(--surface-2);
+}
+
+/* Dehors : la carte */
+.hero--map::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(80% 60% at 50% 35%, color-mix(in srgb, var(--c) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, transparent 45%, color-mix(in srgb, var(--bg) 85%, transparent));
+  pointer-events: none;
+}
+
+.map {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 1 / 0.95;
+}
+
+.hero-text {
+  position: absolute;
+  z-index: 2;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
 .hero-text .h1 {
   font-size: 30px;
   text-shadow: var(--title-shadow, 0 2px 20px rgba(0, 0, 0, 0.5));
 }
 
+/* ── Chiffres ── */
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  min-width: 0;
+  color: var(--k, var(--ink));
+}
+
+.kpi--wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.kpi--span {
+  grid-column: 1 / -1;
+}
+
+.kpi dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--k, var(--muted));
+}
+
+.kpi dd {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  font-size: 28px;
+  color: var(--ink);
+}
+
+.kpi dd.huge {
+  font-size: 54px;
+  letter-spacing: -0.05em;
+}
+
+.unit {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.unit.max {
+  color: var(--ink-2);
+}
+
+.kpi :deep(.pulse) {
+  margin-top: auto;
+}
+
+/* Le cœur bat au rythme réel de la fréquence cardiaque moyenne */
+.heart {
+  animation: beat var(--beat) ease-out infinite;
+}
+
+@keyframes beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.35);
+  }
+  30% {
+    transform: scale(0.95);
+  }
+  45% {
+    transform: scale(1.15);
+  }
+}
+
+/* ── Débrief ── */
+.debrief-slot {
+  display: flex;
+  flex-direction: column;
+}
+
+.debrief-link {
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.debrief-link > * {
+  position: relative;
+  z-index: 1;
+}
+
+.debrief-link .tile {
+  --tile: var(--accent-text);
+}
+
+.debrief-link svg:last-child {
+  color: var(--muted);
+}
+
+/* ── Records et chaussures ── */
 .record {
   display: flex;
   align-items: center;
@@ -332,172 +675,29 @@ async function shareImage() {
   opacity: 0.85;
 }
 
-/* Tablette et ordinateur : le parcours reste affiché à gauche pendant qu'on lit à droite */
-@media (min-width: 860px) {
-  .detail {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    grid-template-rows: auto auto 1fr;
-    align-items: start;
-    column-gap: 24px;
-  }
-
-  .detail > :first-child {
-    grid-column: 1 / -1;
-  }
-
-  .detail > .hero {
-    grid-column: 1;
-    grid-row: 2 / span 2;
-    position: sticky;
-    top: 24px;
-  }
-
-  .detail > .actions,
-  .detail > .panel {
-    grid-column: 2;
-  }
-
-  .map {
-    aspect-ratio: 1 / 1.05;
-  }
-
-  .map.real {
-    aspect-ratio: 1 / 1.15;
-  }
-
-  .hero-text .h1 {
-    font-size: 36px;
-  }
+.shoe {
+  gap: 14px;
+  padding: 14px 16px;
 }
 
-/* ── Actions ── */
-.actions {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 8px;
+.shoe > * {
+  position: relative;
+  z-index: 1;
 }
 
-.action--main {
-  flex-direction: row;
-  justify-content: center;
-  gap: 10px;
-  font-size: 15px;
-}
-
-.action--main.todo {
-  box-shadow: var(--surface-shadow), 0 0 0 1px color-mix(in srgb, var(--accent-text) 45%, transparent);
-}
-
-.todo-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent-text);
-  box-shadow: 0 0 10px var(--accent-text);
-}
-
-.action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 6px;
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s var(--ease-spring);
-}
-
-.action:active {
-  transform: scale(0.95);
-}
-
-.action svg {
-  color: var(--accent-text);
-}
-
-.action:disabled {
-  opacity: 0.6;
-}
-
-/* ── Chiffres ── */
-.kpis {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 0;
-}
-
-.kpi {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  min-width: 0;
-  color: var(--k, var(--ink));
-}
-
-.kpi--wide {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
-.kpi dt {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--k, var(--muted));
-}
-
-.kpi dd {
-  display: flex;
-  align-items: baseline;
+.shoe .row__main {
   gap: 4px;
-  margin: 0;
-  font-size: 28px;
-  color: var(--ink);
 }
 
-.kpi dd.huge {
-  font-size: 54px;
-  letter-spacing: -0.05em;
-}
-
-.unit {
+.shoe-km {
+  flex-shrink: 0;
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0;
   color: var(--muted);
 }
 
-.kpi :deep(.pulse) {
-  margin-top: auto;
-}
-
-/* Le cœur bat au rythme réel de la fréquence cardiaque moyenne */
-.heart {
-  animation: beat var(--beat) ease-out infinite;
-}
-
-@keyframes beat {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  15% {
-    transform: scale(1.35);
-  }
-  30% {
-    transform: scale(0.95);
-  }
-  45% {
-    transform: scale(1.15);
-  }
+.shoe-km .num {
+  font-size: 22px;
+  color: var(--ink);
 }
 
 /* ── Kilomètres ── */
@@ -505,6 +705,11 @@ async function shareImage() {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.splits .section-head,
+.laps .section-head {
+  margin-top: 0;
 }
 
 .split-bars {
@@ -530,7 +735,7 @@ async function shareImage() {
 .sb {
   width: 100%;
   max-width: 22px;
-  border-radius: 6px 6px 3px 3px;
+  border-radius: calc(var(--r-ctrl) * 0.4) calc(var(--r-ctrl) * 0.4) calc(var(--r-ctrl) * 0.2) calc(var(--r-ctrl) * 0.2);
   background: linear-gradient(180deg, var(--type-long), color-mix(in srgb, var(--type-long) 25%, transparent));
   transform-origin: bottom;
   animation: grow 0.7s var(--ease-spring) backwards;
@@ -548,9 +753,92 @@ async function shareImage() {
   color: var(--muted);
 }
 
-.names-head {
-  justify-content: space-between;
-  min-height: 52px;
+/* ── Tours ── */
+.laps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lap-table th {
+  padding: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--muted);
+}
+
+.lap-table td {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+}
+
+.lap-table th:first-child,
+.lap-table td:first-child {
+  text-align: left;
+  color: var(--muted);
+}
+
+/* ── Pied ── */
+.foot {
+  padding: 4px 2px 0;
+  overflow-wrap: anywhere;
+}
+
+/* Tablette : une colonne confortable */
+@media (min-width: 720px) and (max-width: 859px) {
+  .detail {
+    max-width: 680px;
+  }
+}
+
+/* Ordinateur : l'en-tête visuel, les chiffres et le débrief à gauche ; le détail de la séance à droite */
+@media (min-width: 860px) {
+  .detail {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: start;
+    gap: 16px 24px;
+  }
+
+  .topbar,
+  .foot {
+    grid-column: 1 / -1;
+  }
+
+  .col-a,
+  .col-b {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    animation: none;
+  }
+
+  .col-a {
+    grid-column: 1;
+  }
+
+  .col-b {
+    grid-column: 2;
+  }
+
+  .hero--laps .h1,
+  .hero-text .h1 {
+    font-size: 34px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -325,6 +325,10 @@ export const STEP_LEVEL: Record<StepKind, number> = { warmup: 0.42, cooldown: 0.
 /** Vitesse supposée (m/s) pour placer une étape prévue en distance sur l'axe du temps */
 const STEP_SPEED: Record<StepKind, number> = { warmup: 2.4, cooldown: 2.3, interval: 3.3, recovery: 2.1, rest: 2.1, other: 2.5 }
 
+/** Durée prévue d'une étape (s) : son temps, sinon sa distance à une vitesse supposée, sinon ce qui a été couru (60 s à défaut). */
+export const plannedSeconds = (s: Pick<StepResult, 'kind' | 'planned' | 'actual'>) =>
+  s.planned.sec ?? (s.planned.m ? s.planned.m / (STEP_SPEED[s.kind] ?? 2.5) : (s.actual?.sec ?? 60))
+
 export interface ProfileBar {
   kind: StepKind
   /** Durée (s) sur l'axe commun */
@@ -342,7 +346,7 @@ export interface ProfileBar {
  */
 export function planVsDone(steps: StepResult[] | null | undefined): { planned: ProfileBar[]; done: ProfileBar[]; total: number } {
   const list = Array.isArray(steps) ? steps : []
-  const plannedSec = (s: StepResult) => s.planned.sec ?? (s.planned.m ? s.planned.m / (STEP_SPEED[s.kind] ?? 2.5) : (s.actual?.sec ?? 60))
+  const plannedSec = plannedSeconds
   const speeds = list.filter((s) => s.actual && s.actual.sec > 0 && s.actual.m > 0).map((s) => s.actual!.m / s.actual!.sec)
   const vMax = speeds.length ? Math.max(...speeds) : 0
   const vMin = speeds.length ? Math.min(...speeds) : 0
