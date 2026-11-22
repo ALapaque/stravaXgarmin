@@ -12,12 +12,15 @@ export interface Target {
 export const STATS_TABS: Record<string, string> = {
   forme: 'forme',
   records: 'records',
-  // L'estimation par l'IA vit encore dans sa propre rubrique de Progression (elle rejoindra Forme)
-  ia: 'niveau',
-  niveau: 'niveau',
+  // L'estimation du niveau par l'IA est un repli de la rubrique Forme (sans Garmin)
+  ia: 'forme',
+  niveau: 'forme',
   shoes: 'materiel',
   chaussures: 'materiel',
 }
+
+/** Rubrique par défaut de Progression : pas besoin de l'écrire dans l'adresse. */
+export const PROGRESSION_DEFAULT = 'regularite'
 
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v)
 
@@ -38,9 +41,10 @@ export function legacyRedirect(path: string, query: Record<string, unknown> = {}
   if (p === '/plan') return { path: '/journal', query: { ...rest, onglet: 'a-venir' } }
   if (p === '/stats') {
     const mapped = typeof tab === 'string' ? STATS_TABS[tab] : undefined
-    // « forme » est la rubrique par défaut : pas besoin de l'écrire dans l'adresse
-    return { path: '/progression', query: mapped && mapped !== 'forme' ? { ...rest, onglet: mapped } : rest }
+    return { path: '/progression', query: mapped && mapped !== PROGRESSION_DEFAULT ? { ...rest, onglet: mapped } : rest }
   }
+  // Rubrique « Niveau IA » de la version 1.15 : rejointe par Forme
+  if (p === '/progression' && tab === 'niveau') return { path: '/progression', query: { ...rest, onglet: 'forme' } }
   return null
 }
 

@@ -10,11 +10,19 @@ describe('anciennes adresses', () => {
 
   it('Stats mène à Progression, avec la rubrique correspondante', () => {
     expect(legacyRedirect('/stats')).toEqual({ path: '/progression', query: {} })
-    expect(legacyRedirect('/stats', { onglet: 'forme' })).toEqual({ path: '/progression', query: {} })
+    // Régularité est la rubrique par défaut : Forme s'écrit dans l'adresse
+    expect(legacyRedirect('/stats', { onglet: 'forme' })).toEqual({ path: '/progression', query: { onglet: 'forme' } })
     expect(legacyRedirect('/stats', { onglet: 'records' })).toEqual({ path: '/progression', query: { onglet: 'records' } })
     expect(legacyRedirect('/stats', { onglet: 'shoes' })).toEqual({ path: '/progression', query: { onglet: 'materiel' } })
     expect(legacyRedirect('/stats', { onglet: 'chaussures' })).toEqual({ path: '/progression', query: { onglet: 'materiel' } })
-    expect(legacyRedirect('/stats', { onglet: 'ia' })).toEqual({ path: '/progression', query: { onglet: 'niveau' } })
+    // L'estimation par l'IA est maintenant un repli de Forme
+    expect(legacyRedirect('/stats', { onglet: 'ia' })).toEqual({ path: '/progression', query: { onglet: 'forme' } })
+    expect(legacyRedirect('/stats', { onglet: 'niveau' })).toEqual({ path: '/progression', query: { onglet: 'forme' } })
+  })
+
+  it('l’ancienne rubrique « Niveau IA » de Progression mène à Forme', () => {
+    expect(legacyRedirect('/progression', { onglet: 'niveau' })).toEqual({ path: '/progression', query: { onglet: 'forme' } })
+    expect(legacyRedirect('/progression', { onglet: 'records' })).toBeNull()
   })
 
   it('une rubrique inconnue est oubliée, les autres paramètres sont gardés', () => {

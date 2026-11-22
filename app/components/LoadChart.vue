@@ -26,8 +26,8 @@ const any = computed(() => weeks.value.some((w) => w.km > 0))
     <p v-if="ramp?.high" class="alert" role="status">
       <TriangleAlert :size="18" aria-hidden="true" />
       <span>
-        <strong>Charge en forte hausse.</strong>
-        {{ formatKm(ramp.now) }} km sur 7 jours, contre {{ formatKm(ramp.before) }} km par semaine d’habitude. Au-delà de +30 %, le risque de blessure monte : lève le pied quelques jours.
+        <strong>Risque de blessure : ta charge monte trop vite.</strong>
+        {{ formatKm(ramp.now) }} km sur 7 jours, contre {{ formatKm(ramp.before) }} km par semaine d’habitude (+{{ ramp.pct }} %). Au-delà de +30 %, le corps n’a pas le temps de s’adapter : garde des footings faciles quelques jours.
       </span>
     </p>
   </section>

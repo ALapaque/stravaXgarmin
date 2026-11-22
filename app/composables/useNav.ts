@@ -2,7 +2,7 @@
 import {
   Sunrise, NotebookText, TrendingUp,
   HeartPulse, Trophy, Sparkles, Footprints, Link2, RefreshCw, Bell, Palette, Gauge, PenLine,
-  Rows3, CalendarClock, ClipboardCheck,
+  Rows3, CalendarClock, ClipboardCheck, CalendarCheck,
 } from 'lucide-vue-next'
 
 /*
@@ -24,7 +24,7 @@ export const SUB_ICONS: Record<string, unknown> = {
   forme: HeartPulse, records: Trophy, ia: Sparkles, shoes: Footprints,
   accounts: Link2, sync: RefreshCw, bell: Bell, style: Palette,
   numbers: Gauge, name: PenLine,
-  all: Rows3, upcoming: CalendarClock, todo: ClipboardCheck,
+  all: Rows3, upcoming: CalendarClock, todo: ClipboardCheck, regularity: CalendarCheck,
 }
 
 export function useNav() {
