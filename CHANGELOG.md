@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.4](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.3...v1.16.4) (2026-11-22)
+
+### Corrections
+
+* plus de texte qui dépasse ou qui passe sous un bouton, même avec une police large ou sur un petit écran (grands titres, listes, Débrief, Progression) ([fa5ae98](https://github.com/ALapaque/stravaXgarmin/commit/fa5ae9841295a4c70ad7887beeaa473a77777833))
+
 ## [1.16.3](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.2...v1.16.3) (2026-11-22)
 
 ### Corrections
