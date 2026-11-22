@@ -573,6 +573,7 @@ const resultBig = computed(() => {
             <h2 id="s4" class="step-title"><span class="sr-only">Étape 4 : </span>Le titre</h2>
             <div class="card card--pad step-body s-title">
               <div class="t-main">
+                <p v-if="convention.enabled.value" class="sub-title">Source</p>
                 <div v-if="convention.enabled.value" class="sources" role="group" aria-label="Source de la séance">
                   <button
                     v-for="s in convention.sources.value"
@@ -585,7 +586,14 @@ const resultBig = computed(() => {
                     {{ s }}
                   </button>
                   <button type="button" class="pill pill--tag" :aria-pressed="source === ''" @click="source = ''">Aucune</button>
-                  <button type="button" class="pill pill--tag pill--fail" :aria-pressed="fail" @click="fail = !fail">{{ failTag }}</button>
+                </div>
+                <!-- L'échec n'est pas une source : une bascule à part -->
+                <div v-if="convention.enabled.value" class="fail-row" :class="{ on: fail }">
+                  <span class="row__main">
+                    <span class="fail-label">Marquer la séance comme ratée</span>
+                    <span class="fine">Ajoute <span class="fail-tag">[{{ failTag }}]</span> au début du titre.</span>
+                  </span>
+                  <ToggleSwitch v-model="fail" label="Marquer la séance comme ratée" />
                 </div>
                 <label for="title-field" class="sr-only">Titre de la séance</label>
                 <input
@@ -661,6 +669,7 @@ const resultBig = computed(() => {
                 <span><span class="label">Temps</span><span class="num">{{ formatDuration(a.durationSec) }}</span></span>
               </div>
             </article>
+            <p class="sub-title parts-title">Dans le texte ajouté</p>
             <div class="parts" role="group" aria-label="Ce que l’appli ajoute">
               <button v-for="p in PARTS" :key="p.key" type="button" class="pill" :aria-pressed="parts[p.key]" @click="togglePart(p.key)">
                 <Check v-if="parts[p.key]" :size="14" aria-hidden="true" />{{ p.label }}
@@ -1091,9 +1100,57 @@ const resultBig = computed(() => {
   letter-spacing: 0.04em;
 }
 
-.pill--fail[aria-pressed='true'] {
-  background: var(--ko);
-  color: var(--bg);
+/* Bascule « séance ratée », séparée des sources */
+.fail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--line);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.fail-row.on {
+  border-color: color-mix(in srgb, var(--ko) 45%, transparent);
+  background: color-mix(in srgb, var(--ko) 8%, transparent);
+}
+
+.fail-label {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.fail-tag {
+  font-family: var(--font-mono);
+  color: var(--ko);
+}
+
+/* Parties du texte : discrètes, elles ne concurrencent jamais « Publier sur Strava » */
+.parts .pill {
+  min-height: 36px;
+  padding: 0 12px;
+  border-color: var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.parts .pill::after {
+  inset: -4px;
+}
+
+.parts .pill[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  color: var(--ink);
+}
+
+.parts .pill[aria-pressed='true'] svg {
+  color: var(--ok);
+}
+
+.parts-title {
+  margin-top: 4px;
 }
 
 /* ── 2 · Ressenti ── */

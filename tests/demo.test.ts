@@ -130,3 +130,17 @@ describe.each(['2026-11-22', '2026-07-15', '2026-11-23', '2027-01-01'])('buildDe
     expect(s.hr).not.toBeNull()
   })
 })
+
+describe('buildDemo : débriefs déjà publiés', () => {
+  it('un débrief fait dont le titre Strava porte la convention est publié ; la course d’hier ne l’est pas', () => {
+    const demo = buildDemo('2026-11-22')
+    const done = Object.entries(demo.debriefs).filter(([, d]) => d.status === 'done')
+    expect(done.length).toBeGreaterThan(3)
+    for (const [id, d] of done) {
+      const run = demo.activities.find((a) => a.id === id)!
+      expect(Boolean(d.publishedAt), id).toBe(detectConvention([run.stravaName, run.stravaName, run.stravaName]).enabled)
+    }
+    expect(demo.debriefs.a5?.publishedAt).toBeTruthy()
+    expect(demo.debriefs.a2).toBeUndefined()
+  })
+})

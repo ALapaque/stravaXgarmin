@@ -7,13 +7,14 @@
 import type { Lap } from './compliance'
 import type { Debrief } from './debrief'
 import { formatDuration, formatKm } from './format'
+import { parseTitle } from './titles'
 import type { Activity, AppNotification, EffortKey, Forme, Gear, HistoryEntry, PlanBlock, PlanKind, PlanLine, PlanSession, Shoe, Weather } from './model'
 import type { RunType } from './runs'
 import { streamFromLaps, type RunStream } from './streams'
 import { flattenSteps, stepDistance, stepDuration, type PlanStep } from './workout'
 
 /** À changer quand la forme des données de démo change : une démo gardée plus ancienne est régénérée. */
-export const DEMO_VERSION = 3
+export const DEMO_VERSION = 4
 
 export const DEMO_SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },
@@ -467,6 +468,12 @@ export function buildDemo(today: string): DemoData {
     session('p2', shift(today, 3), 'Footing en endurance', [{ ...st('other', 2700), target: '6:30–6:50 /km' }], 9002),
     session('p3', shift(today, 5), 'Sortie longue avec allure semi', [st('warmup', 900), st('other', null, 10000), { ...st('interval', null, 3000), target: '5:40–5:55 /km' }, st('cooldown', 600)], 9003, 'Les 3 derniers km à allure course'),
   )
+
+  // Débriefs déjà faits dont le titre Strava porte la convention : publiés sur Strava au moment du débrief
+  for (const [id, d] of Object.entries(debriefs)) {
+    const run = activities.find((a) => a.id === id)
+    if (run && d.status === 'done' && parseTitle(run.stravaName).tagged) d.publishedAt = d.at
+  }
 
   activities.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
   plan.sort((a, b) => a.date.localeCompare(b.date))

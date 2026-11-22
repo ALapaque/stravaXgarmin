@@ -13,7 +13,8 @@ defineProps<{ state: 'loading' | 'missing' }>()
     </template>
     <template v-else>
       <span class="tile" aria-hidden="true"><SearchX :size="22" /></span>
-      <p class="h2">Cette course n’est plus dans tes 60 derniers jours.</p>
+      <p class="h2">Course introuvable.</p>
+      <p class="lead">Elle n’est peut-être plus dans tes 60 derniers jours.</p>
       <NuxtLink to="/activites" class="btn btn--secondary btn--sm">Voir mes activités</NuxtLink>
     </template>
   </div>
