@@ -52,7 +52,8 @@ export function useFitness() {
   async function loadForme(force = false) {
     const at = forme.value?.at
     if (!force && at && Date.now() - Date.parse(at) < 15 * 60_000) return
-    forme.value = { at: new Date().toISOString(), data: await $fetch<Forme>('/api/garmin/forme') }
+    const data = await useHealth().track('garmin.forme', () => $fetch<Forme>('/api/garmin/forme'), (f) => HEALTH_INFO.forme(f))
+    forme.value = { at: new Date().toISOString(), data }
   }
 
   /*
@@ -66,7 +67,11 @@ export function useFitness() {
     const known = new Set(gear.value?.list.map((g) => g.id))
     const fresh = gear.value?.at && Date.now() - Date.parse(gear.value.at) < 5 * 60_000
     if (!force && fresh && ids.every((id) => known.has(id))) return applyGear()
-    const list = await $fetch<Gear[]>('/api/strava/gear', { method: 'POST', body: { ids } })
+    const list = await useHealth().track(
+      'strava.gear',
+      () => $fetch<Gear[]>('/api/strava/gear', { method: 'POST', body: { ids } }),
+      (l) => HEALTH_INFO.gear(l.filter((g) => !g.retired).length),
+    )
     if (list.length) gear.value = { at: new Date().toISOString(), list }
     applyGear()
   }

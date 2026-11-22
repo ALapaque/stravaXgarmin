@@ -107,7 +107,11 @@ export function usePlan() {
   async function load(force = false) {
     const at = state.value?.at
     if (!force && at && Date.now() - Date.parse(at) < 10 * 60_000) return
-    const list = await $fetch<PlanSession[]>('/api/garmin/plan')
+    const list = await useHealth().track(
+      'garmin.plan',
+      () => $fetch<PlanSession[]>('/api/garmin/plan'),
+      (l) => HEALTH_INFO.plan(l.filter((s) => s.date >= TODAY).length),
+    )
     // La liste remplace entièrement l'ancienne ; un doublon éventuel n'est gardé qu'une fois
     const unique = list.filter((s, i) => list.findIndex((o) => o.id === s.id || (o.date === s.date && o.title === s.title)) === i)
     state.value = { at: new Date().toISOString(), list: unique }

@@ -79,6 +79,7 @@ export function useSync() {
   const garminRecords = useGarminRecords()
   const plan = usePlan()
   const fitness = useFitness()
+  const { track, refreshDemo } = useHealth()
   const syncing = useState('syncing', () => false)
   const synced = useState('synced', () => false)
 
@@ -92,14 +93,19 @@ export function useSync() {
       if (!accounts.value.strava.connected) {
         // Pas de compte : données fictives seulement si la démo est activée, sinon rien
         demo.reset()
+        if (demo.active.value) {
+          // « Tout relire » en démo : une courte lecture simulée, puis tout repasse en réussite
+          if (fresh) await new Promise((r) => setTimeout(r, 900))
+          refreshDemo(fresh)
+        }
         return
       }
       demo.leaveSilently()
 
       const [strava, garmin] = await Promise.all([
-        $fetch<StravaRun[]>('/api/strava/activities'),
+        track('strava.activities', () => $fetch<StravaRun[]>('/api/strava/activities'), (l) => HEALTH_INFO.activities(l.length)),
         accounts.value.garmin.connected
-          ? $fetch<GarminRun[]>('/api/garmin/activities').catch(() => {
+          ? track('garmin.activities', () => $fetch<GarminRun[]>('/api/garmin/activities'), (l) => HEALTH_INFO.garminActivities(l.length)).catch(() => {
               show('Garmin injoignable, synchro Strava seulement')
               return [] as GarminRun[]
             })
@@ -122,7 +128,8 @@ export function useSync() {
 
       if (settings.value.autoSync) await autoApply()
 
-      // En arrière-plan : records et temps au km, sans bloquer la synchro
+      // En arrière-plan : records et temps au km, sans bloquer la synchro.
+      // Chaque échec est noté dans l'état des connexions (useHealth) au lieu de passer inaperçu.
       loadDetails().catch(() => {})
       fitness.loadGear(fresh).catch(() => {})
       if (accounts.value.garmin.connected) {
@@ -186,7 +193,11 @@ export function useSync() {
     for (let round = 0; round < 2; round++) {
       const missing = activities.value.filter((a) => a.stravaId && !details.value[a.stravaId]).map((a) => a.stravaId!).slice(0, 15)
       if (!missing.length) return
-      const got = await $fetch<Record<number, RunDetails>>('/api/strava/details', { method: 'POST', body: { ids: missing } })
+      const got = await track(
+        'strava.details',
+        () => $fetch<Record<number, RunDetails>>('/api/strava/details', { method: 'POST', body: { ids: missing } }),
+        (r) => HEALTH_INFO.details(Object.keys(r).length, missing.length),
+      )
       details.value = { ...details.value, ...got }
       for (const a of activities.value) {
         const d = a.stravaId ? got[a.stravaId] : undefined
@@ -200,7 +211,7 @@ export function useSync() {
   async function loadGarminRecords(force = false) {
     const at = garminRecords.value?.at
     if (!force && at && Date.now() - Date.parse(at) < 3600_000) return
-    const list = await $fetch<GarminRecord[]>('/api/garmin/records')
+    const list = await track('garmin.records', () => $fetch<GarminRecord[]>('/api/garmin/records'), (l) => HEALTH_INFO.records(l.length))
     garminRecords.value = { at: new Date().toISOString(), list }
   }
 

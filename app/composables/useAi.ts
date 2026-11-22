@@ -62,10 +62,11 @@ export const aiError = (e: unknown) =>
 
 export function useAi() {
   const { refresh } = useAccounts()
+  const { track } = useHealth()
 
   async function call<T>(url: string, body: Record<string, unknown>): Promise<T> {
     try {
-      return (await $fetch(url, { method: 'POST', body })) as T
+      return (await track('ai', () => $fetch(url, { method: 'POST', body }), () => HEALTH_INFO.ai())) as T
     } catch (e) {
       // Clé révoquée côté OpenAI : le serveur l'a oubliée, on remet les écrans à jour
       if ((e as { statusCode?: number }).statusCode === 401) await refresh()

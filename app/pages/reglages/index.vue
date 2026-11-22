@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, History, Type, Sparkles, Palette } from 'lucide-vue-next'
+import { ChevronRight, History, Type, Sparkles, Palette, Activity as Pulse } from 'lucide-vue-next'
 
 useHead({ title: 'Réglages · stravaXgarmin' })
 
@@ -11,6 +11,11 @@ const { entries } = useHistory()
 const { current: appVersion, showHistory } = useUpdates()
 const { accounts, disconnect } = useAccounts()
 const { run: sync, syncing } = useSync()
+const { summary: health } = useHealth()
+// L'état des lectures n'est connu qu'une fois l'état sauvegardé chargé (après l'hydratation)
+const mounted = ref(false)
+onMounted(() => (mounted.value = true))
+const healthErrors = computed(() => (mounted.value ? health.value.errors.length : 0))
 
 async function logout(provider: 'strava' | 'garmin' | 'ai') {
   await disconnect(provider)
@@ -23,8 +28,8 @@ async function logout(provider: 'strava' | 'garmin' | 'ai') {
 
 const { tab, direction } = useTab(['comptes', 'synchro', 'notifs', 'style'] as const, 'comptes')
 // Rubriques affichées sur la deuxième face de la barre du bas
-useSubnav('reglages', 'Rubriques des réglages', [
-  { id: 'comptes', label: 'Comptes', icon: 'accounts' },
+useSubnav('reglages', 'Rubriques des réglages', () => [
+  { id: 'comptes', label: 'Comptes', icon: 'accounts', dot: healthErrors.value > 0 },
   { id: 'synchro', label: 'Synchro', icon: 'sync' },
   { id: 'notifs', label: 'Notifs', icon: 'bell' },
   { id: 'style', label: 'Style', icon: 'style' },
@@ -112,6 +117,14 @@ const descriptionParts = [
             </span>
           </button>
         </div>
+        <NuxtLink to="/reglages/etat" class="card row health-link">
+          <span class="tile" :style="healthErrors ? { '--tile': 'var(--ko)' } : undefined" aria-hidden="true"><Pulse :size="22" /></span>
+          <span class="row__main">
+            <span class="title">État des connexions</span>
+            <span class="hint" :class="{ warn: healthErrors }">{{ healthErrors ? `${healthErrors} ${healthErrors > 1 ? 'lectures' : 'lecture'} en échec` : 'Tout fonctionne' }}</span>
+          </span>
+          <ChevronRight :size="20" aria-hidden="true" />
+        </NuxtLink>
         </div>
         <div class="col">
         <h2 class="eyebrow group">Application</h2>

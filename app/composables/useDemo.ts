@@ -9,6 +9,7 @@ export function useDemo() {
     useState('history').value = on ? demoHistory() : []
     useState('notifications').value = on ? demoNotifications() : []
     usePublished().value = {}
+    useHealth().reset(on)
     usePlan().reset(on)
     useFitness().reset(on)
   }
@@ -41,6 +42,7 @@ export function useDemo() {
     useState('history').value = []
     useState('notifications').value = []
     usePublished().value = {}
+    useHealth().reset(false)
     usePlan().reset(false)
     useFitness().reset(false)
   }

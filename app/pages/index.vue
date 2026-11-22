@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight, CircleAlert } from 'lucide-vue-next'
 
 useHead({ title: 'Accueil · stravaXgarmin' })
 
@@ -28,6 +28,17 @@ const latest = computed(() => sorted.value.slice(1, 4))
 const { next: nextSession } = usePlan()
 const heroDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Brussels' })
 const firstToReview = computed(() => toReview.value[0])
+
+// Lecture principale en échec (Strava, ou les noms Garmin) : une alerte discrète, seulement une fois la page montée
+const { summary: health } = useHealth()
+const mounted = ref(false)
+onMounted(() => (mounted.value = true))
+const healthAlert = computed(() => {
+  if (!mounted.value) return null
+  if (health.value.core === 'strava.activities') return 'Strava n’a pas répondu à la dernière lecture.'
+  if (health.value.core === 'garmin.activities') return 'Garmin n’a pas répondu à la dernière lecture : les noms de ta montre peuvent manquer.'
+  return null
+})
 </script>
 
 <template>
@@ -48,6 +59,15 @@ const firstToReview = computed(() => toReview.value[0])
         <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte"><span :class="{ masked: demo }">{{ (firstName || '?').charAt(0) }}</span></NuxtLink>
       </div>
     </header>
+
+    <NuxtLink v-if="healthAlert" to="/reglages/etat" class="card row health-alert" role="alert">
+      <span class="tile" style="--tile: var(--ko)" aria-hidden="true"><CircleAlert :size="22" /></span>
+      <span class="row__main">
+        <span class="alert-text">{{ healthAlert }}</span>
+        <span class="alert-link">Voir l’état des connexions</span>
+      </span>
+      <ChevronRight :size="20" aria-hidden="true" />
+    </NuxtLink>
 
     <section v-if="!hasData && accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
       <span class="spinner" aria-hidden="true" />
@@ -463,6 +483,21 @@ const firstToReview = computed(() => toReview.value[0])
 
 .hero-stats dt svg {
   color: var(--ko);
+}
+
+.health-alert {
+  align-items: center;
+}
+
+.alert-text {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.alert-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent-text);
 }
 
 /*
