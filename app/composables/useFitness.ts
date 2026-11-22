@@ -4,22 +4,9 @@
  */
 import type { EffortKey } from './useActivities'
 
-export interface Forme {
-  vo2max: number | null
-  status: { label: string; tone: 'ok' | 'warn' | 'ko' | 'idle' } | null
-  load: { acute: number; chronic: number | null; ratio: number | null } | null
-  readiness: { score: number; level: string } | null
-  recoveryHours: number | null
-  predictions: Record<EffortKey, number | null> | null
-}
-
-export interface Gear {
-  id: string
-  name: string
-  km: number
-  primary: boolean
-  retired: boolean
-}
+// Forme des données : shared/utils/model.ts
+import type { Forme, Gear } from '#shared/utils/model'
+export type { Forme, Gear } from '#shared/utils/model'
 
 export interface Goal {
   name: string
@@ -27,19 +14,8 @@ export interface Goal {
   distance: EffortKey
 }
 
-const demoForme = (): Forme => ({
-  vo2max: 52,
-  status: { label: 'Productif', tone: 'ok' },
-  load: { acute: 412, chronic: 380, ratio: 1.1 },
-  readiness: { score: 68, level: 'MODERATE' },
-  recoveryHours: 14,
-  predictions: { '5k': 1372, '10k': 2865, half: 6390, marathon: 13560 },
-})
-
-const demoGear = (): Gear[] => [
-  { id: 'g1', name: SHOES.peg.name, km: SHOES.peg.km, primary: true, retired: false },
-  { id: 'g2', name: SHOES.vf.name, km: SHOES.vf.km, primary: false, retired: false },
-]
+const demoForme = (): Forme => demoData().forme
+const demoGear = (): Gear[] => demoData().gear
 
 const DAY = 86_400_000
 

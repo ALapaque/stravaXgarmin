@@ -111,3 +111,53 @@ export interface PlanSession {
   /** Séance déduite du nom de la montre, absente du calendrier */
   synthetic?: boolean
 }
+
+/* ───── Historique, notifications, forme et chaussures ───── */
+
+/** D'où vient un changement fait par l'appli sur Strava ou Garmin */
+export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse'
+
+export interface HistoryEntry {
+  id: string
+  activityId: string
+  field: 'name' | 'description' | 'garminName'
+  /** Valeur complète avant/après (pour une description : toute la description) */
+  before: string
+  after: string
+  /** Description : texte de l'appli ajouté (absent des anciennes entrées : on prend « after ») */
+  block?: string
+  /** Description : texte de l'appli que ce bloc a remplacé, '' s'il a été ajouté à la suite */
+  previousBlock?: string
+  source: ChangeSource
+  at: string
+  undone?: boolean
+}
+
+export type NotifKind = 'titles' | 'records' | 'review' | 'recap'
+
+export interface AppNotification {
+  id: string
+  kind: NotifKind
+  title: string
+  body: string
+  to?: string
+  at: string
+  read: boolean
+}
+
+export interface Forme {
+  vo2max: number | null
+  status: { label: string; tone: 'ok' | 'warn' | 'ko' | 'idle' } | null
+  load: { acute: number; chronic: number | null; ratio: number | null } | null
+  readiness: { score: number; level: string } | null
+  recoveryHours: number | null
+  predictions: Record<EffortKey, number | null> | null
+}
+
+export interface Gear {
+  id: string
+  name: string
+  km: number
+  primary: boolean
+  retired: boolean
+}

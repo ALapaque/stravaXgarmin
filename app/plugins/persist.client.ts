@@ -4,7 +4,7 @@
  * Chargé une fois l'appli hydratée et au repos (pages asynchrones comprises),
  * pour ne pas créer d'écart avec le rendu serveur.
  */
-const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health', 'typeOverrides', 'debriefs', 'streams'] as const
+const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health', 'typeOverrides', 'debriefs', 'streams', 'demoStamp'] as const
 // Ne pas changer : l'historique, les réglages et « autoSince » doivent survivre aux mises à jour.
 // Un état d'une version précédente est complété par les fonctions de shared/utils/upgrade.ts.
 const VERSION = 2

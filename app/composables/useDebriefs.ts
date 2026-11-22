@@ -7,16 +7,17 @@ import type { Debrief } from '#shared/utils/debrief'
 export type { Debrief }
 
 /** État gardé : un débrief par course. */
-export const useDebriefState = () => useState<Record<string, Debrief>>('debriefs', () => ({}))
+export const useDebriefState = () => useState<Record<string, Debrief>>('debriefs', () => (isDemoCookie() ? demoData().debriefs : {}))
 
 export function useDebriefs() {
   const debriefs = useDebriefState()
   const settings = useSettings()
   const { sorted } = useActivities()
   const convention = useConvention()
+  const { active: demo } = useDemo()
 
-  /** Seules les courses après cette date réclament un débrief (les vieilles courses ne réclament rien). */
-  const since = computed(() => settings.value.debriefSince || '')
+  /** Seules les courses après cette date réclament un débrief (les vieilles courses ne réclament rien). En démo : la course d'hier. */
+  const since = computed(() => (demo.value ? demoBase().debriefSince : settings.value.debriefSince || ''))
 
   const get = (id: string): Debrief | null => debriefs.value?.[id] ?? null
 

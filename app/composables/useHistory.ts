@@ -1,21 +1,8 @@
+// Forme des données : shared/utils/model.ts
+import type { HistoryEntry } from '#shared/utils/model'
+export type { HistoryEntry } from '#shared/utils/model'
 import type { Activity, BlockKind, ChangeSource } from './useActivities'
 import { pushField, rememberBlock, sendBlock } from './useActivities'
-
-export interface HistoryEntry {
-  id: string
-  activityId: string
-  field: 'name' | 'description' | 'garminName'
-  /** Valeur complète avant/après (pour une description : toute la description) */
-  before: string
-  after: string
-  /** Description : texte de l'appli ajouté (absent des anciennes entrées : on prend « after ») */
-  block?: string
-  /** Description : texte de l'appli que ce bloc a remplacé, '' s'il a été ajouté à la suite */
-  previousBlock?: string
-  source: ChangeSource
-  at: string
-  undone?: boolean
-}
 
 export const SOURCE_LABELS: Record<ChangeSource, string> = {
   garmin: 'Copié depuis Garmin',
@@ -28,26 +15,7 @@ export const SOURCE_LABELS: Record<ChangeSource, string> = {
   analyse: 'Analyse IA',
 }
 
-export const demoHistory = (): HistoryEntry[] => [
-  {
-    id: 'seed-1',
-    activityId: 'a1',
-    field: 'name',
-    before: 'Morning Run',
-    after: 'Sortie longue',
-    source: 'garmin',
-    at: '2026-11-15T10:42:00+01:00',
-  },
-  {
-    id: 'seed-2',
-    activityId: 'a3',
-    field: 'name',
-    before: 'Morning Run',
-    after: 'Footing récup',
-    source: 'garmin',
-    at: '2026-11-16T08:01:00+01:00',
-  },
-]
+export const demoHistory = (): HistoryEntry[] => demoData().history
 
 /** Journal de tout ce que l'appli a modifié sur Strava, avec annulation. */
 export function useHistory() {

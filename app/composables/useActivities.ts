@@ -1,179 +1,47 @@
 /*
- * Données fictives en attendant les vraies API.
- * Strava : GET /athlete/activities + webhook « activity create », PUT /activities/{id}.
- * Garmin : Activity API (lecture seule, accès développeur à demander).
+ * Courses : état gardé dans le navigateur, et tout ce que l'appli écrit chez Strava ou Garmin
+ * (avec trace dans l'historique et annulation). Données de démo : shared/utils/demo.ts.
  */
 
 import { RUN_LABELS, type RunType } from '#shared/utils/runs'
-import type { Activity, Shoe } from '#shared/utils/model'
+import type { Activity } from '#shared/utils/model'
+import { buildDemo, DEMO_SHOES, type DemoData } from '#shared/utils/demo'
 
 // Ré-exporté ici pour ne pas casser les imports existants (« from '~/composables/useActivities' »)
 export type { RunType }
-export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse'
 /** Sorte de texte que l'appli place dans la description Strava : infos de la course, ou analyse IA */
 export type BlockKind = 'infos' | 'analyse'
 
 // Forme des données : shared/utils/model.ts (partagée avec la logique pure et la démo)
-export type { Activity, EffortKey, Shoe, Weather } from '#shared/utils/model'
+export type { Activity, ChangeSource, EffortKey, Shoe, Weather } from '#shared/utils/model'
 
 /** Libellé (shared/utils/runs.ts) et couleur du thème de chaque type de séance. */
 export const RUN_TYPES = Object.fromEntries(
   (Object.keys(RUN_LABELS) as RunType[]).map((t) => [t, { label: RUN_LABELS[t], color: `var(--type-${t})` }]),
 ) as Record<RunType, { label: string; color: string }>
 
-export const SHOES: Record<'peg' | 'vf', Shoe> = {
-  peg: { name: 'Nike Pegasus 41', km: 612 },
-  vf: { name: 'Nike Vaporfly 3', km: 188 },
-}
+export const SHOES = DEMO_SHOES
 
-/** Date du jour à Bruxelles (AAAA-MM-JJ). Les données de démo sont datées autour du 18 novembre 2026. */
+/** Date du jour à Bruxelles (AAAA-MM-JJ). Les données de démo sont datées par rapport à ce jour. */
 export const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels' }).format(new Date())
 
-/* ───── Générateur déterministe pour l'historique d'octobre-novembre ───── */
+/* ───── Démo : shared/utils/demo.ts, datée d'aujourd'hui ───── */
 
-function prng(seed: number) {
-  return () => {
-    seed |= 0
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
+let demoCache: { day: string; data: DemoData } | null = null
+
+/** Données de démo du jour, à lire seulement (ne pas modifier : elles servent de modèle). */
+export function demoBase(): DemoData {
+  if (demoCache?.day !== TODAY) demoCache = { day: TODAY, data: buildDemo(TODAY) }
+  return demoCache.data
 }
 
-function makeSplits(paceSec: number, km: number, rand: () => number, spread = 10) {
-  return Array.from({ length: Math.floor(km) }, () => Math.round(paceSec + (rand() - 0.5) * spread * 2))
-}
+/** Copie des données de démo du jour, que l'état de l'appli peut modifier librement. */
+export const demoData = (): DemoData => structuredClone(demoBase())
 
-const SKIES = ['ensoleillé', 'nuageux', 'couvert', 'pluie fine', 'brouillard']
+export const demoActivities = (): Activity[] => demoData().activities
 
-/** Course de démo écrite sans les champs complétés par upgradeActivity. */
-type DemoRun = Omit<Activity, 'localDate' | 'indoor' | 'sport' | 'elapsedSec'>
-
-function generateHistory(): DemoRun[] {
-  const rand = prng(42)
-  const runs: DemoRun[] = []
-  type DemoType = Exclude<RunType, 'easy' | 'race'>
-  const plan: Record<number, DemoType> = { 2: 'interval', 4: 'recovery', 6: 'tempo', 0: 'long' }
-  const places: Record<DemoType, string[]> = {
-    interval: ['piste'],
-    recovery: ['route', 'bois'],
-    tempo: ['route', 'quais'],
-    long: ['chemins', 'bois', 'quais'],
-  }
-  for (let d = new Date('2026-10-01T12:00:00Z'); d <= new Date('2026-11-11T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
-    const day = d.getUTCDay()
-    const type = plan[day]
-    if (!type || rand() < 0.15) continue
-    const date = d.toISOString().slice(0, 10)
-    if (date === '2026-11-10') continue // tempo record déjà dans les données fixes
-
-    const km = Math.round(
-      ({ interval: 7 + rand() * 2, recovery: 5 + rand() * 2, tempo: 5 + rand() * 3, long: 12 + rand() * 6 })[type] * 10,
-    ) / 10
-    const pace = Math.round(({ interval: 316, recovery: 338, tempo: 292, long: 320 })[type] + rand() * 14)
-    const efforts: Activity['bestEfforts'] = {}
-    if (km >= 5) efforts['5k'] = Math.round(pace * 5 - (type === 'tempo' ? 0 : -20))
-    if (km >= 10) efforts['10k'] = Math.round(pace * 10)
-    const hour = type === 'long' ? 9 : type === 'recovery' ? 7 : 18
-    const label = { interval: 'Fractionné piste', recovery: 'Footing récup', tempo: `Tempo ${Math.round(km)} km`, long: 'Sortie longue' }[type]
-    const name = type === 'interval' ? `${label} ${rand() < 0.5 ? '10×400' : '6×800'}` : label
-    runs.push({
-      id: `h-${date}`,
-      type,
-      startedAt: `${date}T${String(hour).padStart(2, '0')}:${String(Math.floor(rand() * 50)).padStart(2, '0')}:00+01:00`,
-      place: places[type][Math.floor(rand() * places[type].length)]!,
-      distanceKm: km,
-      durationSec: Math.round(pace * km),
-      avgHr: Math.round(({ interval: 166, recovery: 135, tempo: 170, long: 147 })[type] + rand() * 6),
-      elevationM: Math.round(type === 'interval' ? 5 : 30 + rand() * 140),
-      splits: makeSplits(pace, km, rand),
-      weather: { tempC: Math.round(6 + rand() * 9), sky: SKIES[Math.floor(rand() * SKIES.length)]!, windKmh: Math.round(5 + rand() * 20) },
-      shoe: type === 'tempo' || type === 'interval' ? SHOES.vf : SHOES.peg,
-      bestEfforts: efforts,
-      garminName: name,
-      stravaName: name,
-    })
-  }
-  // L'ancien record sur 5 km, battu le 10 novembre
-  const oldBest = runs.find((r) => r.type === 'tempo')
-  if (oldBest) oldBest.bestEfforts['5k'] = 1438
-  return runs
-}
-
-const rand = prng(7)
-
-const RECENT: DemoRun[] = [
-  {
-    id: 'a2',
-    type: 'interval',
-    startedAt: '2026-11-17T18:42:00+01:00',
-    place: 'piste',
-    distanceKm: 8.0,
-    durationSec: 2550,
-    avgHr: 168,
-    elevationM: 4,
-    splits: [312, 330, 309, 334, 314, 328, 316, 332],
-    weather: { tempC: 9, sky: 'pluie fine', windKmh: 20 },
-    shoe: SHOES.vf,
-    bestEfforts: { '5k': 1590 },
-    garminName: 'Fractionné piste 10×400',
-    stravaName: 'Morning Run',
-    // Note personnelle (inventée) déjà sur Strava : le texte de l'appli doit se placer dessous
-    stravaDescription: 'Séance costaud sous la pluie. Les deux derniers 400 étaient de trop, à refaire plus frais.',
-  },
-  {
-    id: 'a3',
-    type: 'recovery',
-    startedAt: '2026-11-16T07:15:00+01:00',
-    place: 'route',
-    distanceKm: 6.2,
-    durationSec: 2101,
-    avgHr: 136,
-    elevationM: 42,
-    splits: makeSplits(339, 6.2, rand),
-    weather: { tempC: 6, sky: 'brouillard', windKmh: 8 },
-    shoe: SHOES.peg,
-    bestEfforts: { '5k': 1690 },
-    garminName: 'Footing récup',
-    stravaName: 'Footing récup',
-  },
-  {
-    id: 'a1',
-    type: 'long',
-    startedAt: '2026-11-15T09:30:00+01:00',
-    place: 'chemins',
-    distanceKm: 12.4,
-    durationSec: 3912,
-    avgHr: 148,
-    elevationM: 168,
-    splits: makeSplits(315, 12.4, rand),
-    weather: { tempC: 11, sky: 'ensoleillé', windKmh: 12 },
-    shoe: SHOES.peg,
-    bestEfforts: { '5k': 1560, '10k': 3130 },
-    garminName: 'Sortie longue',
-    stravaName: 'Sortie longue',
-  },
-  {
-    id: 'a4',
-    type: 'tempo',
-    startedAt: '2026-11-10T17:05:00+01:00',
-    place: 'route',
-    distanceKm: 5.0,
-    durationSec: 1405,
-    avgHr: 171,
-    elevationM: 18,
-    splits: [283, 280, 282, 279, 281],
-    weather: { tempC: 8, sky: 'nuageux', windKmh: 14 },
-    shoe: SHOES.vf,
-    bestEfforts: { '5k': 1405 },
-    garminName: 'Tempo 5 km',
-    stravaName: 'Afternoon Run',
-  },
-]
-
-export const demoActivities = (): Activity[] =>
-  upgradeActivities([...RECENT, ...generateHistory()]).sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+/** Tampon de la démo gardée : version des données et jour où elles ont été produites. */
+export const useDemoStamp = () => useState<{ version: number; day: string } | null>('demoStamp', () => null)
 
 export function useActivities() {
   const activities = useState<Activity[]>('activities', () => (isDemoCookie() ? demoActivities() : []))

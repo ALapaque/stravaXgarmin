@@ -1,14 +1,6 @@
-export type NotifKind = 'titles' | 'records' | 'review' | 'recap'
-
-export interface AppNotification {
-  id: string
-  kind: NotifKind
-  title: string
-  body: string
-  to?: string
-  at: string
-  read: boolean
-}
+// Forme des données : shared/utils/model.ts
+import type { AppNotification, NotifKind } from '#shared/utils/model'
+export type { AppNotification, NotifKind } from '#shared/utils/model'
 
 export const NOTIF_KINDS: Record<NotifKind, { label: string; hint: string }> = {
   titles: { label: 'Titres appliqués', hint: 'Quand un nom est copié ou publié sur Strava' },
@@ -17,44 +9,7 @@ export const NOTIF_KINDS: Record<NotifKind, { label: string; hint: string }> = {
   recap: { label: 'Récaps', hint: 'Chaque lundi et chaque début de mois' },
 }
 
-export const demoNotifications = (): AppNotification[] => [
-  {
-    id: 'n1',
-    kind: 'review',
-    title: '2 courses attendent ta validation',
-    body: '« Morning Run » et « Afternoon Run » peuvent être renommées.',
-    to: '/activites',
-    at: '2026-11-17T19:40:00+01:00',
-    read: false,
-  },
-  {
-    id: 'n2',
-    kind: 'recap',
-    title: 'Ton récap de la semaine est prêt',
-    body: '17,4 km sur la semaine du 9 novembre.',
-    to: '/recap',
-    at: '2026-11-16T08:00:00+01:00',
-    read: false,
-  },
-  {
-    id: 'n3',
-    kind: 'records',
-    title: 'Nouveau record sur 10 km',
-    body: '52:10 pendant ta sortie longue de dimanche.',
-    to: '/activites/a1',
-    at: '2026-11-15T10:45:00+01:00',
-    read: true,
-  },
-  {
-    id: 'n4',
-    kind: 'records',
-    title: 'Nouveau record sur 5 km',
-    body: '23:25, soit 33 s de mieux que ton ancien record.',
-    to: '/activites/a4',
-    at: '2026-11-10T17:40:00+01:00',
-    read: true,
-  },
-]
+export const demoNotifications = (): AppNotification[] => demoData().notifications
 
 /**
  * Centre de notifications de l'appli + notifications système quand c'est autorisé.

@@ -35,7 +35,7 @@ export function useStreams() {
     try {
       const data = a.stravaId
         ? await useHealth().track('strava.streams', () => $fetch<RunStream>(`/api/strava/streams/${a.stravaId}`), (s) => HEALTH_INFO.streams(s))
-        : streamFromLaps(a.laps ?? [], [...a.id].reduce((h, c) => h * 31 + c.charCodeAt(0), 7))
+        : demoStream(a)
       keep(a.id, data)
       return data
     } catch {

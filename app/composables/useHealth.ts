@@ -6,16 +6,17 @@
 
 /** Démo : toutes les lectures réussies, datées de « nowIso », avec des sous-titres tirés des données de démo. */
 export function demoHealth(nowIso: string): Health {
-  const runs = demoActivities()
+  const { activities: runs, plan } = demoBase()
   const bests = new Set(runs.flatMap((r) => Object.keys(r.bestEfforts)))
+  const today = brusselsDay(nowIso)
   const infos: Record<HealthKey, string> = {
     'strava.activities': HEALTH_INFO.activities(runs.length),
     'strava.details': HEALTH_INFO.details(runs.length, runs.length),
     'strava.gear': HEALTH_INFO.gear(2),
     'strava.streams': HEALTH_INFO.streams({ hr: true, v: true }),
     'garmin.activities': HEALTH_INFO.garminActivities(runs.length),
-    'garmin.plan': HEALTH_INFO.plan(3),
-    'garmin.forme': HEALTH_INFO.forme({ vo2max: 52, status: {}, load: {}, predictions: {}, readiness: {}, recoveryHours: 14 }),
+    'garmin.plan': HEALTH_INFO.plan(plan.filter((s) => s.date >= today).length, plan.filter((s) => s.date < today).length),
+    'garmin.forme': HEALTH_INFO.forme(demoBase().forme),
     'garmin.records': HEALTH_INFO.records(bests.size),
     ai: HEALTH_INFO.ai(),
   }
@@ -58,15 +59,16 @@ export function useHealth() {
    * Démo, à chaque ouverture : les lectures réussies sont re-datées à maintenant (sinon « il y a 3 jours »).
    * Une lecture en échec n'est pas touchée : c'est ce qui permet de montrer un cas d'échec.
    * « all » (bouton « Tout relire ») : toutes les sources repassent en réussite.
+   * « infos » : les lectures réussies reprennent les sous-titres de la démo du jour (démo régénérée).
    */
-  function refreshDemo(all = false) {
+  function refreshDemo(all = false, infos = false) {
     const now = new Date().toISOString()
     const fresh = demoHealth(now)
     health.value = Object.fromEntries(
       HEALTH_KEYS.map((k) => {
         const e = health.value[k]
         if (!all && e?.status === 'error') return [k, e]
-        return [k, e?.status === 'ok' && e.info ? markOk(e, now) : fresh[k]]
+        return [k, e?.status === 'ok' && e.info && !infos ? markOk(e, now) : fresh[k]]
       }),
     ) as Health
   }
