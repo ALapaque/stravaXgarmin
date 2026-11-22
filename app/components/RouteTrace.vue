@@ -2,7 +2,7 @@
 /*
  * Tracé du parcours : la polyline Strava, ou un parcours inventé en démo.
  * Se dessine à l'apparition, avec un halo de la couleur du type de séance.
- * Sans GPS (tapis, salle), une onde stylisée prend sa place.
+ * Sans GPS (tapis, salle) : rien (la vignette RunThumb montre alors le profil des tours).
  */
 import type { Activity } from '~/composables/useActivities'
 
@@ -15,7 +15,7 @@ const color = computed(() => RUN_TYPES[props.activity.type].color)
 const uid = useId()
 const d = computed(() => {
   const a = props.activity
-  // Sur tapis : pas de parcours, l'onde stylisée
+  // Sur tapis : jamais de parcours
   if (a.indoor) return ''
   if (a.route) return routePath(decodePolyline(a.route))
   if (!a.stravaId) return routePath(demoRoute(a.id, a.type))
@@ -42,14 +42,6 @@ const end = computed(() => d.value.match(/L([\d.]+) ([\d.]+)$/)?.slice(1).map(Nu
       <circle v-if="start" class="dot dot--start" :cx="start[0]" :cy="start[1]" :r="width * 1.2" />
       <circle v-if="end" class="dot dot--end" :cx="end[0]" :cy="end[1]" :r="width * 1.5" />
     </template>
-    <path
-      v-else
-      class="line wave"
-      d="M8 50 C 20 50, 22 30, 32 30 S 44 70, 54 70 S 66 36, 76 36 S 88 50, 92 50"
-      pathLength="1"
-      :stroke="`url(#g${uid})`"
-      :stroke-width="width"
-    />
   </svg>
 </template>
 

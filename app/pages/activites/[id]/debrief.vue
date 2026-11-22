@@ -400,7 +400,7 @@ const resultBig = computed(() => {
       <!-- Rappel de la course -->
       <section class="card recap" aria-label="La course">
         <span class="thumb" :style="{ '--c': RUN_TYPES[a.type].color }">
-          <RouteTrace :activity="a" :draw="false" :glow="false" :width="5" />
+          <RunThumb :activity="a" />
         </span>
         <div class="recap-main">
           <p class="title recap-title">{{ displayTitle(a).title }}</p>

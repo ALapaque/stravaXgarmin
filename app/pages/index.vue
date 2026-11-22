@@ -106,7 +106,7 @@ const healthAlert = computed(() => {
         </section>
         <NuxtLink v-if="hero" :to="`/activites/${hero.id}`" class="card hero-run" :style="{ '--c': RUN_TYPES[hero.type].color }">
           <div class="hero-map">
-            <RouteTrace :activity="hero" :width="2.2" :delay="300" />
+            <RunThumb :activity="hero" :width="2.2" draw />
           </div>
           <div class="hero-info">
             <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}<template v-if="hero.indoor"> · {{ placeLabel(hero) }}</template></p>

@@ -103,7 +103,7 @@ async function share() {
           </span>
         </NuxtLink>
         <NuxtLink v-if="recap.longest" :to="`/activites/${recap.longest.id}`" class="row">
-          <ActivityTile :type="recap.longest.type" />
+          <ActivityTile :type="recap.longest.type" :activity="recap.longest" />
           <span class="row__main">
             <span class="title">Plus longue sortie : {{ formatKm(recap.longest.distanceKm) }} km</span>
             <span class="label">{{ displayTitle(recap.longest).title }}</span>
