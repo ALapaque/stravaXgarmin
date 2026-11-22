@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.3](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.2...v1.16.3) (2026-11-22)
+
+### Corrections
+
+* l'image à partager d'une course sur tapis montre le graphique de ta séance (tours et cardio) au lieu d'un cadre vide ([0adabea](https://github.com/ALapaque/stravaXgarmin/commit/0adabeafbd20850e34d001507d5efa3cfb8bd694))
+
 ## [1.16.2](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.1...v1.16.2) (2026-11-22)
 
 ### Corrections
