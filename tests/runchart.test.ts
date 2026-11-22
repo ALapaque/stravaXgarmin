@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { comparePlan, type Lap, type StepResult } from '../shared/utils/compliance'
 import { buildDemo } from '../shared/utils/demo'
-import { autoKmLaps, clock, groupSteps, hrBounds, lapDetail, lapProfile, seriesPath, stepDone, tickLabel, timeTicks, valueAt, zoneShares } from '../shared/utils/runchart'
+import { autoKmLaps, clock, groupSteps, hrBounds, lapDetail, lapLegend, lapProfile, seriesPath, shareChart, stepDone, tickLabel, timeTicks, valueAt, zoneShares } from '../shared/utils/runchart'
+import { streamFromLaps } from '../shared/utils/streams'
 import type { PlanStep } from '../shared/utils/workout'
 
 /* Tours et séances INVENTÉS. */
@@ -135,6 +136,88 @@ describe('lapDetail', () => {
     expect(lapDetail(p.bars[0]!)).toBe('Échauffement (1/2) · 1 km · 6:40 · 6:40 /km · 125 bpm')
     expect(lapDetail(p.bars.find((b) => b.state === 'missed')!)).toBe('Effort 4 · 400 m prévus · pas fait')
     expect(lapDetail({ ...p.bars[2]!, hr: null, label: 'Tour 3' })).toBe('Tour 3 · 400 m · 1:50 · 4:35 /km')
+  })
+})
+
+describe('lapLegend', () => {
+  it('séance reliée : les natures d’étapes courues, puis ce qui est entamé ou pas fait', () => {
+    const keys = lapLegend(lapProfile(laps3, result3.steps)).map((l) => l.key)
+    expect(keys).toContain('calm')
+    expect(keys).toContain('interval')
+    expect(keys).toContain('recovery')
+    expect(keys[keys.length - 1]).toBe('missed')
+    expect(lapLegend(lapProfile(laps3, result3.steps)).find((l) => l.key === 'calm')!.label).toBe('Échauffement')
+  })
+  it('sans séance reliée : rien à expliquer (une seule teinte)', () => {
+    expect(lapLegend(lapProfile([lap(1000, 400), lap(1000, 380)]))).toEqual([])
+  })
+})
+
+describe('shareChart : le cadre de l’image à partager n’est jamais vide', () => {
+  it('sur tapis avec des tours : une barre par tour, le cardio par-dessus', () => {
+    const laps = [lap(1000, 400, 130), lap(1000, 340, 150), lap(1000, 350, 158), lap(1000, 360, 160), lap(1200, 351, 170)]
+    const c = shareChart({ laps, stream: streamFromLaps(laps, 7), splits: [400, 340, 350, 360, 300], distanceKm: 5.2, durationSec: 1801 })!
+    expect(c.kind).toBe('laps')
+    expect(c.bars).toHaveLength(5)
+    expect(c.linked).toBe(false)
+    // Les barres couvrent tout l'axe du temps, dans l'ordre
+    expect(c.bars[0]!.x).toBe(0)
+    expect(c.bars.reduce((a, b) => a + b.w, 0)).toBeCloseTo(1)
+    // Le tour le plus rapide est le plus haut, le plus lent le plus bas
+    expect(c.bars[4]!.level).toBe(1)
+    expect(c.bars[0]!.level).toBeCloseTo(0.2)
+    expect(c.hr!.length).toBeGreaterThan(20)
+    for (const [x, y] of c.hr!) {
+      expect(x).toBeGreaterThanOrEqual(0)
+      expect(x).toBeLessThanOrEqual(1)
+      expect(y).toBeGreaterThanOrEqual(0)
+      expect(y).toBeLessThanOrEqual(1)
+    }
+    expect(c.legend).toEqual([{ key: 'hr', label: 'Cardio' }])
+    expect(c.hint).toBe('Plus haut = plus rapide')
+    expect(c.ticks.map((t) => t.label)).toEqual(['0', '10 min', '20 min'])
+  })
+  it('séance reliée : étapes colorées, celles pas faites en fin d’axe, et la légende qui va avec', () => {
+    const c = shareChart({ laps: laps3, steps: result3.steps })!
+    expect(c.kind).toBe('laps')
+    expect(c.linked).toBe(true)
+    expect(c.bars.some((b) => b.state === 'missed')).toBe(true)
+    expect(c.bars.filter((b) => b.kind === 'interval' && b.state === 'done')).toHaveLength(3)
+    expect(c.hr).toBeNull()
+    expect(c.legend.map((l) => l.key)).toEqual(['calm', 'interval', 'recovery', 'missed'])
+    const last = c.bars[c.bars.length - 1]!
+    expect(last.x + last.w).toBeCloseTo(1)
+  })
+  it('sans tours : une barre par kilomètre, plus le reste de la course', () => {
+    const c = shareChart({ laps: [lap(5200, 1801)], splits: [370, 350, 345, 340, 330], distanceKm: 5.2, durationSec: 1801 })!
+    expect(c.kind).toBe('splits')
+    expect(c.bars).toHaveLength(6)
+    expect(c.bars[5]!.w).toBeCloseTo(66 / 1801)
+    expect(c.hint).toBe('Une barre par kilomètre · plus haut = plus rapide')
+    // Un reste trop court ne fait pas de barre
+    expect(shareChart({ splits: [370, 350], distanceKm: 2.02, durationSec: 728 })!.bars).toHaveLength(2)
+  })
+  it('ni tours ni kilomètres : la courbe de cardio seule, si elle existe', () => {
+    const c = shareChart({ laps: [lap(900, 400)], splits: [], stream: { t: [0, 100, 200, 300, 400], hr: [110, 130, 140, 145, 150], v: null, d: null } })!
+    expect(c.kind).toBe('curve')
+    expect(c.bars).toEqual([])
+    expect(c.hr).toHaveLength(5)
+    expect(c.hr![4]![0]).toBe(1)
+    expect(c.hint).toBeNull()
+  })
+  it('rien à dessiner : null (l’image se passe de cadre), et jamais d’erreur sur des données abîmées', () => {
+    expect(shareChart({})).toBeNull()
+    expect(shareChart({ laps: [lap(900, 400)], splits: [400], distanceKm: 0.9, durationSec: 400 })).toBeNull()
+    expect(shareChart({ laps: null, steps: null, stream: { t: [], hr: null, v: null, d: null }, splits: null })).toBeNull()
+    expect(shareChart({ laps: [{ m: Number.NaN, sec: 0 } as unknown as Lap], splits: [Number.NaN, 0] as number[], stream: { t: [0, 1], hr: [0, 0], v: null, d: null } })).toBeNull()
+  })
+  it('en démo : une séance sur tapis donne toujours un graphique', () => {
+    const demo = buildDemo('2026-11-18')
+    for (const a of demo.activities.filter((x) => x.indoor)) {
+      const c = shareChart({ laps: a.laps, splits: a.splits, distanceKm: a.distanceKm, durationSec: a.durationSec })
+      expect(c, a.id).not.toBeNull()
+      expect(c!.bars.length, a.id).toBeGreaterThan(1)
+    }
   })
 })
 

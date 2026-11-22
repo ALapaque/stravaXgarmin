@@ -5,6 +5,7 @@
  * leurs teintes dans les variables des thèmes d'après « kind » et « tier ».
  */
 import type { Lap, StepResult } from './compliance'
+import type { RunStream } from './streams'
 import { paceText, plannedAmount, plannedSeconds, STEP_LEVEL, stepLabel } from './debrief'
 import { stepDistance, stepsSummary, type PlanStep, type StepKind } from './workout'
 
@@ -267,6 +268,125 @@ export function valueAt(t: number[] | null | undefined, v: number[] | null | und
     }
   }
   return best >= 0 ? Math.round(vs[best]!) : null
+}
+
+/* ───── Légende du profil ───── */
+
+export type LegendKey = 'calm' | 'interval' | 'recovery' | 'other' | 'none' | 'partial' | 'missed'
+
+/**
+ * Ce que la légende du profil doit expliquer, dans l'ordre d'affichage : jamais la couleur seule.
+ * Les natures d'étapes n'y figurent que si les barres sont colorées par étape (séance reliée).
+ */
+export function lapLegend(p: LapProfile): { key: LegendKey; label: string }[] {
+  const out: { key: LegendKey; label: string }[] = []
+  if (p.linked) {
+    const kinds = new Set(p.bars.filter((b) => b.state !== 'missed').map((b) => b.kind))
+    const warm = kinds.has('warmup')
+    const cool = kinds.has('cooldown')
+    if (warm || cool) out.push({ key: 'calm', label: warm && cool ? 'Échauffement, retour au calme' : warm ? 'Échauffement' : 'Retour au calme' })
+    if (kinds.has('interval')) out.push({ key: 'interval', label: 'Effort' })
+    if (kinds.has('recovery') || kinds.has('rest')) out.push({ key: 'recovery', label: 'Récup' })
+    if (kinds.has('other')) out.push({ key: 'other', label: 'Course' })
+    if (kinds.has(null)) out.push({ key: 'none', label: 'Hors séance' })
+  }
+  if (p.bars.some((b) => b.state === 'partial')) out.push({ key: 'partial', label: 'Entamé' })
+  if (p.bars.some((b) => b.state === 'missed')) out.push({ key: 'missed', label: 'Pas fait' })
+  return out
+}
+
+/* ───── Image à partager : ce qui remplit le cadre quand il n'y a pas de tracé ───── */
+
+export interface ShareBar {
+  /** Début et largeur sur l'axe du temps, de 0 à 1 */
+  x: number
+  w: number
+  /** Hauteur, de 0 à 1 (plus haut = plus rapide) */
+  level: number
+  tier: 0 | 1 | 2 | 3
+  kind: StepKind | null
+  state: LapBar['state']
+}
+
+export interface ShareChart {
+  /** laps : une barre par tour · splits : une barre par kilomètre · curve : le cardio seul */
+  kind: 'laps' | 'splits' | 'curve'
+  bars: ShareBar[]
+  /** Barres colorées par nature d'étape (séance reliée) ; sinon par intensité */
+  linked: boolean
+  /** Cardio : points (x, y) de 0 à 1, y = 0 en bas ; null sans courbe */
+  hr: [number, number][] | null
+  ticks: { x: number; label: string }[]
+  /** Légende : natures d'étapes, états, puis « hr » si la courbe de cardio est tracée */
+  legend: { key: LegendKey | 'hr'; label: string }[]
+  /** Comment lire les barres ; null sans barres */
+  hint: string | null
+}
+
+/** Courbe de cardio sur un axe de « total » secondes, placée comme dans le profil de la page (en haut, au-dessus des barres lentes). */
+function hrCurve(stream: RunStream | null | undefined, total: number): [number, number][] | null {
+  const b = hrBounds(stream?.hr)
+  if (!stream || !b || !(total > 0)) return null
+  const span = b.hi - b.lo
+  const lo = b.lo - span * 0.15
+  const hi = b.hi + span * 0.05
+  const pts: [number, number][] = []
+  const hr = stream.hr ?? []
+  for (let i = 0; i < stream.t.length && i < hr.length; i++) {
+    const v = hr[i]!
+    const t = stream.t[i]!
+    if (!(v > 0) || !Number.isFinite(t)) continue
+    pts.push([Math.min(Math.max(t, 0), total) / total, (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)])
+  }
+  return pts.length > 1 ? pts : null
+}
+
+/**
+ * Le graphique d'une course sans tracé (tapis, GPS absent), pour l'image à partager : jamais un cadre vide.
+ * Dans l'ordre : la séance tour par tour, comme en haut de la page (au moins deux tours) ; sinon une barre par
+ * kilomètre, avec le reste de la course en dernière barre ; sinon la courbe de cardio seule ; sinon null
+ * (l'image se passe alors de cadre). Rien n'est inventé : chaque barre et chaque point vient de la course.
+ */
+export function shareChart(i: {
+  laps?: Lap[] | null
+  steps?: StepResult[] | null
+  stream?: RunStream | null
+  /** Temps de chaque kilomètre complet (s) */
+  splits?: number[] | null
+  distanceKm?: number
+  durationSec?: number
+}): ShareChart | null {
+  const build = (kind: 'laps' | 'splits', p: LapProfile, hint: string): ShareChart => {
+    const hr = hrCurve(i.stream, p.total)
+    return {
+      kind,
+      bars: p.bars.map((b) => ({ x: b.t0 / p.total, w: b.sec / p.total, level: b.level, tier: b.tier, kind: b.kind, state: b.state })),
+      linked: p.linked,
+      hr,
+      ticks: timeTicks(p.total, 4).map((t) => ({ x: t.x, label: t.label })),
+      legend: [...lapLegend(p), ...(hr ? [{ key: 'hr' as const, label: 'Cardio' }] : [])],
+      hint,
+    }
+  }
+
+  const byLap = lapProfile(i.laps, i.steps)
+  if (byLap.bars.filter((b) => b.lap >= 0).length > 1) return build('laps', byLap, 'Plus haut = plus rapide')
+
+  const km = (Array.isArray(i.splits) ? i.splits : []).map(num).filter((s) => s > 0)
+  if (km.length > 1) {
+    const pseudo: Lap[] = km.map((sec) => ({ m: 1000, sec, elapsedSec: sec, hr: null, maxHr: null }))
+    // Le reste de la course après le dernier kilomètre complet, s'il compte (plus de 50 m et de 10 s)
+    const restM = num(i.distanceKm) * 1000 - km.length * 1000
+    const restSec = num(i.durationSec) - km.reduce((a, b) => a + b, 0)
+    if (restM >= 50 && restSec >= 10) pseudo.push({ m: restM, sec: restSec, elapsedSec: restSec, hr: null, maxHr: null })
+    return build('splits', lapProfile(pseudo), 'Une barre par kilomètre · plus haut = plus rapide')
+  }
+
+  const t = i.stream?.t ?? []
+  const total = t.length ? Math.max(...t.filter((v) => Number.isFinite(v))) : 0
+  const hr = hrCurve(i.stream, total)
+  if (hr) return { kind: 'curve', bars: [], linked: false, hr, ticks: timeTicks(total, 4).map((k) => ({ x: k.x, label: k.label })), legend: [{ key: 'hr', label: 'Cardio' }], hint: null }
+  return null
 }
 
 /* ───── Temps par zone ───── */

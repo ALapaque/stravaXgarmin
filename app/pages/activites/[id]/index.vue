@@ -109,13 +109,15 @@ const lapDist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${formatKm(m 
 
 const sharing = ref(false)
 
-/** Image au format story : tracé, titre et chiffres, dans le style du thème. */
+/** Image au format story : tracé ou graphique de la séance, titre et chiffres, dans le style du thème. */
 async function shareImage() {
   const r = a.value
   if (!r) return
   sharing.value = true
   try {
     const rec = records.value[0]
+    // Sur tapis : jamais de tracé inventé
+    const points = r.indoor ? [] : r.route ? decodePolyline(r.route) : r.stravaId ? [] : demoRoute(r.id, r.type)
     const blob = await renderRunImage({
       title: displayTitle(r).title,
       type: RUN_TYPES[r.type].label,
@@ -128,8 +130,12 @@ async function shareImage() {
         r.avgHr ? { label: 'Cardio', value: String(r.avgHr), unit: 'bpm' } : { label: 'Dénivelé', value: String(r.elevationM), unit: 'm' },
       ],
       highlight: rec ? `Record sur ${rec.label} : ${formatDuration(rec.time)}` : undefined,
-      // Sur tapis : jamais de tracé inventé
-      points: r.indoor ? [] : r.route ? decodePolyline(r.route) : r.stravaId ? [] : demoRoute(r.id, r.type),
+      points,
+      // Sans tracé (tapis, GPS absent) : la séance tour par tour, comme en haut de cette page. Jamais un cadre vide
+      chart:
+        points.length > 1
+          ? null
+          : shareChart({ laps: r.laps, steps: session.value ? result.value?.steps : null, stream: stream.value, splits: r.splits, distanceKm: r.distanceKm, durationSec: r.durationSec }),
     })
     const how = await shareOrDownload(blob, `course-${r.localDate}.png`, displayTitle(r).title)
     if (how === 'downloaded') show('Image de la course téléchargée')

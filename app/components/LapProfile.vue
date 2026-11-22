@@ -15,16 +15,7 @@ const props = withDefaults(
   { steps: null, stream: null, color: 'var(--accent-text)', height: 176 },
 )
 
-const KIND_COLORS: Record<string, string> = {
-  warmup: 'var(--info)',
-  cooldown: 'var(--info)',
-  interval: 'var(--accent-text)',
-  recovery: 'var(--ok)',
-  rest: 'var(--muted)',
-  other: 'var(--type-long)',
-}
-/** Intensité (sans séance reliée) : une seule teinte, de plus en plus franche */
-const TIER_MIX = [38, 58, 78, 100]
+// Teintes : app/utils/lapColors.ts (les mêmes que dans l'image à partager)
 
 const uid = useId()
 const p = computed(() => lapProfile(props.laps, props.steps))
@@ -32,8 +23,8 @@ const bars = computed(() => p.value.bars)
 const ticks = computed(() => timeTicks(p.value.total))
 
 const colorOf = (b: LapBar) => {
-  if (p.value.linked) return b.kind ? KIND_COLORS[b.kind] : 'var(--muted)'
-  return `color-mix(in oklab, ${props.color} ${TIER_MIX[b.tier]}%, transparent)`
+  if (p.value.linked) return b.kind ? LAP_KIND_COLORS[b.kind] : LAP_NO_KIND_COLOR
+  return `color-mix(in oklab, ${props.color} ${LAP_TIER_MIX[b.tier]}%, transparent)`
 }
 
 /* Cardio par-dessus : échelle propre, sans graduation (les valeurs se lisent dans le détail) */
@@ -116,21 +107,8 @@ const detailParts = computed(() => {
 const doneCount = computed(() => bars.value.filter((b) => b.lap >= 0).length)
 const hint = computed(() => `${doneCount.value} tour${doneCount.value > 1 ? 's' : ''} · touche une barre pour le détail`)
 
-/* ───── Légende : jamais la couleur seule ───── */
-const legend = computed(() => {
-  if (!p.value.linked) return []
-  const kinds = new Set(bars.value.filter((b) => b.state !== 'missed').map((b) => b.kind))
-  const out: { key: string; label: string; color: string }[] = []
-  if (kinds.has('warmup') || kinds.has('cooldown'))
-    out.push({ key: 'calm', label: kinds.has('warmup') && kinds.has('cooldown') ? 'Échauffement, retour au calme' : kinds.has('warmup') ? 'Échauffement' : 'Retour au calme', color: KIND_COLORS.warmup! })
-  if (kinds.has('interval')) out.push({ key: 'interval', label: 'Effort', color: KIND_COLORS.interval! })
-  if (kinds.has('recovery') || kinds.has('rest')) out.push({ key: 'recovery', label: 'Récup', color: KIND_COLORS.recovery! })
-  if (kinds.has('other')) out.push({ key: 'other', label: 'Course', color: KIND_COLORS.other! })
-  if (kinds.has(null)) out.push({ key: 'none', label: 'Hors séance', color: 'var(--muted)' })
-  return out
-})
-const hasMissed = computed(() => bars.value.some((b) => b.state === 'missed'))
-const hasPartial = computed(() => bars.value.some((b) => b.state === 'partial'))
+/* ───── Légende : jamais la couleur seule (règle : lapLegend) ───── */
+const legend = computed(() => lapLegend(p.value))
 
 const summary = computed(() => {
   const n = doneCount.value
@@ -196,9 +174,11 @@ const summary = computed(() => {
     </p>
 
     <figcaption class="legend">
-      <span v-for="l in legend" :key="l.key" class="lg"><span class="sw" :style="{ '--c': l.color }" aria-hidden="true" />{{ l.label }}</span>
-      <span v-if="hasPartial" class="lg"><span class="sw partial" :style="{ '--c': 'var(--accent-text)' }" aria-hidden="true" />Entamé</span>
-      <span v-if="hasMissed" class="lg"><span class="sw missed" aria-hidden="true" />Pas fait</span>
+      <span v-for="l in legend" :key="l.key" class="lg">
+        <span v-if="l.key === 'missed'" class="sw missed" aria-hidden="true" />
+        <span v-else class="sw" :class="{ partial: l.key === 'partial' }" :style="{ '--c': LAP_LEGEND_COLORS[l.key] }" aria-hidden="true" />
+        {{ l.label }}
+      </span>
       <span v-if="hr?.path" class="lg"><span class="sw sw--line" aria-hidden="true" />Cardio</span>
       <span class="lg lg--hint">Plus haut = plus rapide</span>
     </figcaption>
