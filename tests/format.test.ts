@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { brusselsDay, formatAgo, formatDay, formatDuration, formatHours, formatKm, formatPace, formatTime, placeLabel } from '../shared/utils/format'
+import { brusselsDay, formatAgo, formatDay, formatDuration, formatGain, formatHours, formatKm, formatPace, formatTime, placeLabel } from '../shared/utils/format'
 
 describe('formats', () => {
+  it('écart entre deux chronos', () => {
+    expect(formatGain(33)).toBe('33 s')
+    expect(formatGain(321)).toBe('5 min 21 s')
+    expect(formatGain(720)).toBe('12 min')
+    expect(formatGain(-4)).toBe('0 s')
+  })
+
   it('durée', () => {
     expect(formatDuration(3912)).toBe('1:05:12')
     expect(formatDuration(2550)).toBe('42:30')

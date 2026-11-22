@@ -74,3 +74,10 @@ export function placeLabel(a: { indoor?: boolean; place?: string | null }): stri
   if (a.indoor) return 'Tapis'
   return a.place ?? ''
 }
+
+/** Écart entre deux chronos : 33 → "33 s", 321 → "5 min 21 s", 720 → "12 min" */
+export function formatGain(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  if (s < 60) return `${s} s`
+  return s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`
+}

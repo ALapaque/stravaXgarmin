@@ -27,7 +27,7 @@ export interface StepResult {
   fraction: number
   /** Ce qui a été parcouru pendant l'étape (FC moyenne pondérée par le temps) */
   actual: { sec: number; m: number; hr: number | null } | null
-  /** L'étape finit exactement sur une frontière de tour */
+  /** L'étape commence ET finit sur une frontière de tour : ses chiffres sont ceux de la montre, pas une estimation */
   exact: boolean
 }
 
@@ -117,6 +117,8 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
   const n = tr.laps.length
   const end = { t: tr.T[n]!, d: tr.D[n]! }
   let p = { t: tr.T[start]!, d: tr.D[start]! }
+  // Le point courant est-il une frontière de tour ? (vrai au départ, faux après une avancée « en continu »)
+  let onLap = true
   let stopped = false
   const out: StepResult[] = []
 
@@ -138,8 +140,9 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
         continue
       }
       const q = { t: tr.T[j]!, d: tr.D[j]! }
-      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: true })
+      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap })
       p = q
+      onLap = true
       continue
     }
 
@@ -161,8 +164,9 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
     }
     if (best > 0) {
       const q = { t: tr.T[best]!, d: tr.D[best]! }
-      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: true })
+      out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: onLap })
       p = q
+      onLap = true
       continue
     }
 
@@ -186,6 +190,7 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
     const q = byDist ? atDist(tr, p.d + target) : atTime(tr, p.t + target)
     out.push({ kind: s.kind, planned, done: true, fraction: 1, actual: segment(tr, p, q), exact: false })
     p = q
+    onLap = false
   }
 
   const efforts = out.filter((r) => r.kind === 'interval' && r.done)
@@ -194,7 +199,7 @@ function walk(tr: Track, steps: FlatStep[], start: number): Walk {
 
 /**
  * Pose les étapes prévues sur les tours. « aligned » : au moins une étape faite, et toutes les étapes
- * faites tombent exactement sur des frontières de tours.
+ * faites commencent et finissent sur des frontières de tours.
  *
  * Séance qui ne commence pas par un échauffement (souvent connue seulement par son titre, alors que le
  * coureur s'est échauffé avant) : chaque frontière est essayée comme départ, et on garde le parcours qui
@@ -253,9 +258,12 @@ const kmShort = (m: number) => (m / 1000).toLocaleString('fr-BE', { maximumFract
 
 /**
  * Compare une séance prévue à la course faite.
- * - Au moins 2 efforts et des tours : efforts terminés / efforts prévus (un effort entamé ne compte pas).
- * - Sinon la durée (celle du plan, à défaut la somme des étapes en temps), ou la distance si la séance
- *   est décrite en distance. Plafonné à 1.
+ * - Au moins 2 efforts, des tours, et une séance suivie sur la montre (au moins deux étapes et la moitié
+ *   des efforts faits sont délimités par des tours) : efforts terminés / efforts prévus (un effort entamé
+ *   ne compte pas).
+ * - Séance à répétitions qu'on ne peut pas compter : durée totale du plan, à défaut sa distance, sinon null.
+ * - Séance continue : la durée (celle du plan, à défaut la somme des étapes en temps), ou la distance si
+ *   la séance est décrite en distance. Plafonné à 1.
  * - Rien de comparable → null (l'écran proposera « Faite » par défaut).
  */
 export function comparePlan(
@@ -269,7 +277,15 @@ export function comparePlan(
   const aligned = laps.length && flat.length ? alignPlan(flat, laps).steps : []
   const plannedReps = flat.filter((s) => s.kind === 'interval').length
 
-  if (plannedReps >= 2 && laps.length) {
+  /*
+   * Séance suivie sur la montre : les étapes sont délimitées par des tours. Sans guidage, une étape peut
+   * tomber par hasard sur une borne kilométrique ou sur la fin de la course : on demande donc au moins
+   * deux étapes délimitées par des tours, et qu'au moins la moitié des efforts faits le soient.
+   */
+  const doneEfforts = aligned.filter((s) => s.kind === 'interval' && s.done)
+  const exactSteps = aligned.filter((s) => s.done && s.exact).length
+  const guided = doneEfforts.length > 0 && exactSteps >= 2 && doneEfforts.filter((s) => s.exact).length * 2 >= doneEfforts.length
+  if (plannedReps >= 2 && laps.length && guided) {
     const doneReps = aligned.filter((s) => s.kind === 'interval' && s.done).length
     const ratio = Math.min(1, doneReps / plannedReps)
     return {
@@ -296,7 +312,14 @@ export function comparePlan(
   const doneM = num(run.distanceM)
   let byDistance: boolean
   let target: number | null
-  if (stepM && !stepSec) [byDistance, target] = [true, stepM]
+  /*
+   * Séance à répétitions dont on ne peut pas compter les efforts (pas de tours, ou séance faite sans
+   * guidage : aucun effort ne tombe sur une frontière de tour) : seul un total prévu par le plan
+   * (durée, à défaut distance) reste comparable. La somme des étapes d'un simple titre
+   * (« 5x400m(R=200m) », sans son échauffement) ne dit rien : on ne compare pas.
+   */
+  if (plannedReps >= 2) [byDistance, target] = planSec ? [false, planSec] : [true, planM]
+  else if (stepM && !stepSec) [byDistance, target] = [true, stepM]
   else if (stepSec && !stepM) [byDistance, target] = [false, planSec ?? stepSec]
   else if (planSec) [byDistance, target] = [false, planSec]
   else [byDistance, target] = [true, planM]

@@ -133,6 +133,22 @@ describe('comparePlan : durée et distance', () => {
     expect(comparePlan({ steps: [], durationSec: null, distanceM: null, title: 'Footing pyramidal' }, { durationSec: 2000, distanceM: 5000, laps: [] })).toBeNull()
   })
 
+  it('séance à répétitions sans tours, connue par son seul titre : on ne compare pas', () => {
+    // La somme des étapes (5 × 600 m, sans l'échauffement) ne dit rien de la course entière
+    expect(comparePlan({ title: '5x400m(R=200m)' }, { durationSec: 2100, distanceM: 4700, laps: [] })).toBeNull()
+    expect(comparePlan({ title: '4x4 HR' }, { durationSec: 3700, distanceM: 6300, laps: [] })).toBeNull()
+  })
+
+  it('séance à répétitions faite sans guidage (tours de 1 km seulement) : jamais « 5 efforts sur 5 »', () => {
+    const laps = autoLaps(6400, 2880)
+    // Avec la durée du plan : comparaison par la durée
+    const withTotal = comparePlan({ steps: PLAN_400, durationSec: 2900, distanceM: null, title: '' }, total(laps))!
+    expect(withTotal).toMatchObject({ basis: 'duration', outcome: 'done' })
+    expect(withTotal.doneReps).toBeUndefined()
+    // Sans total prévu : rien de comparable
+    expect(comparePlan({ title: '5x400m(R=200m)' }, total(laps))).toBeNull()
+  })
+
   it('seuils exportés', () => {
     expect(OUTCOME_DONE).toBe(0.9)
     expect(OUTCOME_SHORT).toBe(0.5)

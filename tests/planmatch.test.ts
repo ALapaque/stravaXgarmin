@@ -74,4 +74,19 @@ describe('syntheticSession', () => {
     expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Sortie avec les copains' })).toBeNull()
     expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: undefined })).toBeNull()
   })
+  it('sans vrai nom de montre : le titre Strava sans étiquettes, seulement s’il décrit une séance', () => {
+    const base = { id: 'r1', localDate: '2026-11-19', fromWatch: false }
+    expect(syntheticSession({ ...base, garminName: '[KIPRUN] - Footing 40’', stravaName: '[KIPRUN] - Footing 40’' })).toMatchObject({ title: 'Footing 40’', steps: [{ sec: 2400 }] })
+    expect(syntheticSession({ ...base, garminName: '[FAIL][KIPRUN] - 6x800m (R=2’)', stravaName: '[FAIL][KIPRUN] - 6x800m (R=2’)' })!.steps[0]).toMatchObject({ kind: 'repeat', reps: 6 })
+    // Titre libre, ou nom d'épreuve qui ressemble à « Lieu - Séance » : rien
+    expect(syntheticSession({ ...base, garminName: '[CUSTOM] - Sortie entre amis', stravaName: '[CUSTOM] - Sortie entre amis' })).toBeNull()
+    expect(syntheticSession({ ...base, garminName: 'Corrida - Semi', stravaName: 'Corrida - Semi' })).toBeNull()
+  })
+  it('une compétition n’a pas de séance déduite', () => {
+    expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Namur - 10 km', stravaName: '[RACE] - 10 km des Étangs', isRace: true })).toBeNull()
+  })
+  it('vrai nom de montre prioritaire sur le titre Strava', () => {
+    const s = syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Tapis de course - 8x400m (R=1’)', stravaName: 'Course à pied en soirée', fromWatch: true })!
+    expect(s.title).toBe('8x400m (R=1’)')
+  })
 })

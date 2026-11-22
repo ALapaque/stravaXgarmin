@@ -73,7 +73,15 @@ export function usePlan() {
     const id = match.value.byRun[a.id]
     if (id) return byId(id) ?? null
     if (manual.value[a.id] === 'none') return null
-    return syntheticSession(a)
+    // Sans activité Garmin reliée, « garminName » n'est qu'une copie du titre Strava : ce n'est pas un nom de montre
+    return syntheticSession({
+      id: a.id,
+      localDate: a.localDate,
+      garminName: a.garminName,
+      stravaName: a.stravaName,
+      fromWatch: Boolean(a.garminId) || a.garminName !== a.stravaName,
+      isRace: a.type === 'race',
+    })
   }
 
   /** Prévu contre réalisé pour une course (null : rien de comparable, ou pas de séance). */

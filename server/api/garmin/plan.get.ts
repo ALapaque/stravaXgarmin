@@ -4,9 +4,14 @@
  * (bouton « Exporter » dans Pacer). Les plans Garmin Coach et les séances ajoutées à la main aussi.
  *
  * Les séances passées ne changent plus : le navigateur envoie celles qu'il a déjà (« ?known=id1,id2 »),
- * elles reviennent en forme réduite et seules les autres sont relues (12 au plus, les plus récentes d'abord).
- * Les séances à venir (12 au plus) sont toujours relues. Jamais plus de 4 appels Garmin à la fois.
+ * elles reviennent en forme réduite et seules les autres sont relues (8 au plus par passage, les plus récentes d'abord).
+ * Les séances à venir (12 au plus) sont toujours relues. Jamais plus de 6 appels Garmin à la fois.
  */
+
+// Une fonction serveur a peu de temps pour répondre : 20 séances lues au plus par passage, 6 à la fois
+// (la version précédente en lisait 12 d'un coup sans souci). Le reste vient à la lecture suivante.
+const PAST_PER_CALL = 8
+const PARALLEL = 6
 interface CalendarItem {
   id: number
   itemType?: string
@@ -82,8 +87,8 @@ export default defineEventHandler(async (event) => {
   const past = items.filter((i) => i.date! < day).reverse() // les plus récentes d'abord
   const pastKnown = past.filter((i) => known.has(String(i.id)))
   const pastUnknown = past.filter((i) => !known.has(String(i.id)))
-  const toRead = pastUnknown.slice(0, 12)
-  const later = pastUnknown.slice(12)
+  const toRead = pastUnknown.slice(0, PAST_PER_CALL)
+  const later = pastUnknown.slice(PAST_PER_CALL)
 
   /** Séance lue en détail ; un détail illisible donne quand même le titre et la date, steps: []. */
   async function read(i: CalendarItem) {
@@ -115,9 +120,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const detailed = await pool([...upcoming, ...toRead], 4, read)
+  const detailed = await pool([...upcoming, ...toRead], PARALLEL, read)
   const reduced = pastKnown.map((i) => ({ id: String(i.id), date: i.date!, title: i.title || 'Séance', workoutId: validId(i.workoutId), known: true as const }))
-  // Au-delà de 12 séances passées à lire : titre et date seulement, relues au prochain passage
+  // Au-delà de ce qu'un passage peut lire : titre et date seulement, relues au prochain passage
   const pending = later.map((i) => ({
     id: String(i.id),
     date: i.date!,

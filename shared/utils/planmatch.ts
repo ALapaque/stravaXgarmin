@@ -4,8 +4,8 @@
  */
 import type { Outcome } from './compliance'
 import type { PlanSession } from './model'
-import { cleanWatchName, normalizeTitle } from './titles'
-import { parseWorkoutTitle } from './workout'
+import { cleanWatchName, normalizeTitle, parseTitle } from './titles'
+import { parseWorkoutTitle, type PlanStep } from './workout'
 
 export interface MatchRun {
   id: string
@@ -138,18 +138,27 @@ export function adherence(
 }
 
 /**
- * Séance déduite du nom de la montre quand aucune séance du calendrier n'est reliée :
- * nom « Lieu - Séance » / « Tapis de course - Séance » (préfixe retiré), ou titre de séance reconnu
- * (« 8x400m (R=1’) », « Footing 40’ »). Sinon null. Identifiant « nom:<idCourse> ».
+ * Séance déduite des noms de la course quand aucune séance du calendrier n'est reliée. Identifiant « nom:<idCourse> ».
+ * 1. Vrai nom de montre « Lieu - Séance » / « Tapis de course - Séance » (préfixe retiré) : la course a été
+ *    lancée depuis un entraînement ; ou nom de montre qui décrit une séance (« Footing 40’ »).
+ * 2. Sinon le titre Strava sans ses étiquettes, s'il décrit une séance (« [KIPRUN] - Footing 40’ »,
+ *    « [FAIL][KIPRUN] - 5x400m(R=200m) ») : utile pour les courses déjà titrées à la main.
+ * Jamais pour une compétition, ni à partir d'un titre libre (« [CUSTOM] - Sortie entre amis »).
+ * « fromWatch: false » : le nom de montre n'en est pas un (Garmin non relié : c'est une copie du titre Strava).
  */
-export function syntheticSession(run: { id: string; localDate: string; garminName?: string | null }): PlanSession | null {
-  const clean = cleanWatchName(run.garminName)
-  const parsed = parseWorkoutTitle(clean.title)
-  if (!clean.title || (!clean.prefix && !parsed?.steps.length)) return null
-  return {
+export function syntheticSession(run: {
+  id: string
+  localDate: string
+  garminName?: string | null
+  stravaName?: string | null
+  fromWatch?: boolean
+  isRace?: boolean
+}): PlanSession | null {
+  if (run.isRace) return null
+  const make = (title: string, steps: PlanStep[]): PlanSession => ({
     id: `nom:${run.id}`,
     date: run.localDate,
-    title: clean.title,
+    title,
     description: null,
     provider: null,
     durationSec: null,
@@ -157,7 +166,16 @@ export function syntheticSession(run: { id: string; localDate: string; garminNam
     lines: [],
     blocks: [],
     workoutId: null,
-    steps: parsed?.steps ?? [],
+    steps,
     synthetic: true,
+  })
+  if (run.fromWatch !== false) {
+    const watch = cleanWatchName(run.garminName)
+    const parsed = parseWorkoutTitle(watch.title)
+    if (watch.title && (watch.prefix || parsed?.steps.length)) return make(watch.title, parsed?.steps ?? [])
   }
+  const strava = parseTitle(run.stravaName).title
+  const parsed = strava ? parseWorkoutTitle(strava) : null
+  if (parsed?.steps.length) return make(strava, parsed.steps)
+  return null
 }

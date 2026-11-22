@@ -174,7 +174,7 @@ async function addDescription() {
             <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
             <span class="row__main">
               <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
-              <span v-if="r.previous" class="sub">{{ r.previous - r.time }} s de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
+              <span v-if="r.previous" class="sub">{{ formatGain(r.previous - r.time) }} de mieux que ton ancien record ({{ formatDuration(r.previous) }})</span>
             </span>
           </div>
           <dl class="kpis">
