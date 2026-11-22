@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.13.0...v1.14.0) (2026-11-22)
+
+### Nouveautés
+
+* le Débrief remplace Titre, Analyse, Nom et Description : séance, ressenti, analyse et publication en un seul écran ([a935075](https://github.com/ALapaque/stravaXgarmin/commit/a9350755e7ff6152d0b9c9944863036033c3cdfd))
+* page d'une course repensée pour le tapis : séance réalisée tour par tour, prévu contre réalisé, cardio par zones ([5bc2fab](https://github.com/ALapaque/stravaXgarmin/commit/5bc2fabfcff5048203e825c6afd750d11069264c))
+* vignettes des séances sur tapis et pastilles de source dans les listes ([84c0d9d](https://github.com/ALapaque/stravaXgarmin/commit/84c0d9d42cf53deae4cf06c4b01ff83a5a126797))
+
 ## [1.13.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.12.0...v1.13.0) (2026-11-22)
 
 ### Nouveautés
