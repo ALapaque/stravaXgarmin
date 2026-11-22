@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.15.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.14.0...v1.15.0) (2026-11-22)
+
+### Nouveautés
+
+* Aujourd'hui te montre d'abord ce qu'il y a à faire : débrief en attente, séance du jour, semaine en cours ([b2b8239](https://github.com/ALapaque/stravaXgarmin/commit/b2b8239329881d36cce8164394427c1c7c4f0107))
+* Journal — ton plan et tes courses sur une seule ligne de temps, séances sautées comprises ([64bf781](https://github.com/ALapaque/stravaXgarmin/commit/64bf7818b7d3541a34a5a0e6a29f7a0740fed789))
+* trois onglets — Aujourd'hui, Journal, Progression — et les réglages derrière ton avatar ([d4e1117](https://github.com/ALapaque/stravaXgarmin/commit/d4e1117763c9a3b4828273cf5c1ba5c817c159c3))
+
+### Corrections
+
+* sur la page d'une course, les petits fragments de tours laissés par l'arrêt de la montre ne font plus de barres minuscules ([c6b9219](https://github.com/ALapaque/stravaXgarmin/commit/c6b92196667f05d6be2542a3a257de100e374422))
+
 ## [1.14.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.13.0...v1.14.0) (2026-11-22)
 
 ### Nouveautés
