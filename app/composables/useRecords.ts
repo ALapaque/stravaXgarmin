@@ -90,7 +90,7 @@ export function useRecords() {
         label: EFFORTS[key].label,
         time: winner?.bestEfforts[key],
         activity: winner,
-        name: winner?.garminName,
+        name: winner ? displayTitle(winner).title : undefined,
         date: winner?.startedAt,
         source: 'courses' as const,
       }

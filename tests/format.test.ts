@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAgo, formatDay, formatDuration, formatHours, formatKm, formatPace, formatTime } from '../shared/utils/format'
+import { brusselsDay, formatAgo, formatDay, formatDuration, formatHours, formatKm, formatPace, formatTime, placeLabel } from '../shared/utils/format'
 
 describe('formats', () => {
   it('durée', () => {
@@ -66,5 +66,18 @@ describe('formatAgo', () => {
     expect(formatAgo('2026-11-03T10:00:00Z', now)).toBe('le 3 nov.')
     // Minuit passé à Bruxelles, pas encore en UTC
     expect(formatAgo('2026-10-31T23:30:00Z', now)).toBe('le 1 nov.')
+  })
+})
+
+describe('brusselsDay et placeLabel', () => {
+  it('jour à Bruxelles, autour de minuit', () => {
+    expect(brusselsDay('2026-11-17T23:30:00Z')).toBe('2026-11-18')
+    expect(brusselsDay('2026-07-01T21:59:00Z')).toBe('2026-07-01')
+    expect(brusselsDay('')).toBe('')
+  })
+  it('« Tapis » sur tapis, sinon le lieu', () => {
+    expect(placeLabel({ indoor: true, place: 'tapis' })).toBe('Tapis')
+    expect(placeLabel({ indoor: false, place: 'quais' })).toBe('quais')
+    expect(placeLabel({ place: undefined })).toBe('')
   })
 })

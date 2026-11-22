@@ -16,9 +16,10 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
       <RouteTrace :activity="a" :draw="false" :glow="false" :width="5" />
     </span>
     <span class="row__main">
-      <span class="title">{{ a.garminName }}</span>
+      <span class="title">{{ displayTitle(a).title }}</span>
       <span class="meta">
         <span>{{ shortDate.format(new Date(a.startedAt)) }}</span>
+        <span v-if="a.indoor">{{ placeLabel(a) }}</span>
         <span class="num-s">{{ formatKm(a.distanceKm) }} km</span>
         <span class="num-s">{{ formatPace(a.durationSec, a.distanceKm) }}/km</span>
       </span>

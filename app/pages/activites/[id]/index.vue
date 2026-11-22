@@ -14,7 +14,7 @@ const settings = useSettings()
 const a = computed(() => byId(String(route.params.id)))
 if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
 
-useHead({ title: () => `${a.value?.garminName} · stravaXgarmin` })
+useHead({ title: () => `${a.value ? displayTitle(a.value).title : 'Course'} · stravaXgarmin` })
 
 const synced = computed(() => (a.value ? isSynced(a.value) : false))
 const records = computed(() => (a.value ? recordsOf(a.value) : []))
@@ -44,8 +44,8 @@ const splitH = (s: number) => {
   const { min, max } = splitRange.value
   return max === min ? 70 : Math.round(35 + ((max - s) / (max - min)) * 65)
 }
-// Vraie carte quand il y a un tracé GPS (ou en démo) ; sinon le dessin stylisé
-const hasMap = computed(() => Boolean(a.value && (a.value.route || !a.value.stravaId)))
+// Vraie carte quand il y a un tracé GPS (ou en démo) ; sinon le dessin stylisé. Jamais sur tapis.
+const hasMap = computed(() => Boolean(a.value && !a.value.indoor && (a.value.route || !a.value.stravaId)))
 const typeColor = computed(() => (a.value ? RUN_TYPES[a.value.type].color : 'var(--accent-text)'))
 
 function undoLast(message: string) {
@@ -96,10 +96,10 @@ async function shareImage() {
   try {
     const rec = records.value[0]
     const blob = await renderRunImage({
-      title: r.stravaName || r.garminName,
+      title: displayTitle(r).title,
       type: RUN_TYPES[r.type].label,
       typeColor: RUN_TYPES[r.type].color,
-      date: `${formatDay(r.startedAt)}${r.place ? ` · ${r.place}` : ''}`,
+      date: `${formatDay(r.startedAt)}${placeLabel(r) ? ` · ${placeLabel(r)}` : ''}`,
       stats: [
         { label: 'Distance', value: formatKm(r.distanceKm), unit: 'km' },
         { label: 'Durée', value: formatDuration(r.durationSec) },
@@ -107,9 +107,10 @@ async function shareImage() {
         r.avgHr ? { label: 'Cardio', value: String(r.avgHr), unit: 'bpm' } : { label: 'Dénivelé', value: String(r.elevationM), unit: 'm' },
       ],
       highlight: rec ? `Record sur ${rec.label} : ${formatDuration(rec.time)}` : undefined,
-      points: r.route ? decodePolyline(r.route) : r.stravaId ? [] : demoRoute(r.id, r.type),
+      // Sur tapis : jamais de tracé inventé
+      points: r.indoor ? [] : r.route ? decodePolyline(r.route) : r.stravaId ? [] : demoRoute(r.id, r.type),
     })
-    const how = await shareOrDownload(blob, `course-${r.startedAt.slice(0, 10)}.png`, r.stravaName || r.garminName)
+    const how = await shareOrDownload(blob, `course-${r.localDate}.png`, displayTitle(r).title)
     if (how === 'downloaded') show('Image de la course téléchargée')
   } catch (e) {
     if ((e as Error).name !== 'AbortError') show('Impossible de créer l’image')
@@ -146,8 +147,8 @@ async function addDescription() {
         </div>
         <div class="hero-text">
           <p class="eyebrow type">{{ RUN_TYPES[a.type].label }}<span v-if="a.typeReason" class="why"> · {{ a.typeReason }}</span></p>
-          <h1 class="h1">{{ a.garminName }}</h1>
-          <p class="label">{{ formatDay(a.startedAt) }}<template v-if="a.place"> · {{ a.place }}</template> · {{ formatTime(a.startedAt) }}</p>
+          <h1 class="h1">{{ displayTitle(a).title }}</h1>
+          <p class="label">{{ formatDay(a.startedAt) }}<template v-if="placeLabel(a)"> · {{ placeLabel(a) }}</template> · {{ formatTime(a.startedAt) }}</p>
         </div>
       </section>
 

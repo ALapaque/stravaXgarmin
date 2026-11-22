@@ -10,10 +10,17 @@ export interface StravaRun {
   id: number
   name: string
   start_date: string
+  /** Heure locale du départ, écrite comme une heure UTC (« 2026-11-17T18:42:00Z ») */
+  start_date_local?: string
+  sport_type?: string
+  /** Séance sur home trainer / tapis */
+  trainer?: boolean
   distance: number
   moving_time: number
+  elapsed_time?: number
   total_elevation_gain: number
   average_heartrate?: number
+  max_heartrate?: number
   workout_type?: number | null
   location_city?: string | null
   map?: { summary_polyline?: string | null }
@@ -27,6 +34,10 @@ export interface GarminRun {
   startTimeGMT: string
   distance?: number
   effect?: string | null
+  /** Type d'activité Garmin : running, treadmill_running, indoor_running… */
+  type?: string | null
+  /** Séance Garmin suivie pendant la course, si Garmin le dit */
+  workoutId?: number | null
 }
 
 /** Repères personnels : allure (s/km) et distance (km) habituelles sur les courses chargées. */
@@ -97,4 +108,11 @@ export function withOverride(auto: { type: RunType; reason: string }, override: 
 export function matchGarmin(s: StravaRun, garmin: GarminRun[]) {
   const t = Date.parse(s.start_date)
   return garmin.find((g) => Math.abs(Date.parse(`${g.startTimeGMT.replace(' ', 'T')}Z`) - t) < 180_000)
+}
+
+const INDOOR_GARMIN = new Set(['treadmill_running', 'indoor_running', 'virtual_run'])
+
+/** Séance sur tapis : « trainer » ou course virtuelle chez Strava, ou type « tapis » chez Garmin. */
+export function isIndoor(s: Pick<StravaRun, 'trainer' | 'sport_type'>, g?: Pick<GarminRun, 'type'>): boolean {
+  return s.trainer === true || s.sport_type === 'VirtualRun' || INDOOR_GARMIN.has(String(g?.type ?? '').toLowerCase())
 }

@@ -15,6 +15,8 @@ const color = computed(() => RUN_TYPES[props.activity.type].color)
 const uid = useId()
 const d = computed(() => {
   const a = props.activity
+  // Sur tapis : pas de parcours, l'onde stylisée
+  if (a.indoor) return ''
   if (a.route) return routePath(decodePolyline(a.route))
   if (!a.stravaId) return routePath(demoRoute(a.id, a.type))
   return ''

@@ -97,7 +97,7 @@ export function useFitness() {
       const from = new Date(monday.getTime() - (7 - i) * 7 * DAY)
       const a = from.toISOString().slice(0, 10)
       const b = new Date(from.getTime() + 6 * DAY).toISOString().slice(0, 10)
-      const runs = activities.value.filter((r) => r.startedAt.slice(0, 10) >= a && r.startedAt.slice(0, 10) <= b)
+      const runs = activities.value.filter((r) => r.localDate >= a && r.localDate <= b)
       return {
         from: a,
         label: `${from.getUTCDate()}/${from.getUTCMonth() + 1}`,

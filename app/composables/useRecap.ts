@@ -13,7 +13,7 @@ interface Range {
 }
 
 function inRange(a: Activity, r: Range) {
-  const k = a.startedAt.slice(0, 10)
+  const k = a.localDate
   return k >= r.from && k <= r.to
 }
 

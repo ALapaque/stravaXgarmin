@@ -43,17 +43,18 @@ export function useAiResults() {
   }>('aiResults', () => ({ level: null, analyses: {}, week: null }))
 }
 
-/** Ce qui part chez l'IA : les chiffres de la course, rien d'autre. */
+/** Ce qui part chez l'IA : les chiffres de la course, son titre nettoyé et « sur tapis », rien d'autre. */
 const toRun = (a: Activity) => ({
   type: a.type,
   startedAt: a.startedAt,
-  place: a.place,
+  place: a.indoor ? '' : a.place,
+  indoor: a.indoor,
   distanceKm: a.distanceKm,
   durationSec: a.durationSec,
   avgHr: a.avgHr,
   elevationM: a.elevationM,
   splits: a.splits,
-  garminName: a.garminName,
+  title: displayTitle(a).title,
   stravaId: a.stravaId,
 })
 

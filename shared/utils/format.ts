@@ -60,3 +60,17 @@ export function formatAgo(iso: string | null | undefined, now: number = Date.now
   if (sec < 7 * 86_400) return `il y a ${Math.floor(sec / 86_400)} jours`
   return `le ${agoFmt.format(new Date(t))}`
 }
+
+const brusselsDayFmt = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+
+/** Jour à Bruxelles (AAAA-MM-JJ) d'une date ISO ; '' si elle est illisible. */
+export function brusselsDay(iso: string | null | undefined): string {
+  const t = iso ? Date.parse(iso) : Number.NaN
+  return Number.isFinite(t) ? brusselsDayFmt.format(new Date(t)) : ''
+}
+
+/** Lieu à afficher : « Tapis » pour une séance sur tapis, sinon le lieu connu ('' s'il n'y en a pas). */
+export function placeLabel(a: { indoor?: boolean; place?: string | null }): string {
+  if (a.indoor) return 'Tapis'
+  return a.place ?? ''
+}

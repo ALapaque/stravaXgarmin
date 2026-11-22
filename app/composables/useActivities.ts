@@ -5,58 +5,16 @@
  */
 
 import { RUN_LABELS, type RunType } from '#shared/utils/runs'
+import type { Activity, Shoe } from '#shared/utils/model'
 
 // Ré-exporté ici pour ne pas casser les imports existants (« from '~/composables/useActivities' »)
 export type { RunType }
-export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
 export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse'
 /** Sorte de texte que l'appli place dans la description Strava : infos de la course, ou analyse IA */
 export type BlockKind = 'infos' | 'analyse'
 
-export interface Weather {
-  tempC: number
-  sky: string
-  windKmh: number
-}
-
-export interface Activity {
-  id: string
-  type: RunType
-  startedAt: string
-  place: string
-  distanceKm: number
-  durationSec: number
-  avgHr: number
-  elevationM: number
-  /** Temps de chaque kilomètre complet, en secondes */
-  splits: number[]
-  weather?: Weather
-  shoe?: Shoe
-  /** Meilleurs efforts dans la course (Strava les calcule : best_efforts) */
-  bestEfforts: Partial<Record<EffortKey, number>>
-  /** Identifiant Strava de la paire de chaussures utilisée */
-  gearId?: string
-  /** Pourquoi ce type : « selon ta montre », « selon ton allure »… */
-  typeReason?: string
-  /** Type deviné par l'appli, gardé quand tu en choisis un autre (pour pouvoir revenir en arrière) */
-  autoType?: RunType
-  autoReason?: string
-  /** Tracé GPS simplifié (polyline encodée de Strava) */
-  route?: string
-  /** Distances où Strava a compté cette course comme record personnel (pr_rank = 1) */
-  prs?: EffortKey[]
-  garminName: string
-  stravaName: string
-  stravaDescription?: string
-  /** Identifiants réels quand les données viennent des API (absents en mode démo) */
-  stravaId?: number
-  garminId?: number
-}
-
-export interface Shoe {
-  name: string
-  km: number
-}
+// Forme des données : shared/utils/model.ts (partagée avec la logique pure et la démo)
+export type { Activity, EffortKey, Shoe, Weather } from '#shared/utils/model'
 
 /** Libellé (shared/utils/runs.ts) et couleur du thème de chaque type de séance. */
 export const RUN_TYPES = Object.fromEntries(
@@ -89,9 +47,12 @@ function makeSplits(paceSec: number, km: number, rand: () => number, spread = 10
 
 const SKIES = ['ensoleillé', 'nuageux', 'couvert', 'pluie fine', 'brouillard']
 
-function generateHistory(): Activity[] {
+/** Course de démo écrite sans les champs complétés par upgradeActivity. */
+type DemoRun = Omit<Activity, 'localDate' | 'indoor' | 'sport' | 'elapsedSec'>
+
+function generateHistory(): DemoRun[] {
   const rand = prng(42)
-  const runs: Activity[] = []
+  const runs: DemoRun[] = []
   type DemoType = Exclude<RunType, 'easy' | 'race'>
   const plan: Record<number, DemoType> = { 2: 'interval', 4: 'recovery', 6: 'tempo', 0: 'long' }
   const places: Record<DemoType, string[]> = {
@@ -142,7 +103,7 @@ function generateHistory(): Activity[] {
 
 const rand = prng(7)
 
-const RECENT: Activity[] = [
+const RECENT: DemoRun[] = [
   {
     id: 'a2',
     type: 'interval',
@@ -212,7 +173,7 @@ const RECENT: Activity[] = [
 ]
 
 export const demoActivities = (): Activity[] =>
-  [...RECENT, ...generateHistory()].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+  upgradeActivities([...RECENT, ...generateHistory()]).sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
 export function useActivities() {
   const activities = useState<Activity[]>('activities', () => (isDemoCookie() ? demoActivities() : []))
@@ -225,11 +186,11 @@ export function useActivities() {
   /** Les 7 derniers jours, aujourd'hui compris, pour l'histogramme de l'accueil. */
   const lastWeek = computed(() => {
     const days = lastDays(7)
-    const runs = activities.value.filter((a) => days.some((d) => d.key === a.startedAt.slice(0, 10)))
+    const runs = activities.value.filter((a) => days.some((d) => d.key === a.localDate))
     return {
       days: days.map((d) => ({
         ...d,
-        km: runs.filter((a) => a.startedAt.slice(0, 10) === d.key).reduce((s, a) => s + a.distanceKm, 0),
+        km: runs.filter((a) => a.localDate === d.key).reduce((s, a) => s + a.distanceKm, 0),
       })),
       km: runs.reduce((s, a) => s + a.distanceKm, 0),
       sec: runs.reduce((s, a) => s + a.durationSec, 0),

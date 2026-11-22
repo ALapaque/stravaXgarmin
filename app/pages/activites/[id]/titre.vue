@@ -120,7 +120,7 @@ async function publish() {
 <template>
   <div class="stack">
     <template v-if="a">
-      <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
+      <BackLink :to="`/activites/${a.id}`" :label="displayTitle(a).title" />
 
       <div class="title-block">
         <h1 class="h1">Un titre pour {{ formatDay(a.startedAt).split(' ')[0]!.toLowerCase() }}</h1>

@@ -99,14 +99,14 @@ async function share() {
           <span class="tile" style="--tile: var(--ok)" aria-hidden="true"><Trophy :size="22" /></span>
           <span class="row__main">
             <span class="title">Record sur {{ r.label }} : {{ formatDuration(r.time) }}</span>
-            <span class="label">{{ r.activity.garminName }}</span>
+            <span class="label">{{ displayTitle(r.activity).title }}</span>
           </span>
         </NuxtLink>
         <NuxtLink v-if="recap.longest" :to="`/activites/${recap.longest.id}`" class="row">
           <ActivityTile :type="recap.longest.type" />
           <span class="row__main">
             <span class="title">Plus longue sortie : {{ formatKm(recap.longest.distanceKm) }} km</span>
-            <span class="label">{{ recap.longest.garminName }}</span>
+            <span class="label">{{ displayTitle(recap.longest).title }}</span>
           </span>
         </NuxtLink>
       </div>

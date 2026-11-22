@@ -68,6 +68,9 @@ export interface StravaActivity {
   elapsed_time: number
   total_elevation_gain: number
   average_heartrate?: number
+  max_heartrate?: number
+  start_date_local?: string
+  trainer?: boolean
   workout_type?: number | null
   location_city?: string | null
 }

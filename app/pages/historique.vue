@@ -30,7 +30,7 @@ async function cancel(id: string) {
         <div class="meta">
           <span class="label">{{ SOURCE_LABELS[e.source] }} · {{ when.format(new Date(e.at)) }}</span>
           <NuxtLink v-if="byId(e.activityId)" :to="`/activites/${e.activityId}`" class="act-link">
-            {{ byId(e.activityId)!.garminName }}
+            {{ displayTitle(byId(e.activityId)!).title }}
           </NuxtLink>
         </div>
         <p v-if="e.field !== 'description'" class="change">

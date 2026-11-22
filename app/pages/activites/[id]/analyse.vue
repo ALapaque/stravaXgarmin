@@ -87,7 +87,7 @@ async function addToStrava() {
 <template>
   <div class="stack">
     <template v-if="a">
-      <BackLink :to="`/activites/${a.id}`" :label="a.garminName" />
+      <BackLink :to="`/activites/${a.id}`" :label="displayTitle(a).title" />
       <h1 class="h1">Analyse de la séance</h1>
 
       <AiLock text="Active l’IA pour analyser tes séances. C’est gratuit avec Gemini.">

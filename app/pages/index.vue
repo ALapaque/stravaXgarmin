@@ -107,8 +107,8 @@ const healthAlert = computed(() => {
             <RouteTrace :activity="hero" :width="2.2" :delay="300" />
           </div>
           <div class="hero-info">
-            <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}</p>
-            <h2 class="hero-title">{{ hero.garminName }}</h2>
+            <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}<template v-if="hero.indoor"> · {{ placeLabel(hero) }}</template></p>
+            <h2 class="hero-title">{{ displayTitle(hero).title }}</h2>
             <dl class="hero-stats">
               <div><dd class="num">{{ formatKm(hero.distanceKm) }}</dd><dt>km</dt></div>
               <div><dd class="num">{{ formatPace(hero.durationSec, hero.distanceKm) }}</dd><dt>/km</dt></div>

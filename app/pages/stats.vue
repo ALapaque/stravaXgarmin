@@ -24,7 +24,7 @@ const results = useAiResults()
 
 // Courses des deux dernières semaines
 const since = lastDays(14)[0]!.key
-const recent = computed(() => sorted.value.filter((a) => a.startedAt.slice(0, 10) >= since))
+const recent = computed(() => sorted.value.filter((a) => a.localDate >= since))
 
 // Les séances intenses donnent de meilleures estimations : cochées par défaut
 const selected = ref<string[]>(recent.value.filter((a) => a.type !== 'recovery').map((a) => a.id))
@@ -97,7 +97,7 @@ const n = computed(() => selected.value.length)
             <span class="tile" :style="{ '--tile': b.time ? 'var(--ok)' : 'var(--muted)' }" aria-hidden="true"><Trophy :size="22" /></span>
             <span class="row__main">
               <span class="title">{{ b.label }}</span>
-              <span class="label">{{ b.time ? [b.activity?.garminName ?? b.name, b.date ? shortDate.format(new Date(b.date)) : ''].filter(Boolean).join(' · ') : 'Pas encore couru' }}</span>
+              <span class="label">{{ b.time ? [b.activity ? displayTitle(b.activity).title : b.name, b.date ? shortDate.format(new Date(b.date)) : ''].filter(Boolean).join(' · ') : 'Pas encore couru' }}</span>
             </span>
             <span class="num pr">{{ b.time ? formatDuration(b.time) : '–' }}</span>
           </component>
@@ -163,7 +163,7 @@ const n = computed(() => selected.value.length)
           <legend class="sr-only">Courses envoyées à l’analyse</legend>
           <label v-for="a in recent" :key="a.id" class="row">
             <span class="row__main">
-              <span class="title" :class="{ dim: !selected.includes(a.id) }">{{ a.garminName }}</span>
+              <span class="title" :class="{ dim: !selected.includes(a.id) }">{{ displayTitle(a).title }}</span>
               <span class="label">{{ formatKm(a.distanceKm) }} km · {{ formatPace(a.durationSec, a.distanceKm) }} /km</span>
             </span>
             <input v-model="selected" class="check" type="checkbox" :value="a.id">

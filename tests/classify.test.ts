@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classify, habitsOf, matchGarmin, withOverride, type GarminRun, type StravaRun } from '../shared/utils/classify'
+import { classify, habitsOf, isIndoor, matchGarmin, withOverride, type GarminRun, type StravaRun } from '../shared/utils/classify'
 
 // Courses inventées
 const run = (o: Partial<StravaRun> = {}): StravaRun => ({
@@ -112,5 +112,16 @@ describe('withOverride', () => {
     expect(withOverride(auto, 'race')).toEqual({ type: 'race', reason: 'choisi par toi' })
     expect(withOverride(auto, null)).toEqual(auto)
     expect(withOverride(auto, 'sprint' as never)).toEqual(auto)
+  })
+})
+
+describe('isIndoor', () => {
+  it('trainer, course virtuelle ou tapis chez Garmin', () => {
+    expect(isIndoor({ trainer: true })).toBe(true)
+    expect(isIndoor({ sport_type: 'VirtualRun' })).toBe(true)
+    expect(isIndoor({ sport_type: 'Run' }, { type: 'treadmill_running' })).toBe(true)
+    expect(isIndoor({ sport_type: 'Run' }, { type: 'indoor_running' })).toBe(true)
+    expect(isIndoor({ sport_type: 'Run', trainer: false }, { type: 'running' })).toBe(false)
+    expect(isIndoor({})).toBe(false)
   })
 })

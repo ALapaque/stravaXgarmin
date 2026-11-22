@@ -21,6 +21,7 @@ const FALLBACK = 'https://tiles.openfreemap.org/styles/positron'
 /** Coordonnées [lng, lat] : la vraie trace Strava, ou en démo un parcours inventé posé sur Bruxelles. */
 const coords = computed<[number, number][]>(() => {
   const a = props.activity
+  if (a.indoor) return []
   if (a.route) return decodePolyline(a.route).map(([la, lo]) => [lo, la])
   if (!a.stravaId) return demoRoute(a.id, a.type).map(([y, x]) => [4.3528 + x * 0.016, 50.8466 + y * 0.011])
   return []
@@ -128,7 +129,7 @@ onBeforeUnmount(() => {
     <div class="fallback" aria-hidden="true">
       <RouteTrace :activity="activity" :width="1.6" :delay="200" />
     </div>
-    <div ref="el" class="gl" role="img" :aria-label="`Carte du parcours : ${activity.garminName}`" />
+    <div ref="el" class="gl" role="img" :aria-label="`Carte du parcours : ${displayTitle(activity).title}`" />
   </div>
 </template>
 

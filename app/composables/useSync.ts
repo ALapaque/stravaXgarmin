@@ -45,25 +45,38 @@ function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits, override?
   const km = Math.round(s.distance / 100) / 10
   const auto = classify(s, g, h)
   const { type, reason } = withOverride(auto, override)
+  const indoor = isIndoor(s, g)
+  const sport = (['Run', 'TrailRun', 'VirtualRun'] as const).find((k) => k === s.sport_type) ?? 'Run'
+  // « start_date_local » est l'heure locale écrite comme de l'UTC : ses 10 premiers caractères sont le jour local
+  const localDate = /^\d{4}-\d{2}-\d{2}/.test(s.start_date_local ?? '') ? s.start_date_local!.slice(0, 10) : brusselsDay(s.start_date)
   return {
     id: `s${s.id}`,
     stravaId: s.id,
     garminId: g?.id,
+    garminWorkoutId: typeof g?.workoutId === 'number' ? g.workoutId : undefined,
     type,
     typeReason: reason,
     autoType: auto.type,
     autoReason: auto.reason,
     startedAt: s.start_date,
-    place: s.location_city ?? '',
+    localDate,
+    indoor,
+    sport,
+    // Sur tapis, la ville de Strava (celle du compte) ne dit rien du lieu
+    place: indoor ? 'tapis' : (s.location_city ?? ''),
     distanceKm: km,
     durationSec: s.moving_time,
+    elapsedSec: s.elapsed_time ?? s.moving_time,
     avgHr: Math.round(s.average_heartrate ?? 0),
+    maxHr: s.max_heartrate ? Math.round(s.max_heartrate) : undefined,
+    workoutType: typeof s.workout_type === 'number' ? s.workout_type : undefined,
     elevationM: Math.round(s.total_elevation_gain ?? 0),
     splits: [],
     bestEfforts: {},
     garminName: g?.name ?? s.name,
     stravaName: s.name,
-    route: s.map?.summary_polyline || undefined,
+    // Jamais de tracé pour une séance sur tapis (certaines montres en inventent un)
+    route: indoor ? undefined : s.map?.summary_polyline || undefined,
     gearId: s.gear_id || undefined,
   }
 }

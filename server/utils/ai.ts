@@ -206,7 +206,12 @@ export interface RunInput {
   avgHr?: number
   elevationM?: number
   splits?: number[]
+  /** Titre de la course tel que l'appli l'affiche (sans étiquettes) */
+  title?: string
+  /** Ancien champ, envoyé par les versions précédentes de l'appli */
   garminName?: string
+  /** Séance sur tapis */
+  indoor?: boolean
   stravaId?: number
 }
 
@@ -220,9 +225,9 @@ export function describeRun(r: RunInput, details?: StravaDetails) {
   const km = Number(r.distanceKm ?? 0)
   const sec = Number(r.durationSec ?? 0)
   const lines = [
-    `Nom sur la montre : ${String(r.garminName ?? '').slice(0, 100)}`,
+    `Titre : ${String(r.title ?? r.garminName ?? '').slice(0, 100)}`,
     r.startedAt ? `Date : ${String(r.startedAt).slice(0, 16).replace('T', ' ')}` : '',
-    r.place ? `Lieu : ${String(r.place).slice(0, 60)}` : '',
+    r.indoor === true ? 'Lieu : sur tapis (pas de GPS, pas de dénivelé, allure donnée par la montre)' : r.place ? `Lieu : ${String(r.place).slice(0, 60)}` : '',
     `Distance : ${km.toFixed(2)} km, durée ${dur(sec)}, allure moyenne ${pace(sec, km)}`,
     r.avgHr ? `FC moyenne : ${r.avgHr} bpm${details?.max_heartrate ? `, max ${Math.round(details.max_heartrate)} bpm` : ''}` : '',
     r.elevationM ? `Dénivelé : ${r.elevationM} m` : '',
