@@ -15,7 +15,7 @@ const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { synced } = useSync()
 const { firstName, masked } = useRunner()
-const { list: plan, sessionFor, resultFor, byId: sessionById } = usePlan()
+const { list: plan, done, resultFor, byId: sessionById } = usePlan()
 const { ramp, shoes, goalInfo } = useFitness()
 const { summary: health } = useHealth()
 const hasData = computed(() => sorted.value.length > 0)
@@ -32,15 +32,6 @@ watch(showLanding, (v) => setPageLayout(v ? 'bare' : 'default'))
 /* ───── Ce qu'il y a à faire ───── */
 
 const sessions = computed(() => plan.value.filter((s) => !s.synthetic))
-/** Séances du plan déjà faites (reliées à une course) */
-const done = computed(() => {
-  const ids: string[] = []
-  for (const a of sorted.value) {
-    const s = sessionFor(a)
-    if (s && !s.synthetic) ids.push(s.id)
-  }
-  return ids
-})
 const focus = computed(() =>
   pickFocus({
     toDebrief: toDebrief.value.map((a) => a.id),

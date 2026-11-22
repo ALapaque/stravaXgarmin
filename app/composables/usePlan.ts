@@ -91,6 +91,9 @@ export function usePlan() {
     return comparePlan(s, { durationSec: a.durationSec, distanceM: a.distanceKm * 1000, laps: a.laps })
   }
 
+  /** Identifiants des séances du plan reliées à une course (faites) */
+  const done = computed(() => Object.values(match.value.byRun))
+
   /** Séances passées sans course, la plus récente d'abord */
   const skipped = computed(() => {
     const ids = new Set(match.value.skipped)
@@ -107,7 +110,7 @@ export function usePlan() {
     return planAdherence(list.value.filter((s) => !s.synthetic), match.value.byRun, outcomes, TODAY)
   })
 
-  return { state, list, upcoming, next, past, byId, load, reset, sessionFor, resultFor, skipped, adherence }
+  return { state, list, upcoming, next, past, byId, load, reset, sessionFor, resultFor, skipped, done, adherence }
 }
 
 /** « Demain », « Jeudi 20 nov. »… */

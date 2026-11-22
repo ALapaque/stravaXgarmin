@@ -118,7 +118,7 @@ const hasDetail = (s: { lines: PlanLine[]; description: string | null }) => Bool
         {{ loading ? 'Lecture du calendrier…' : 'Relire le calendrier Garmin' }}
       </button>
       <p class="fine">
-        Kiprun Pacer n’a pas d’API : seules les séances exportées vers Garmin apparaissent.
+        Kiprun Pacer ne partage pas ses séances directement : seules celles exportées vers Garmin apparaissent.
         <template v-if="state?.at">Mis à jour {{ new Date(state.at).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) }}.</template>
       </p>
     </template>
