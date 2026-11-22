@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.2](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.1...v1.16.2) (2026-11-22)
+
+### Corrections
+
+* sur iPhone, un long titre reste lisible en entier dans le champ du Débrief ([f2ab9a2](https://github.com/ALapaque/stravaXgarmin/commit/f2ab9a203e373df3959512d5645c4ba29f70c693))
+
 ## [1.16.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.0...v1.16.1) (2026-11-22)
 
 ### Corrections
