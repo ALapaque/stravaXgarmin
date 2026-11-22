@@ -56,6 +56,9 @@ Toujours **arrêter l'ancien serveur avant un nouveau build** (`pkill -f ".outpu
 - **Bibliothèque Garmin** en CommonJS : import par défaut puis déstructuration.
 - **Strava limite les appels** (environ 100 par quart d'heure) : ne demander que ce qui manque, garder le résultat dans le navigateur.
 - **MapLibre** (1 Mo) est chargé à la demande, avec `setWorkerUrl` et l'import `?url` du worker.
+- **Descriptions Strava** : Strava renvoie les fins de ligne en `\r\n`, même quand on a envoyé `\n`. Toute comparaison passe par `normalizeNewlines` / `locateBlock` (`shared/utils/description.ts`). On n'envoie jamais une description entière : seulement un bloc (`descriptionBlock`), que le serveur fusionne après avoir relu la description actuelle.
+- **Heures en français** : en `fr-BE`, `Intl.DateTimeFormat` avec `hour: 'numeric'` rend « 11 h », pas un nombre. Pour lire l'heure, passer par `formatToParts`.
+- **Composables appelés après un `await`** : cela marche dans le navigateur (une seule appli), jamais côté serveur. Les chargements (`useSync`, `usePlan.load`, `useFitness.load…`) ne tournent que dans le navigateur.
 
 ## Publication
 
