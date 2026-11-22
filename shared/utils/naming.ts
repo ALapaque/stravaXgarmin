@@ -41,8 +41,11 @@ export interface NamingInput {
   weather?: { tempC: number; sky: string }
 }
 
+const hourFmt = new Intl.DateTimeFormat('fr-BE', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Brussels' })
+
 function moment(iso: string) {
-  const h = Number(new Intl.DateTimeFormat('fr-BE', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Brussels' }).format(new Date(iso)))
+  // fr-BE écrit « 11 h » : on lit seulement la partie « heure », sinon Number() donne NaN (et toujours « soir »)
+  const h = Number(hourFmt.formatToParts(new Date(iso)).find((p) => p.type === 'hour')?.value)
   if (h < 11) return 'matin'
   if (h < 14) return 'midi'
   if (h < 18) return 'après-midi'
