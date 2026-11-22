@@ -14,7 +14,7 @@ import { streamFromLaps, type RunStream } from './streams'
 import { flattenSteps, stepDistance, stepDuration, type PlanStep } from './workout'
 
 /** À changer quand la forme des données de démo change : une démo gardée plus ancienne est régénérée. */
-export const DEMO_VERSION = 4
+export const DEMO_VERSION = 5
 
 export const DEMO_SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },
@@ -462,8 +462,9 @@ export function buildDemo(today: string): DemoData {
     }
   }
 
-  // Séances à venir : une demain, puis dans 3 et 5 jours
+  // Séances à venir : un footing de récupération aujourd'hui (pas encore couru), une demain, puis dans 3 et 5 jours
   plan.push(
+    session('p0', today, 'Footing de récupération 30’', [{ ...st('other', 1800), target: '6:40–7:00 /km' }], 9000, 'Tout doux, au lendemain du fractionné'),
     session('p1', shift(today, 1), 'Fractionné 6 × 800 m', [st('warmup', 1200), rep(6, { ...st('interval', null, 800), target: '4:55–5:10 /km' }, R2), st('cooldown', 600)], 9001, 'Séance VMA du plan semi-marathon'),
     session('p2', shift(today, 3), 'Footing en endurance', [{ ...st('other', 2700), target: '6:30–6:50 /km' }], 9002),
     session('p3', shift(today, 5), 'Sortie longue avec allure semi', [st('warmup', 900), st('other', null, 10000), { ...st('interval', null, 3000), target: '5:40–5:55 /km' }, st('cooldown', 600)], 9003, 'Les 3 derniers km à allure course'),

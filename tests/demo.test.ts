@@ -60,7 +60,9 @@ describe.each(['2026-11-22', '2026-07-15', '2026-11-23', '2027-01-01'])('buildDe
   it('chaque séance passée a des étapes ; deux séances sautées', () => {
     expect(sessions.filter((s) => s.date < today).every((s) => s.steps.length > 0)).toBe(true)
     expect(match.skipped).toHaveLength(2)
-    expect(sessions.filter((s) => s.date >= today)).toHaveLength(3)
+    expect(sessions.filter((s) => s.date >= today)).toHaveLength(4)
+    // Une séance aujourd'hui, pas encore faite (carte « Aujourd’hui » et anneau dans « Ta semaine »)
+    expect(sessions.some((s) => s.date === today && !Object.values(match.byRun).includes(s.id))).toBe(true)
     expect(sessions.some((s) => s.date === today || s.date === new Date(Date.parse(`${today}T12:00:00Z`) + DAY).toISOString().slice(0, 10))).toBe(true)
   })
 

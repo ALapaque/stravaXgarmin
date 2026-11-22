@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { ClipboardCheck, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight, CircleAlert } from 'lucide-vue-next'
+/*
+ * Aujourd'hui : « qu'est-ce que j'ai à faire maintenant ? ». Une seule carte principale (course à débriefer,
+ * séance du jour, prochaine séance ou dernière course : pickFocus), puis « Ta semaine » (weekView), puis le
+ * reste plus calme (alertes, cartes secondaires, objectif). Règles : shared/utils/today.ts.
+ */
+import { ArrowRight, ChevronRight, CircleAlert, ClipboardCheck, CalendarClock, Flag, Footprints, Heart, TrendingUp, Activity as Pulse } from 'lucide-vue-next'
+import { daysBetween, pickFocus, todayAlerts, weekView, type Alert, type Focus } from '#shared/utils/today'
 
 useHead({ title: 'Aujourd’hui · stravaXgarmin' })
 
-const { sorted, lastWeek } = useActivities()
+const { sorted, byId } = useActivities()
 const { toDebrief } = useDebriefs()
-const { unread } = useNotifications()
 const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const { synced } = useSync()
+const { firstName, masked } = useRunner()
+const { list: plan, sessionFor, resultFor, byId: sessionById } = usePlan()
+const { ramp, shoes, goalInfo } = useFitness()
+const { summary: health } = useHealth()
 const hasData = computed(() => sorted.value.length > 0)
-// En démo, un prénom fictif et flouté ; sinon le prénom du compte Strava
-const firstName = computed(() => (demo.value ? 'Alex' : (accounts.value.strava.name ?? '').split(' ')[0]))
 
 /*
  * Sans compte ni démo, la présentation s'affiche directement ici plutôt que par une
@@ -21,134 +28,219 @@ const firstName = computed(() => (demo.value ? 'Alex' : (accounts.value.strava.n
 const showLanding = computed(() => !accounts.value.strava.connected && !demo.value && !hasData.value)
 // Le layout initial est choisi par le middleware ; ici on suit les changements (démo, connexion)
 watch(showLanding, (v) => setPageLayout(v ? 'bare' : 'default'))
-const recap = useRecap(ref('semaine'))
-const week = lastWeek
-const maxKm = computed(() => Math.max(...week.value.days.map((d) => d.km), 1))
-const hero = computed(() => sorted.value[0])
-const latest = computed(() => sorted.value.slice(1, 4))
-const { next: nextSession } = usePlan()
-const heroDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Brussels' })
-// Courses à débriefer : la carte mène au Débrief de la plus récente
-const firstToDebrief = computed(() => toDebrief.value[0])
 
-// Lecture principale en échec (Strava, ou les noms Garmin) : une alerte discrète, seulement une fois la page montée
-const { summary: health } = useHealth()
+/* ───── Ce qu'il y a à faire ───── */
+
+const sessions = computed(() => plan.value.filter((s) => !s.synthetic))
+/** Séances du plan déjà faites (reliées à une course) */
+const done = computed(() => {
+  const ids: string[] = []
+  for (const a of sorted.value) {
+    const s = sessionFor(a)
+    if (s && !s.synthetic) ids.push(s.id)
+  }
+  return ids
+})
+const focus = computed(() =>
+  pickFocus({
+    toDebrief: toDebrief.value.map((a) => a.id),
+    sessions: sessions.value,
+    done: done.value,
+    lastRun: sorted.value[0]?.id ?? null,
+    today: TODAY,
+  }),
+)
+const week = computed(() => weekView({ today: TODAY, runs: sorted.value, sessions: sessions.value, done: done.value }))
+
+/* Alertes : elles dépendent de l'état gardé (lectures, chaussures) : seulement une fois la page montée */
 const mounted = ref(false)
 onMounted(() => (mounted.value = true))
-const healthAlert = computed(() => {
-  if (!mounted.value) return null
-  if (health.value.core === 'strava.activities') return 'Strava n’a pas répondu à la dernière lecture.'
-  if (health.value.core === 'garmin.activities') return 'Garmin n’a pas répondu à la dernière lecture : les noms de ta montre peuvent manquer.'
-  return null
+const alerts = computed<Alert[]>(() => {
+  if (!mounted.value) return []
+  const g = goalInfo.value
+  return todayAlerts({
+    core: health.value.core,
+    ramp: ramp.value,
+    shoes: shoes.value,
+    goal: g ? { name: g.name, days: g.days, past: g.past, label: GOAL_DISTANCES.find((x) => x.id === g.distance)?.label ?? '' } : null,
+  })
 })
+const ALERT_ICON = { health: CircleAlert, load: TrendingUp, shoes: Footprints, goal: Flag }
+const ALERT_TONE = { health: 'var(--ko)', load: 'var(--ko)', shoes: 'var(--accent-text)', goal: 'var(--info)' }
+
+/* ───── Mots ───── */
+
+const longDay = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Brussels' })
+/** « Aujourd’hui », « Hier », « Mardi 17 novembre » pour une course */
+function runDay(a: { localDate: string; startedAt: string }) {
+  const d = daysBetween(a.localDate, TODAY)
+  if (d === 0) return 'Aujourd’hui'
+  if (d === 1) return 'Hier'
+  const s = longDay.format(new Date(a.startedAt))
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+const runOf = (f: Focus) => ('runId' in f ? byId(f.runId) : undefined)
+const sessionOf = (f: Focus) => ('sessionId' in f ? sessionById(f.sessionId) : undefined)
+
+const main = computed(() => focus.value.main)
+const mainRun = computed(() => runOf(main.value))
+const mainSession = computed(() => sessionOf(main.value))
+/** Résultat proposé pour la course à débriefer (« 5 efforts sur 8 ») */
+const proposal = computed(() => (main.value.kind === 'debrief' && mainRun.value ? resultFor(mainRun.value) : null))
+const reps = computed(() => {
+  const p = proposal.value
+  return p?.basis === 'reps' && p.plannedReps && p.plannedReps <= 24 ? { done: p.doneReps ?? 0, planned: p.plannedReps } : null
+})
+const secondary = computed(() => focus.value.secondary)
 </script>
 
 <template>
   <LandingPage v-if="showLanding" />
   <div v-else class="stack stack--wide home">
-    <header class="head">
-      <div class="hello">
-        <p class="eyebrow">{{ formatDay(`${TODAY}T12:00:00+01:00`) }}</p>
-        <h1 class="h1 h1--xl">
-          Salut<template v-if="firstName">&nbsp;<span class="ink-grad" :class="{ masked: demo }" :aria-label="demo ? 'nom masqué' : undefined">{{ firstName }}</span></template>
-        </h1>
-      </div>
-      <div class="head-actions">
-        <NuxtLink to="/notifications" class="bell card" :aria-label="unread ? `Notifications, ${unread} non lues` : 'Notifications'">
-          <Bell :size="20" aria-hidden="true" />
-          <span v-if="unread" :key="unread" class="badge" aria-hidden="true">{{ unread }}</span>
-        </NuxtLink>
-        <NuxtLink to="/reglages" class="avatar" aria-label="Mon compte"><span :class="{ masked: demo }">{{ (firstName || '?').charAt(0) }}</span></NuxtLink>
-      </div>
-    </header>
+    <AppHeader :eyebrow="formatDay(`${TODAY}T12:00:00+01:00`)">
+      Salut<template v-if="firstName">&nbsp;<span class="ink-grad" :class="{ masked }" :aria-label="masked ? 'nom masqué' : undefined">{{ firstName }}</span></template>
+    </AppHeader>
 
-    <NuxtLink v-if="healthAlert" to="/reglages/etat" class="card row health-alert" role="alert">
-      <span class="tile" style="--tile: var(--ko)" aria-hidden="true"><CircleAlert :size="22" /></span>
-      <span class="row__main">
-        <span class="alert-text">{{ healthAlert }}</span>
-        <span class="alert-link">Voir l’état des connexions</span>
-      </span>
-      <ChevronRight :size="20" aria-hidden="true" />
-    </NuxtLink>
-
-    <section v-if="!hasData && accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
-      <span class="spinner" aria-hidden="true" />
-      <p class="lead">Chargement de tes courses Strava…</p>
-    </section>
-
-    <section v-else-if="!hasData" class="card card--pad">
-      <h2 class="h2">Aucune course sur les 60 derniers jours</h2>
-      <p class="lead">Dès qu’une course arrive sur Strava, elle apparaîtra ici.</p>
-    </section>
-
-    <template v-else>
-      <!-- Sur téléphone ces deux colonnes se fondent en une seule, dans l'ordre voulu (voir le style) -->
-      <div class="col-main">
-        <section class="block block--primary week" aria-labelledby="week-title">
-          <div class="week-top">
-            <p id="week-title" class="eyebrow on">7 derniers jours</p>
-            <span class="sync-pill">{{ week.synced }}/{{ week.count }} synchro</span>
+    <div class="col-main">
+      <!-- ── La carte principale ── -->
+      <section v-if="main.kind === 'debrief' && mainRun" class="block block--primary focus" aria-labelledby="focus-title">
+        <div class="kicker">
+          <span class="badge"><ClipboardCheck :size="14" aria-hidden="true" /> À débriefer</span>
+          <span class="when">{{ runDay(mainRun) }}<template v-if="mainRun.indoor"> · {{ placeLabel(mainRun) }}</template></span>
+        </div>
+        <div class="focus-run">
+          <span class="plate thumb" :style="{ '--c': RUN_TYPES[mainRun.type].color }">
+            <RunThumb :activity="mainRun" :width="2.4" draw />
+          </span>
+          <div class="focus-text">
+            <h2 id="focus-title" class="focus-title">{{ displayTitle(mainRun).title }}</h2>
+            <p class="focus-meta">
+              <span class="num">{{ formatKm(mainRun.distanceKm) }}</span> km
+              <span class="sep" aria-hidden="true" />
+              <span class="num">{{ formatPace(mainRun.durationSec, mainRun.distanceKm) }}</span> /km
+            </p>
           </div>
-          <p class="num big"><CountUp :value="week.km" :decimals="1" :delay="250" /><span class="unit">km</span></p>
-          <dl class="week-stats">
-            <div><dt>Courses</dt><dd class="num">{{ week.count }}</dd></div>
-            <div><dt>Temps</dt><dd class="num">{{ formatHours(week.sec) }}</dd></div>
-            <div v-if="recap.deltaPct !== null"><dt>vs sem. passée</dt><dd class="num">{{ recap.deltaPct > 0 ? '+' : '' }}{{ recap.deltaPct }} %</dd></div>
-          </dl>
-          <ol class="bars" aria-label="Kilomètres par jour">
-            <li v-for="(d, i) in week.days" :key="d.key" :style="{ '--b': i }">
-              <span class="bar-zone">
-                <span class="bar" :class="{ off: !d.km }" :style="{ height: `${d.km ? Math.max((d.km / maxKm) * 100, 18) : 6}%` }" />
-              </span>
-              <span class="day" :aria-label="`${d.letter} : ${formatKm(d.km)} km`">{{ d.letter }}</span>
-            </li>
-          </ol>
-        </section>
-        <NuxtLink v-if="hero" :to="`/activites/${hero.id}`" class="card hero-run" :style="{ '--c': RUN_TYPES[hero.type].color }">
-          <div class="hero-map">
-            <RunThumb :activity="hero" :width="2.2" draw />
-          </div>
-          <div class="hero-info">
-            <p class="eyebrow">Dernière course · {{ heroDate.format(new Date(hero.startedAt)) }}<template v-if="hero.indoor"> · {{ placeLabel(hero) }}</template></p>
-            <h2 class="hero-title">{{ displayTitle(hero).title }}</h2>
-            <dl class="hero-stats">
-              <div><dd class="num">{{ formatKm(hero.distanceKm) }}</dd><dt>km</dt></div>
-              <div><dd class="num">{{ formatPace(hero.durationSec, hero.distanceKm) }}</dd><dt>/km</dt></div>
-              <div v-if="hero.avgHr"><dd class="num">{{ hero.avgHr }}</dd><dt><Heart :size="11" fill="currentColor" aria-hidden="true" /> bpm</dt></div>
+        </div>
+        <div v-if="proposal" class="proposal">
+          <span v-if="reps" class="reps" aria-hidden="true">
+            <span v-for="k in reps.planned" :key="k" class="rep" :class="{ on: k <= reps.done }" :style="{ '--k': k }" />
+          </span>
+          <span class="proposal-text">Résultat proposé : <strong>{{ proposal.summary }}</strong></span>
+        </div>
+        <div class="actions">
+          <NuxtLink :to="`/activites/${mainRun.id}/debrief`" class="cta">
+            Débriefer <span class="cta-ic" aria-hidden="true"><ArrowRight :size="18" /></span>
+          </NuxtLink>
+          <NuxtLink v-if="main.kind === 'debrief' && main.more" to="/journal?onglet=a-debriefer" class="more">
+            et {{ main.more }} autre{{ main.more > 1 ? 's' : '' }}
+          </NuxtLink>
+        </div>
+      </section>
+
+      <section v-else-if="(main.kind === 'today' || main.kind === 'next') && mainSession" class="block block--primary focus" aria-labelledby="focus-title">
+        <div class="kicker">
+          <span class="badge"><CalendarClock :size="14" aria-hidden="true" /> {{ main.kind === 'today' ? 'Aujourd’hui' : planDay(mainSession.date) }}</span>
+          <span v-if="mainSession.provider" class="when">{{ mainSession.provider }}</span>
+        </div>
+        <h2 id="focus-title" class="focus-title">{{ mainSession.title }}</h2>
+        <div v-if="mainSession.blocks.length" class="plate profile-plate">
+          <WorkoutProfile :blocks="mainSession.blocks" :height="64" />
+        </div>
+        <p class="focus-meta">
+          <template v-if="mainSession.durationSec"><span class="num">{{ formatHours(mainSession.durationSec) }}</span> environ</template>
+          <template v-if="mainSession.durationSec && mainSession.distanceM"><span class="sep" aria-hidden="true" /></template>
+          <template v-if="mainSession.distanceM"><span class="num">{{ formatKm(mainSession.distanceM / 1000) }}</span> km</template>
+        </p>
+        <p v-if="mainSession.description" class="focus-note">{{ mainSession.description }}</p>
+        <div class="actions">
+          <NuxtLink to="/journal?onglet=a-venir" class="cta">
+            Voir la séance <span class="cta-ic" aria-hidden="true"><ArrowRight :size="18" /></span>
+          </NuxtLink>
+        </div>
+      </section>
+
+      <section v-else-if="main.kind === 'last' && mainRun" class="block block--primary focus" aria-labelledby="focus-title">
+        <div class="kicker">
+          <span class="badge"><Pulse :size="14" aria-hidden="true" /> Dernière course</span>
+          <span class="when">{{ runDay(mainRun) }}<template v-if="mainRun.indoor"> · {{ placeLabel(mainRun) }}</template></span>
+        </div>
+        <div class="focus-run">
+          <span class="plate thumb" :style="{ '--c': RUN_TYPES[mainRun.type].color }">
+            <RunThumb :activity="mainRun" :width="2.4" draw />
+          </span>
+          <div class="focus-text">
+            <h2 id="focus-title" class="focus-title">{{ displayTitle(mainRun).title }}</h2>
+            <dl class="focus-stats">
+              <div><dd class="num">{{ formatKm(mainRun.distanceKm) }}</dd><dt>km</dt></div>
+              <div><dd class="num">{{ formatPace(mainRun.durationSec, mainRun.distanceKm) }}</dd><dt>/km</dt></div>
+              <div v-if="mainRun.avgHr"><dd class="num">{{ mainRun.avgHr }}</dd><dt><Heart :size="10" fill="currentColor" aria-hidden="true" /> bpm</dt></div>
             </dl>
           </div>
-        </NuxtLink>
-      </div>
-      <div class="col-side">
-        <GoalCard compact />
-        <NuxtLink v-if="nextSession" to="/journal?onglet=a-venir" class="card next">
-          <div class="next-head">
-            <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>
-            <span class="row__main">
-              <span class="eyebrow">Prochaine séance · {{ planDay(nextSession.date) }}</span>
-              <span class="title next-title">{{ nextSession.title }}</span>
-            </span>
-            <ArrowUpRight class="go" :size="20" aria-hidden="true" />
-          </div>
-          <WorkoutProfile v-if="nextSession.blocks.length" :blocks="nextSession.blocks" :height="44" />
-          <p class="next-meta">
-            <span v-if="nextSession.durationSec">{{ formatHours(nextSession.durationSec) }}</span>
-            <span v-if="nextSession.distanceM">{{ formatKm(nextSession.distanceM / 1000) }} km</span>
-            <span v-if="nextSession.provider" class="provider">{{ nextSession.provider }}</span>
-          </p>
-        </NuxtLink>
-        <NuxtLink v-if="firstToDebrief" :to="`/activites/${firstToDebrief.id}/debrief`" class="block block--secondary ai">
-          <span class="ai-icon" aria-hidden="true"><ClipboardCheck :size="22" /></span>
-          <span class="row__main">
-            <span class="title">{{ toDebrief.length }} course{{ toDebrief.length > 1 ? 's' : '' }} à débriefer</span>
-            <span class="ai-text">« {{ displayTitle(firstToDebrief).title }} » : vingt secondes pour boucler ta séance.</span>
-          </span>
-          <ChevronRight :size="20" aria-hidden="true" />
-        </NuxtLink>
-      </div>
+        </div>
+        <div class="actions">
+          <NuxtLink :to="`/activites/${mainRun.id}`" class="cta">
+            Voir la course <span class="cta-ic" aria-hidden="true"><ArrowRight :size="18" /></span>
+          </NuxtLink>
+        </div>
+      </section>
 
-      <NuxtLink to="/journal" class="link all">Ton journal <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
-    </template>
+      <section v-else-if="accounts.strava.connected && !synced" class="card card--pad loading" aria-busy="true">
+        <span class="spinner" aria-hidden="true" />
+        <p class="lead">Chargement de tes courses Strava…</p>
+      </section>
+
+      <section v-else class="card card--pad empty">
+        <span class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><Footprints :size="22" /></span>
+        <h2 class="h2">Aucune course sur les 60 derniers jours</h2>
+        <p class="lead">Dès qu’une course arrive sur Strava, elle apparaîtra ici.</p>
+      </section>
+
+      <!-- ── Ta semaine ── -->
+      <WeekStrip v-if="hasData || sessions.length" :week="week" />
+    </div>
+
+    <div class="col-side">
+      <!-- ── Alertes ── -->
+      <ul v-if="alerts.length" class="alerts" aria-label="À surveiller">
+        <li v-for="(a, i) in alerts" :key="a.kind + i">
+          <NuxtLink :to="a.to" class="alert" :style="{ '--tone': ALERT_TONE[a.kind] }">
+            <component :is="ALERT_ICON[a.kind]" :size="15" aria-hidden="true" />
+            {{ a.text }}
+          </NuxtLink>
+        </li>
+      </ul>
+
+      <!-- ── Ce qui n'a pas été choisi pour la carte principale ── -->
+      <template v-for="f in secondary" :key="f.kind">
+        <SessionCard
+          v-if="(f.kind === 'today' || f.kind === 'next') && sessionOf(f)"
+          :session="sessionOf(f)!"
+          :kicker="f.kind === 'today' ? 'Séance du jour' : undefined"
+          class="secondary"
+        />
+        <NuxtLink v-else-if="f.kind === 'last' && runOf(f)" :to="`/activites/${runOf(f)!.id}`" class="card last secondary" :style="{ '--c': RUN_TYPES[runOf(f)!.type].color }">
+          <span class="last-thumb"><RunThumb :activity="runOf(f)!" /></span>
+          <span class="row__main">
+            <span class="eyebrow">Dernière course · {{ runDay(runOf(f)!) }}</span>
+            <span class="title last-title">{{ displayTitle(runOf(f)!).title }}</span>
+            <span class="last-meta">
+              <span class="num">{{ formatKm(runOf(f)!.distanceKm) }}</span> km
+              <span class="num">{{ formatPace(runOf(f)!.durationSec, runOf(f)!.distanceKm) }}</span> /km
+              <template v-if="runOf(f)!.avgHr"><span class="num">{{ runOf(f)!.avgHr }}</span> bpm</template>
+            </span>
+          </span>
+          <ChevronRight class="go" :size="18" aria-hidden="true" />
+        </NuxtLink>
+      </template>
+
+      <!-- ── Objectif ── -->
+      <GoalCard v-if="goalInfo && !goalInfo.past" compact class="goal-card" />
+      <NuxtLink v-else to="/objectif" class="set-goal">
+        <Flag :size="16" aria-hidden="true" /> Fixer un objectif course <ChevronRight :size="16" aria-hidden="true" />
+      </NuxtLink>
+
+      <NuxtLink v-if="hasData" to="/journal" class="link all">Ton journal <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
+    </div>
   </div>
 </template>
 
@@ -157,71 +249,269 @@ const healthAlert = computed(() => {
   gap: 18px;
 }
 
-.head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 4px;
-}
-
-.hello {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
 .masked {
   filter: blur(7px);
   user-select: none;
 }
 
-.head-actions {
+/* ───── Carte principale ───── */
+.focus {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 20px 18px;
+  border-radius: calc(var(--r-card) + 4px);
 }
 
-.bell {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
+.focus > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Halo qui respire lentement derrière la carte : elle est vivante */
+.focus::before {
+  content: '';
+  position: absolute;
+  inset: -40% -30% auto auto;
+  width: 70%;
+  aspect-ratio: 1;
   border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--on-primary) 26%, transparent), transparent 65%);
+  animation: halo 7s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes halo {
+  to {
+    transform: translate(-18%, 22%) scale(1.15);
+    opacity: 0.6;
+  }
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .badge {
-  position: absolute;
-  z-index: 1;
-  top: -3px;
-  right: -3px;
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 10px;
-  background: var(--ko);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 0 0 3px var(--bg);
-  animation: pop 0.5s var(--ease-spring) 0.6s backwards;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: var(--on-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
   font-weight: 800;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--primary-solid) 60%, transparent), var(--primary-shadow);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
 }
 
+.when {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.focus-run {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+/* Plaque sombre (claire en Papier) sous les dessins : leurs couleurs restent lisibles sur le dégradé */
+.plate {
+  border-radius: var(--r-ctrl);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent), 0 10px 24px -12px color-mix(in srgb, var(--bg) 80%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.thumb {
+  display: block;
+  aspect-ratio: 1;
+  padding: 14px 12px;
+}
+
+.profile-plate {
+  padding: 12px 12px 10px;
+}
+
+.focus-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.focus-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 26px;
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  overflow-wrap: anywhere;
+}
+
+.focus-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.focus-meta .num {
+  font-size: 18px;
+}
+
+.sep {
+  width: 4px;
+  height: 4px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  align-self: center;
+}
+
+.focus-note {
+  margin: -4px 0 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.focus-stats {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.focus-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.focus-stats dd {
+  margin: 0;
+  font-size: 22px;
+}
+
+.focus-stats dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+/* Résultat proposé : un segment par effort prévu, pleins pour ceux faits */
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-ctrl);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.reps {
+  display: flex;
+  gap: 4px;
+}
+
+.rep {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, currentColor 55%, transparent);
+  animation: pop 0.45s var(--ease-spring) backwards;
+  animation-delay: calc(300ms + var(--k) * 45ms);
+}
+
+.rep.on {
+  background: currentColor;
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.proposal-text {
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Bouton sur le bloc de couleur : verre dépoli, flèche dans une pastille */
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 8px 0 20px;
+  border-radius: var(--r-btn);
+  font-size: 16px;
+  font-weight: 800;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent), inset 0 1px 0 color-mix(in srgb, currentColor 30%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: transform 0.12s ease, background 0.2s ease;
+}
+
+.cta:hover {
+  background: color-mix(in srgb, currentColor 26%, transparent);
+}
+
+.cta:active {
+  transform: scale(0.97);
+}
+
+.cta-ic {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: max(calc(var(--r-btn) - 6px), 2px);
+  background: currentColor;
+}
+
+.cta-ic svg {
+  color: var(--primary-solid);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.cta:hover .cta-ic svg {
+  transform: translateX(2px);
+}
+
+.more {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1.5px;
+}
+
+/* ───── États d'attente ───── */
 .loading {
   display: flex;
   align-items: center;
@@ -244,267 +534,113 @@ const healthAlert = computed(() => {
   }
 }
 
-/* ── Semaine ── */
-.week {
+.empty {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 22px 22px 18px;
-  border-radius: calc(var(--r-card) + 4px);
+  gap: 10px;
 }
 
-.week > * {
-  position: relative;
-  z-index: 1;
-}
-
-.week-top {
+/* ───── Alertes ───── */
+.alerts {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.eyebrow.on {
-  color: currentColor;
-  opacity: 0.85;
-}
-
-.sync-pill {
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-  background: color-mix(in srgb, currentColor 20%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-
-.big {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 10px 0 6px;
-  font-size: 72px;
-  letter-spacing: -0.05em;
-}
-
-.unit {
-  font-size: 22px;
-  letter-spacing: 0;
-  opacity: 0.8;
-}
-
-.week-stats {
-  display: flex;
-  gap: 22px;
-  margin: 0;
-}
-
-.week-stats div {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-}
-
-.week-stats dt {
-  font-size: 12px;
-  opacity: 0.78;
-}
-
-.week-stats dd {
-  margin: 0;
-  font-size: 20px;
-}
-
-.bars {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 18px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.bars li {
-  display: flex;
-  flex-direction: column;
+.alert {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.bar-zone {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  width: 100%;
-  height: 56px;
-}
-
-.bar {
-  width: 100%;
-  max-width: 26px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, currentColor, color-mix(in srgb, currentColor 55%, transparent));
-  box-shadow: 0 0 18px color-mix(in srgb, currentColor 35%, transparent);
-  transform-origin: bottom;
-  animation: grow 0.8s var(--ease-spring) backwards;
-  animation-delay: calc(300ms + var(--b) * 55ms);
-}
-
-.bar.off {
-  background: color-mix(in srgb, currentColor 22%, transparent);
-  box-shadow: none;
-}
-
-.day {
-  font-size: 11px;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px 0 12px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
   font-weight: 700;
-  text-transform: uppercase;
-  opacity: 0.8;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--tone) 14%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 40%, transparent);
 }
 
-/* ── Prochaine séance ── */
-.next {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+.alert svg {
+  color: var(--tone);
 }
 
-.next-head {
+/* ───── Cartes secondaires ───── */
+.last {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.next-icon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--r-ctrl);
-  color: var(--accent-text);
-  background: color-mix(in srgb, var(--accent-text) 16%, transparent);
-}
-
-.next-title {
-  font-size: 18px;
-}
-
-.next-meta {
-  display: flex;
   gap: 14px;
-  margin: 0;
+  padding: 14px 16px;
+}
+
+.last-thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  padding: 10px 9px;
+  border-radius: var(--r-ctrl);
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%),
+    var(--surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 25%, transparent);
+}
+
+.last-title {
+  font-size: 17px;
+}
+
+.last-meta {
+  display: flex;
+  gap: 4px 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
   font-size: 13px;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 
-.provider {
-  margin-left: auto;
-  font-weight: 700;
-  color: var(--ink-2);
+.last-meta .num {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.last-meta .num:not(:first-child) {
+  margin-left: 6px;
 }
 
 .go {
-  color: var(--muted);
   flex-shrink: 0;
+  color: var(--muted);
 }
 
-/* ── Dernière course ── */
-.hero-run {
-  display: grid;
-  grid-template-columns: 132px 1fr;
-  gap: 16px;
-  align-items: center;
-  padding: 16px;
-  overflow: hidden;
-}
-
-.hero-run::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(70% 90% at 0% 50%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%);
-  pointer-events: none;
-}
-
-.hero-map {
-  position: relative;
-  z-index: 1;
-  aspect-ratio: 1;
-  padding: 6px;
-}
-
-.hero-info {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.hero-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: var(--display-weight);
-  font-size: 20px;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.hero-stats {
-  display: flex;
-  gap: 14px;
-  margin: 6px 0 0;
-}
-
-.hero-stats div {
-  display: flex;
-  flex-direction: column;
-}
-
-.hero-stats dd {
-  margin: 0;
-  font-size: 22px;
-}
-
-.hero-stats dt {
+/* Objectif : une ligne discrète quand il n'y en a pas */
+.set-goal {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.hero-stats dt svg {
-  color: var(--ko);
-}
-
-.health-alert {
-  align-items: center;
-}
-
-.alert-text {
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.alert-link {
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 44px;
   font-size: 15px;
   font-weight: 600;
+  color: var(--ink-2);
+}
+
+.set-goal svg:first-child {
   color: var(--accent-text);
 }
 
+.all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+}
+
 /*
- * Téléphone : une seule colonne, dans l'ordre semaine, objectif, prochaine séance,
- * dernière course, titres à revoir. Les deux colonnes n'existent qu'en grand écran.
+ * Téléphone : une seule colonne, dans l'ordre carte principale, semaine, puis le reste plus calme
+ * (alertes, cartes secondaires, objectif). Les deux colonnes n'existent qu'à partir de la tablette.
  */
 .col-main,
 .col-side {
@@ -513,36 +649,39 @@ const healthAlert = computed(() => {
 
 .col-main > *,
 .col-side > * {
-  animation: rise 0.5s var(--ease-out) 120ms backwards;
+  animation: rise 0.5s var(--ease-out) backwards;
 }
 
-.week {
+.focus {
   order: 1;
+  animation-delay: 60ms;
 }
 
-.col-side > :deep(.goal) {
+.alerts {
+  order: 0;
+}
+
+.col-main > :deep(.week) {
   order: 2;
+  animation-delay: 140ms;
 }
 
-.next {
+.secondary {
   order: 3;
+  animation-delay: 200ms;
 }
 
-.hero-run {
+.goal-card,
+.set-goal {
   order: 4;
-  animation-delay: 220ms;
-}
-
-.ai {
-  order: 5;
-  animation-delay: 280ms;
+  animation-delay: 240ms;
 }
 
 .all {
-  order: 6;
+  order: 5;
 }
 
-/* Tablette et ordinateur : semaine et dernière course à gauche, le reste dans une colonne à droite */
+/* Tablette et ordinateur : à gauche la carte principale et la semaine ; à droite le reste */
 @media (min-width: 720px) {
   .home {
     display: grid;
@@ -571,65 +710,42 @@ const healthAlert = computed(() => {
     grid-column: 8 / -1;
   }
 
-  .week {
-    padding: 28px 28px 24px;
+  .focus {
+    gap: 20px;
+    padding: 28px;
   }
 
-  .big {
-    font-size: 96px;
+  .focus-run {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 20px;
   }
 
-  .bar-zone {
-    height: 120px;
+  .focus-title {
+    font-size: 30px;
   }
 
-  .bar {
-    max-width: 40px;
-  }
-
-  .hero-run {
-    grid-template-columns: 180px 1fr;
-    padding: 22px;
-  }
-
-  .hero-title {
-    font-size: 26px;
+  .set-goal,
+  .all {
+    align-self: flex-start;
   }
 }
 
-/* ── Titres à revoir, récap ── */
-.ai {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
+@media (min-width: 1080px) {
+  .home > .col-main {
+    grid-column: 1 / span 8;
+  }
 
-.ai > * {
-  position: relative;
-  z-index: 1;
-}
+  .home > .col-side {
+    grid-column: 9 / -1;
+  }
 
-.ai-icon {
-  animation: pop 0.6s var(--ease-spring) 0.45s backwards;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: var(--r-ctrl);
-  background: color-mix(in srgb, currentColor 18%, transparent);
-}
+  .focus-run {
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 24px;
+  }
 
-.ai-text {
-  font-size: 15px;
-  opacity: 0.85;
-}
-
-.all {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  align-self: center;
+  .focus-title {
+    font-size: 36px;
+  }
 }
 </style>
