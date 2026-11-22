@@ -43,11 +43,41 @@ describe('renderTemplate', () => {
   })
 })
 
-describe('isGenericName (noms par défaut déjà reconnus)', () => {
-  it.each(['Morning Run', 'Lunch Run', 'Evening Run', 'Course', 'Course à pied', 'Course du matin', 'Footing du soir'])('%s', (n) => {
+// Noms par défaut de Strava (anglais et français) et de Garmin : seuls ceux-là peuvent être remplacés
+const GENERIC_NAMES = [
+  'Morning Run', 'Lunch Run', 'Afternoon Run', 'Evening Run', 'Night Run', 'morning run', '  Morning Run  ',
+  'Morning Trail Run', 'Afternoon Virtual Run',
+  'Course à pied le matin', 'Course à pied le midi', "Course à pied à l'heure du déjeuner",
+  "Course à pied dans l'après-midi", 'Course à pied dans l’après-midi', 'Course à pied en soirée', 'Course à pied de nuit',
+  'Trail le matin', "Trail dans l'après-midi",
+  'Running le matin', "Running dans l'après-midi du samedi", 'Running en soirée du mardi',
+  'Course du matin', 'Footing du soir', 'Course midi', 'Footing après-midi',
+  'Course', 'Course à pied', 'Running', 'Run', 'Trail', 'Trail Running', 'Tapis de course', 'Treadmill Running',
+  'Course à pied sur tapis roulant', 'Course à pied virtuelle', 'Indoor Running', 'Track Running',
+  'Bruxelles Course à pied', 'La Hulpe Course à pied', 'Woluwe-Saint-Lambert Course à pied',
+  'Brussels Running', 'New York Running', "Braine-l'Alleud Trail Running",
+  '', '   ', 'Course   à  pied   le matin',
+]
+
+// Titres écrits par le coureur : jamais remplacés par une règle
+const WRITTEN_NAMES = [
+  'Sortie longue', 'Footing récup', 'Footing', 'Jogging', 'Tempo 5 km', 'Fractionné piste 10×400',
+  '[KIPRUN] - Footing 40’', '[FAIL][KIPRUN] - 5x400m(R=200m)', 'Tapis de course - Footing 40’', 'Bruxelles - 5x400m',
+  'Morning Run with Tom', 'Morning Run 2', 'Night Run Brussels 2026',
+  'Course à pied dans la forêt', 'Course à pied avec Léa', 'Course à pied le matin avec le club',
+  'Ma course à pied du dimanche', 'Première course à pied', 'Sortie longue course à pied',
+  '10 km de Bruxelles', 'Trail des Fagnes', 'Chamonix Trail', 'Semi de Paris', 'Running club',
+  'Easy Running', 'Long Running',
+  // Forme « Lieu + type » : casse exacte du type, pas de chiffre, pas plus de 4 mots, majuscule au début
+  'Bruxelles course à pied', 'Bruxelles 2 Running', 'Un Deux Trois Quatre Cinq Running', 'bruxelles Running',
+  'Sortie Running', 'Petite Course à pied', 'Morning Running',
+]
+
+describe('isGenericName', () => {
+  it.each(GENERIC_NAMES.map((n) => [n]))('« %s » est un nom par défaut', (n) => {
     expect(isGenericName(n)).toBe(true)
   })
-  it.each(['Sortie longue', 'Footing récup', 'Tempo 5 km'])('%s n’est pas générique', (n) => {
+  it.each(WRITTEN_NAMES.map((n) => [n]))('« %s » est un titre écrit', (n) => {
     expect(isGenericName(n)).toBe(false)
   })
 })

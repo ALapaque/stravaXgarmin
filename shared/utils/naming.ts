@@ -24,11 +24,44 @@ export const DEFAULT_TEMPLATES: Record<RunType, string> = {
   tempo: 'Tempo {distance} km à {allure} /km',
 }
 
-/** Noms par défaut des montres et de Strava, qu'une règle peut remplacer. */
-const GENERIC = /^(morning|afternoon|evening|night|lunch) run$|^course( à pied)?$|^(course|footing) (du )?(matin|midi|soir|après-midi)$|course à pied$/i
+/*
+ * Noms par défaut des montres et de Strava, qu'une règle peut remplacer.
+ * Un faux positif est plus grave qu'un oubli (on remplacerait un titre écrit à la main) :
+ * on compare toujours le nom ENTIER, jamais « contient ».
+ */
+const DAYS = 'lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche'
+const GENERIC: RegExp[] = [
+  // Strava en anglais : « Morning Run », « Afternoon Virtual Run », « Morning Trail Run »…
+  /^(morning|lunch|afternoon|evening|night)( trail| virtual)? run$/i,
+  // Strava en français : « Course à pied le matin », « Running dans l'après-midi du samedi »…
+  new RegExp(`^(course à pied|course|trail|running) (le matin|le midi|à l'heure du déjeuner|dans l'après-midi|en soirée|de nuit)( du (${DAYS}))?$`, 'i'),
+  // Anciennes formes : « Course du matin », « Footing du soir », « Course midi »…
+  /^(course|footing) (du )?(matin|midi|soir|après-midi)$/i,
+  // Nom du sport seul (montres, tapis, applis)
+  /^(course|course à pied|run|running|trail|trail run|trail running|virtual run|tapis de course|treadmill running|course à pied sur tapis roulant|course à pied virtuelle|indoor running|track running)$/i,
+]
+
+/*
+ * Défaut Garmin « Lieu + type » : « Bruxelles Course à pied », « Brussels Running », « Braine-l'Alleud Trail Running ».
+ * Le type garde exactement cette casse ; le lieu fait 1 à 4 mots sans chiffre, le premier avec une majuscule,
+ * et ne commence pas par un mot de coureur (« Easy Running », « Sortie course à pied » restent des titres écrits).
+ */
+const PLACE_TYPE = /^(\p{Lu}[^\s\d]*(?: [^\s\d]+){0,3}) (Course à pied|Running|Trail Running)$/u
+const RUNNER_WORDS = new Set([
+  'Easy', 'Long', 'Slow', 'Fast', 'Hard', 'Tempo', 'Recovery', 'Steady', 'Interval', 'Intervals', 'Hill', 'Hills', 'Trail', 'Track',
+  'Morning', 'Lunch', 'Afternoon', 'Evening', 'Night', 'Sortie', 'Footing', 'Séance', 'Petite', 'Grande', 'Belle', 'Bonne',
+  'Première', 'Dernière', 'Ma', 'Mon', 'Notre',
+])
+
+/** Espaces de début/fin retirés, espaces multiples réduits, apostrophe typographique « ’ » = « ' ». */
+const normalizeName = (name: string) => name.replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim()
 
 export function isGenericName(name: string) {
-  return GENERIC.test(name.trim())
+  const n = normalizeName(name ?? '')
+  if (!n) return true
+  if (GENERIC.some((re) => re.test(n))) return true
+  const m = n.match(PLACE_TYPE)
+  return Boolean(m && !RUNNER_WORDS.has(m[1]!.split(' ')[0]!))
 }
 
 /** Ce dont un modèle a besoin : une activité de l'appli convient telle quelle. */
