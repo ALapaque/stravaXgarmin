@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.5](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.4...v1.16.5) (2026-11-22)
+
+### Corrections
+
+* dans « À venir », le petit graphique d'une séance à nombreuses étapes reste dans sa case au lieu de dépasser à droite ([6b851fe](https://github.com/ALapaque/stravaXgarmin/commit/6b851fea94f9afeaa7fce39be9e5733672c12200))
+
 ## [1.16.4](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.3...v1.16.4) (2026-11-22)
 
 ### Corrections
