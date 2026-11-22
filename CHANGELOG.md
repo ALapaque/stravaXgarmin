@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.12.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.11.1...v1.12.0) (2026-11-22)
+
+### Nouveautés
+
+* écran « État des connexions » pour voir ce qui est lu chez Strava, Garmin et l'IA ([4c01096](https://github.com/ALapaque/stravaXgarmin/commit/4c01096e910b709a477c7e87ff3075c95c4c3509))
+
+### Corrections
+
+* la description Strava n'est plus remplacée, le texte de l'appli s'ajoute à tes notes ([d471368](https://github.com/ALapaque/stravaXgarmin/commit/d4713686316e39bb12e2c7f6f3712d35ab4b4ff1))
+* les noms par défaut de Strava en français (« Course à pied en soirée »…) sont reconnus ([7f66125](https://github.com/ALapaque/stravaXgarmin/commit/7f66125fc50dd7a22c1a16e1e1339833f91c6bc3))
+
 ## [1.11.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.11.0...v1.11.1) (2026-11-19)
 
 ### Corrections
