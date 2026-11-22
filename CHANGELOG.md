@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.15.0...v1.16.0) (2026-11-22)
+
+### Nouveautés
+
+* la page de présentation raconte la nouvelle appli : Débrief, séances sur tapis, trois onglets ([114de06](https://github.com/ALapaque/stravaXgarmin/commit/114de0662619e3bf65024fadabcb9eee7692ece2))
+* Progression — régularité face au plan, forme, records et compétitions, matériel ([7517154](https://github.com/ALapaque/stravaXgarmin/commit/7517154c00c2721f26ab852408d57ac206a1323a))
+* un seul bilan de la semaine (chiffres, plan suivi, lecture par l'IA) et des réglages rangés par thème ([5b3f7f5](https://github.com/ALapaque/stravaXgarmin/commit/5b3f7f53e547b8f64e7f5e145cdaeb1c04b5d6d8))
+
 ## [1.15.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.14.0...v1.15.0) (2026-11-22)
 
 ### Nouveautés
