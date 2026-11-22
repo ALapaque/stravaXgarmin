@@ -2,6 +2,7 @@
  * Courbes d'une course (temps, cardio, vitesse, distance), réduites pour l'affichage.
  * Logique pure, testée (tests/streams.test.ts).
  */
+import type { Lap } from './compliance'
 
 /** Courbes d'une course : « v » en m/s ; une série absente vaut null. */
 export interface RunStream {
@@ -56,4 +57,42 @@ export function toRunStream(raw: Record<string, RawSeries> | null | undefined, n
     v: round(series(raw!.velocity_smooth, time.length), 100),
     d: round(series(raw!.distance, time.length)),
   }
+}
+
+/**
+ * Courbes vraisemblables fabriquées à partir des tours (démo) : la vitesse suit chaque tour, la FC
+ * tend vers celle du tour avec un temps de réponse d'une trentaine de secondes (elle monte pendant
+ * les efforts, redescend en récup). Déterministe pour une même « seed ».
+ */
+export function streamFromLaps(laps: Lap[], seed = 1, n = 240): RunStream {
+  const list = (Array.isArray(laps) ? laps : []).filter((l) => l && l.sec > 0)
+  if (!list.length) return { t: [], hr: null, v: null, d: null }
+  let h = seed >>> 0 || 1
+  const rand = () => ((h = (Math.imul(h ^ (h >>> 15), 2246822507) + 0x9e3779b9) >>> 0), (h % 10000) / 10000)
+  const withHr = list.some((l) => l.hr)
+  const t: number[] = []
+  const hr: number[] = []
+  const v: number[] = []
+  const d: number[] = []
+  const step = 5
+  let time = 0
+  let dist = 0
+  let heart = (list.find((l) => l.hr)?.hr ?? 120) - 25
+  for (const l of list) {
+    const speed = l.m / l.sec
+    const target = l.hr ?? heart
+    for (let s = 0; s < l.sec; s += step) {
+      const dt = Math.min(step, l.sec - s)
+      time += dt
+      dist += speed * dt
+      // Réponse du cœur : rapprochement progressif de la FC du tour, avec un léger bruit
+      heart += (target + 4 - heart) * (1 - Math.exp(-dt / 30))
+      t.push(time)
+      d.push(dist)
+      v.push(Math.max(0, speed * (1 + (rand() - 0.5) * 0.06)))
+      hr.push(heart + (rand() - 0.5) * 3)
+    }
+  }
+  const round = (a: number[], k = 1) => downsample(a, n).map((x) => Math.round(x * k) / k)
+  return { t: round(t), hr: withHr ? round(hr) : null, v: round(v, 100), d: round(d) }
 }

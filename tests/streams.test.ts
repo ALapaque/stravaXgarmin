@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { downsample, toRunStream } from '../shared/utils/streams'
+import { downsample, streamFromLaps, toRunStream } from '../shared/utils/streams'
 
 describe('downsample', () => {
   it('moyenne par paquet, premier et dernier points gardés', () => {
@@ -32,5 +32,24 @@ describe('toRunStream', () => {
   it('réponse inattendue : vide, sans erreur', () => {
     expect(toRunStream(null)).toEqual({ t: [], hr: null, v: null, d: null })
     expect(toRunStream({ time: { data: 'x' } } as never)).toEqual({ t: [], hr: null, v: null, d: null })
+  })
+})
+
+describe('streamFromLaps', () => {
+  const lap = (m: number, sec: number, hr: number | null) => ({ m, sec, elapsedSec: sec, hr, maxHr: hr })
+  it('la FC monte pendant l’effort et redescend en récup, la vitesse suit les tours', () => {
+    const s = streamFromLaps([lap(1000, 360, 130), lap(400, 100, 175), lap(200, 90, 135)], 7, 1000)
+    const at = (sec: number) => s.t.findIndex((x) => x >= sec)
+    expect(s.hr![at(455)]!).toBeGreaterThan(s.hr![at(355)]! + 20)
+    expect(s.hr![at(545)]!).toBeLessThan(s.hr![at(455)]! - 10)
+    expect(s.v![at(400)]!).toBeGreaterThan(s.v![at(200)]! * 1.2)
+    expect(s.d![s.d!.length - 1]).toBeCloseTo(1600, 0)
+    expect(s.t[s.t.length - 1]).toBe(550)
+  })
+  it('déterministe ; sans cardio : hr null ; sans tours : vide', () => {
+    const laps = [lap(1000, 300, 150)]
+    expect(streamFromLaps(laps, 3)).toEqual(streamFromLaps(laps, 3))
+    expect(streamFromLaps([lap(1000, 300, null)]).hr).toBeNull()
+    expect(streamFromLaps([])).toEqual({ t: [], hr: null, v: null, d: null })
   })
 })

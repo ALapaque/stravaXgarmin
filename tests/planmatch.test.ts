@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adherence, matchPlan, type MatchRun, type MatchSession } from '../shared/utils/planmatch'
+import { adherence, matchPlan, syntheticSession, type MatchRun, type MatchSession } from '../shared/utils/planmatch'
 
 // Courses et séances inventées
 const TODAY = '2026-11-20' // un vendredi
@@ -57,5 +57,21 @@ describe('adherence', () => {
       { from: '2026-11-09', planned: 3, done: 1, short: 0, failed: 1, skipped: 1 },
       { from: '2026-11-16', planned: 2, done: 1, short: 1, failed: 0, skipped: 0 },
     ])
+  })
+})
+
+describe('syntheticSession', () => {
+  it('nom de montre « Tapis de course - Séance » : séance déduite avec ses étapes', () => {
+    const s = syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Tapis de course - 8x400m (R=1’)' })!
+    expect(s).toMatchObject({ id: 'nom:r1', synthetic: true, title: '8x400m (R=1’)', date: '2026-11-19' })
+    expect(s.steps[0]).toMatchObject({ kind: 'repeat', reps: 8 })
+  })
+  it('titre de séance reconnu sans préfixe', () => {
+    expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Footing 40’' })).toMatchObject({ title: 'Footing 40’', steps: [{ sec: 2400 }] })
+  })
+  it('nom par défaut ou nom libre : rien', () => {
+    expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Bruxelles Course à pied' })).toBeNull()
+    expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: 'Sortie avec les copains' })).toBeNull()
+    expect(syntheticSession({ id: 'r1', localDate: '2026-11-19', garminName: undefined })).toBeNull()
   })
 })

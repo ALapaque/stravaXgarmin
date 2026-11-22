@@ -12,6 +12,7 @@ export function demoHealth(nowIso: string): Health {
     'strava.activities': HEALTH_INFO.activities(runs.length),
     'strava.details': HEALTH_INFO.details(runs.length, runs.length),
     'strava.gear': HEALTH_INFO.gear(2),
+    'strava.streams': HEALTH_INFO.streams({ hr: true, v: true }),
     'garmin.activities': HEALTH_INFO.garminActivities(runs.length),
     'garmin.plan': HEALTH_INFO.plan(3),
     'garmin.forme': HEALTH_INFO.forme({ vo2max: 52, status: {}, load: {}, predictions: {}, readiness: {}, recoveryHours: 14 }),

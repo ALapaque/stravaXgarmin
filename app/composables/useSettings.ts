@@ -32,6 +32,12 @@ export function useSettings() {
     goal: null as { name: string; date: string; distance: '5k' | '10k' | 'half' | 'marathon' } | null,
     /** Kilométrage à partir duquel une paire de chaussures est considérée usée */
     shoeLimitKm: 700,
+    /** Convention de titres « [SOURCE] - Titre » : auto (détectée dans tes titres Strava), toujours, jamais */
+    tags: { mode: 'auto' as 'auto' | 'on' | 'off', fail: 'FAIL', sources: [] as string[] },
+    /** FC max saisie par toi (prioritaire sur l'estimation) */
+    hrMax: null as number | null,
+    /** Seules les courses après cette date réclament un débrief (posée à la première ouverture réelle) */
+    debriefSince: '' as string,
   }))
 }
 

@@ -4,15 +4,20 @@
  * Chargé une fois l'appli hydratée et au repos (pages asynchrones comprises),
  * pour ne pas créer d'écart avec le rendu serveur.
  */
-const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health', 'typeOverrides'] as const
+const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health', 'typeOverrides', 'debriefs', 'streams'] as const
 // Ne pas changer : l'historique, les réglages et « autoSince » doivent survivre aux mises à jour.
 // Un état d'une version précédente est complété par les fonctions de shared/utils/upgrade.ts.
 const VERSION = 2
 const prefix = `sxg:v${VERSION}:`
 
 /** Mise à niveau, clé par clé, de ce qu'une version précédente a gardé. */
+const object = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {})
 const UPGRADES: Partial<Record<(typeof KEYS)[number], (v: unknown) => unknown>> = {
   activities: upgradeActivities,
+  plan: upgradePlanState,
+  typeOverrides: object,
+  debriefs: object,
+  streams: object,
 }
 
 export default defineNuxtPlugin(() => {
@@ -29,7 +34,7 @@ export default defineNuxtPlugin(() => {
           // Fusion douce pour les réglages : les nouvelles options gardent leur valeur par défaut
           state.value = key === 'settings' && state.value && typeof state.value === 'object'
             ? deepMerge(state.value as Record<string, unknown>, value)
-            : (UPGRADES[key]?.(value) ?? value)
+            : (UPGRADES[key] ? UPGRADES[key](value) : value)
         }
       } catch {
         // Stockage indisponible (navigation privée…) : on reste sur l'état par défaut

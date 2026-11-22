@@ -3,7 +3,9 @@
  * Logique pure, testée (tests/planmatch.test.ts).
  */
 import type { Outcome } from './compliance'
-import { normalizeTitle } from './titles'
+import type { PlanSession } from './model'
+import { cleanWatchName, normalizeTitle } from './titles'
+import { parseWorkoutTitle } from './workout'
 
 export interface MatchRun {
   id: string
@@ -133,4 +135,29 @@ export function adherence(
     }
     return w
   })
+}
+
+/**
+ * Séance déduite du nom de la montre quand aucune séance du calendrier n'est reliée :
+ * nom « Lieu - Séance » / « Tapis de course - Séance » (préfixe retiré), ou titre de séance reconnu
+ * (« 8x400m (R=1’) », « Footing 40’ »). Sinon null. Identifiant « nom:<idCourse> ».
+ */
+export function syntheticSession(run: { id: string; localDate: string; garminName?: string | null }): PlanSession | null {
+  const clean = cleanWatchName(run.garminName)
+  const parsed = parseWorkoutTitle(clean.title)
+  if (!clean.title || (!clean.prefix && !parsed?.steps.length)) return null
+  return {
+    id: `nom:${run.id}`,
+    date: run.localDate,
+    title: clean.title,
+    description: null,
+    provider: null,
+    durationSec: null,
+    distanceM: null,
+    lines: [],
+    blocks: [],
+    workoutId: null,
+    steps: parsed?.steps ?? [],
+    synthetic: true,
+  }
 }

@@ -4,6 +4,7 @@
  */
 import type { Lap } from './compliance'
 import type { RunType } from './runs'
+import type { PlanStep, StepKind } from './workout'
 
 export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
 
@@ -71,4 +72,42 @@ export interface Activity {
   garminId?: number
   /** Séance Garmin suivie pendant la course, si Garmin le dit */
   garminWorkoutId?: number
+}
+
+/* ───── Plan d'entraînement (calendrier Garmin) ───── */
+
+export type PlanKind = StepKind
+
+export interface PlanLine {
+  kind: PlanKind | 'repeat'
+  text: string
+  reps?: number
+  children?: PlanLine[]
+}
+
+export interface PlanBlock {
+  kind: PlanKind
+  sec: number
+  /** Intensité relative 0..1 pour le profil de la séance */
+  level: number
+}
+
+export interface PlanSession {
+  id: string
+  date: string
+  title: string
+  description: string | null
+  provider: string | null
+  durationSec: number | null
+  distanceM: number | null
+  lines: PlanLine[]
+  blocks: PlanBlock[]
+  /** Séance Garmin (même identifiant que celui d'une activité qui l'a suivie) */
+  workoutId: number | null
+  /** Étapes structurées ([] si illisibles ou absentes) */
+  steps: PlanStep[]
+  /** Séance passée pas encore relue en détail (plus de 12 à lire d'un coup) : relue au prochain passage */
+  pending?: boolean
+  /** Séance déduite du nom de la montre, absente du calendrier */
+  synthetic?: boolean
 }

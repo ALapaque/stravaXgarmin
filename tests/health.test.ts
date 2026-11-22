@@ -12,7 +12,7 @@ describe('état de chaque lecture', () => {
     const h = emptyHealth()
     expect(Object.keys(h).sort()).toEqual([...HEALTH_KEYS].sort())
     expect(h.ai).toEqual({ status: 'idle', at: null, okAt: null, error: null, code: null, info: null })
-    expect(HEALTH_SOURCES).toHaveLength(8)
+    expect(HEALTH_SOURCES).toHaveLength(9)
   })
 
   it('markOk puis markError : la dernière réussite et ce qui a été lu restent', () => {
@@ -70,6 +70,11 @@ describe('ce qui a été lu, en mots', () => {
     expect(HEALTH_INFO.gear(1)).toBe('1 paire')
     expect(HEALTH_INFO.garminActivities(24)).toBe('24 activités')
     expect(HEALTH_INFO.plan(5)).toBe('5 séances à venir')
+    expect(HEALTH_INFO.plan(5, 14)).toBe('5 séances à venir, 14 passées')
+    expect(HEALTH_INFO.plan(1, 1)).toBe('1 séance à venir, 1 passée')
+    expect(HEALTH_INFO.streams({ hr: [1], v: [2] })).toBe('Cardio et allure')
+    expect(HEALTH_INFO.streams({ hr: null, v: [2] })).toBe('Allure seulement')
+    expect(HEALTH_INFO.streams({})).toBe('Aucune courbe pour cette course')
     expect(HEALTH_INFO.records(5)).toBe('5 records')
     expect(HEALTH_INFO.ai()).toBe('Dernière demande réussie')
   })

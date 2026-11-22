@@ -1,27 +1,13 @@
 /*
- * Prochaines séances : lues dans le calendrier Garmin (séances Kiprun exportées vers Garmin,
+ * Séances du plan, passées et à venir : lues dans le calendrier Garmin (séances Kiprun exportées vers Garmin,
  * plans Garmin Coach, séances ajoutées à la main). Gardées dans le navigateur entre deux visites.
+ * Relie aussi chaque course à sa séance et compare prévu et réalisé (logique dans shared/utils/).
  */
-export type PlanKind = 'warmup' | 'cooldown' | 'interval' | 'recovery' | 'rest' | 'other'
-
-export interface PlanLine {
-  kind: PlanKind | 'repeat'
-  text: string
-  reps?: number
-  children?: PlanLine[]
-}
-
-export interface PlanSession {
-  id: string
-  date: string
-  title: string
-  description: string | null
-  provider: string | null
-  durationSec: number | null
-  distanceM: number | null
-  lines: PlanLine[]
-  blocks: { kind: PlanKind; sec: number; level: number }[]
-}
+import type { PlanSession } from '#shared/utils/model'
+import { adherence as planAdherence } from '#shared/utils/planmatch'
+import type { Activity } from './useActivities'
+// Forme des séances : shared/utils/model.ts (partagée avec le serveur, la mise à niveau et la démo)
+export type { PlanBlock, PlanKind, PlanLine, PlanSession } from '#shared/utils/model'
 
 function addDays(n: number) {
   const d = new Date(`${TODAY}T12:00:00Z`)
@@ -32,7 +18,7 @@ function addDays(n: number) {
 const rep = (n: number, b: PlanSession['blocks']) => Array.from({ length: n }, () => b).flat()
 
 function demoPlan(): PlanSession[] {
-  return [
+  return upgradeSessions([
     {
       id: 'p1',
       date: addDays(1),
@@ -95,33 +81,100 @@ function demoPlan(): PlanSession[] {
         { kind: 'cooldown', sec: 600, level: 0.38 },
       ],
     },
-  ]
+  ])
 }
+
+const upgradeSessions = (list: unknown[]) => list.map(upgradePlanSession)
 
 export function usePlan() {
   const state = useState<{ at: string; list: PlanSession[] } | null>('plan', () => (isDemoCookie() ? { at: '', list: demoPlan() } : null))
-  const upcoming = computed(() => (state.value?.list ?? []).filter((s) => s.date >= TODAY))
+  const list = computed(() => state.value?.list ?? [])
+  const upcoming = computed(() => list.value.filter((s) => s.date >= TODAY))
   const next = computed(() => upcoming.value[0])
+  /** Séances passées, la plus récente d'abord */
+  const past = computed(() => list.value.filter((s) => s.date < TODAY).reverse())
+  const byId = (id: string) => list.value.find((s) => s.id === id)
 
-  /** Relit le calendrier Garmin, au plus toutes les 10 minutes. */
+  /*
+   * Calendrier Garmin relu au plus toutes les 10 minutes. Les séances passées déjà connues ne sont pas
+   * relues en détail (le serveur les renvoie en forme réduite) ; un plan gardé sans étapes (version
+   * précédente) a perdu sa date de lecture et est relu tout de suite.
+   */
   async function load(force = false) {
     const at = state.value?.at
     if (!force && at && Date.now() - Date.parse(at) < 10 * 60_000) return
-    const list = await useHealth().track(
+    const known = knownIds(list.value, TODAY)
+    const fresh = await useHealth().track(
       'garmin.plan',
-      () => $fetch<PlanSession[]>('/api/garmin/plan'),
-      (l) => HEALTH_INFO.plan(l.filter((s) => s.date >= TODAY).length),
+      () => $fetch<unknown[]>('/api/garmin/plan', { query: known.length ? { known: known.join(',') } : {} }),
+      (l) => {
+        const merged = mergePlan(list.value, Array.isArray(l) ? l : [], TODAY)
+        return HEALTH_INFO.plan(merged.filter((s) => s.date >= TODAY).length, merged.filter((s) => s.date < TODAY).length)
+      },
     )
-    // La liste remplace entièrement l'ancienne ; un doublon éventuel n'est gardé qu'une fois
-    const unique = list.filter((s, i) => list.findIndex((o) => o.id === s.id || (o.date === s.date && o.title === s.title)) === i)
-    state.value = { at: new Date().toISOString(), list: unique }
+    state.value = { at: new Date().toISOString(), list: mergePlan(list.value, Array.isArray(fresh) ? fresh : [], TODAY) }
   }
 
   function reset(demo: boolean) {
     state.value = demo ? { at: '', list: demoPlan() } : null
   }
 
-  return { state, upcoming, next, load, reset }
+  /* ───── Courses reliées aux séances ───── */
+
+  const { activities } = useActivities()
+  const debriefs = useDebriefState()
+
+  /** Choix manuels faits dans les débriefs : séance choisie, ou « séance libre » */
+  const manual = computed(() => {
+    const out: Record<string, string> = {}
+    for (const [id, d] of Object.entries(debriefs.value ?? {})) if (d?.planId) out[id] = d.planId
+    return out
+  })
+
+  const match = computed(() =>
+    matchPlan(
+      activities.value.map((a) => ({ id: a.id, localDate: a.localDate, names: [a.stravaName, a.garminName], workoutId: a.garminWorkoutId ?? null })),
+      list.value.filter((s) => !s.synthetic),
+      manual.value,
+      TODAY,
+    ),
+  )
+
+  /**
+   * Séance reliée à une course ; à défaut, une séance déduite du nom de la montre (« nom:<id> », synthetic).
+   * « Séance libre » choisie dans le débrief : aucune.
+   */
+  function sessionFor(a: Activity): PlanSession | null {
+    const id = match.value.byRun[a.id]
+    if (id) return byId(id) ?? null
+    if (manual.value[a.id] === 'none') return null
+    return syntheticSession(a)
+  }
+
+  /** Prévu contre réalisé pour une course (null : rien de comparable, ou pas de séance). */
+  function resultFor(a: Activity) {
+    const s = sessionFor(a)
+    if (!s) return null
+    return comparePlan(s, { durationSec: a.durationSec, distanceM: a.distanceKm * 1000, laps: a.laps })
+  }
+
+  /** Séances passées sans course, la plus récente d'abord */
+  const skipped = computed(() => {
+    const ids = new Set(match.value.skipped)
+    return past.value.filter((s) => ids.has(s.id))
+  })
+
+  /** Suivi du plan sur 8 semaines ; l'issue choisie dans le débrief passe avant celle calculée. */
+  const adherence = computed(() => {
+    const outcomes: Record<string, Outcome | null> = {}
+    for (const runId of Object.keys(match.value.byRun)) {
+      const a = activities.value.find((x) => x.id === runId)
+      outcomes[runId] = debriefs.value?.[runId]?.outcome ?? (a ? (resultFor(a)?.outcome ?? null) : null)
+    }
+    return planAdherence(list.value.filter((s) => !s.synthetic), match.value.byRun, outcomes, TODAY)
+  })
+
+  return { state, list, upcoming, next, past, byId, load, reset, sessionFor, resultFor, skipped, adherence }
 }
 
 /** « Demain », « Jeudi 20 nov. »… */

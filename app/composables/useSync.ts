@@ -3,6 +3,7 @@
  * Sans base de données, la synchro se fait à l'ouverture de l'appli.
  */
 import type { Activity, EffortKey, RunType } from './useActivities'
+import type { Lap } from '#shared/utils/compliance'
 import type { GarminRecord } from './useRecords'
 
 export interface Accounts {
@@ -117,6 +118,8 @@ export function useSync() {
         return
       }
       demo.leaveSilently()
+      // Première ouverture réelle : seules les courses des dernières 48 h réclameront un débrief
+      if (!settings.value.debriefSince) settings.value.debriefSince = new Date(Date.now() - 48 * 3600_000).toISOString()
 
       const [strava, garmin] = await Promise.all([
         track('strava.activities', () => $fetch<StravaRun[]>('/api/strava/activities'), (l) => HEALTH_INFO.activities(l.length)),
@@ -207,7 +210,8 @@ export function useSync() {
   /** Détail Strava des courses pas encore vues (meilleurs efforts, records, temps au km), 15 par appel. */
   async function loadDetails() {
     for (let round = 0; round < 2; round++) {
-      const missing = activities.value.filter((a) => a.stravaId && !details.value[a.stravaId]).map((a) => a.stravaId!).slice(0, 15)
+      // Une entrée gardée par la version précédente (sans « v: 2 », donc sans tours) compte comme manquante
+      const missing = activities.value.filter((a) => a.stravaId && details.value[a.stravaId]?.v !== 2).map((a) => a.stravaId!).slice(0, 15)
       if (!missing.length) return
       const got = await track(
         'strava.details',
@@ -234,18 +238,28 @@ export function useSync() {
   return { run, syncing, synced }
 }
 
+/** Détail d'une course gardé dans le navigateur ; « v: 2 » ajoute tours, FC au km et FC max. */
 export interface RunDetails {
+  v?: 2
   efforts: Record<string, number>
   prs: string[]
   splits: number[]
+  splitHr?: number[]
+  laps?: Lap[]
+  maxHr?: number | null
 }
 
+/** Lecture défensive : une entrée gardée peut venir d'une version précédente. */
 function withDetails(a: Activity, d?: RunDetails): Activity {
-  if (!d) return a
+  if (!d || typeof d !== 'object') return a
+  const splits = Array.isArray(d.splits) && d.splits.length ? d.splits : a.splits
   return {
     ...a,
-    bestEfforts: d.efforts as Activity['bestEfforts'],
-    prs: d.prs as EffortKey[],
-    splits: d.splits.length ? d.splits : a.splits,
+    bestEfforts: (d.efforts ?? {}) as Activity['bestEfforts'],
+    prs: (Array.isArray(d.prs) ? d.prs : []) as EffortKey[],
+    splits,
+    splitHr: Array.isArray(d.splitHr) && d.splitHr.length === splits.length ? d.splitHr : a.splitHr,
+    laps: Array.isArray(d.laps) ? d.laps : a.laps,
+    maxHr: d.maxHr || a.maxHr,
   }
 }

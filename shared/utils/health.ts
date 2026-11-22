@@ -7,6 +7,7 @@ export type HealthKey =
   | 'strava.activities'
   | 'strava.details'
   | 'strava.gear'
+  | 'strava.streams'
   | 'garmin.activities'
   | 'garmin.plan'
   | 'garmin.forme'
@@ -35,6 +36,7 @@ export const HEALTH_SOURCES: { key: HealthKey; provider: HealthProvider; label: 
   { key: 'strava.activities', provider: 'strava', label: 'Tes courses', hint: 'Tes courses des 60 derniers jours' },
   { key: 'strava.details', provider: 'strava', label: 'Détail des courses', hint: 'Temps au kilomètre et meilleurs efforts' },
   { key: 'strava.gear', provider: 'strava', label: 'Chaussures', hint: 'Tes paires et leur kilométrage' },
+  { key: 'strava.streams', provider: 'strava', label: 'Fréquence cardiaque et allure', hint: 'Courbes de la dernière course ouverte' },
   { key: 'garmin.activities', provider: 'garmin', label: 'Noms donnés par ta montre', hint: 'Le nom de chaque activité' },
   { key: 'garmin.plan', provider: 'garmin', label: 'Séances prévues', hint: 'Ton calendrier d’entraînement' },
   { key: 'garmin.forme', provider: 'garmin', label: 'Forme du jour', hint: 'VO2max, charge, préparation du jour' },
@@ -102,7 +104,11 @@ export const HEALTH_INFO = {
       : `Temps au kilomètre et meilleurs efforts de ${plural(got, 'course', 'courses')}`,
   gear: (n: number) => plural(n, 'paire', 'paires'),
   garminActivities: (n: number) => plural(n, 'activité', 'activités'),
-  plan: (n: number) => `${plural(n, 'séance', 'séances')} à venir`,
+  plan: (upcoming: number, past?: number) =>
+    `${plural(upcoming, 'séance', 'séances')} à venir${past ? `, ${past} ${past > 1 ? 'passées' : 'passée'}` : ''}`,
+  /** Courbes reçues pour la dernière course ouverte */
+  streams: (s: { hr?: unknown; v?: unknown }) =>
+    s.hr && s.v ? 'Cardio et allure' : s.hr ? 'Cardio seulement' : s.v ? 'Allure seulement' : 'Aucune courbe pour cette course',
   records: (n: number) => plural(n, 'record', 'records'),
   ai: () => 'Dernière demande réussie',
   /** Données de forme reçues, puis celles qui manquent */
