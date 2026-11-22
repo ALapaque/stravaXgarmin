@@ -19,11 +19,12 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
       <span class="title">{{ displayTitle(a).title }}</span>
       <span class="meta">
         <span>{{ shortDate.format(new Date(a.startedAt)) }}</span>
-        <span v-if="a.indoor">{{ placeLabel(a) }}</span>
         <span class="num-s">{{ formatKm(a.distanceKm) }} km</span>
         <span class="num-s">{{ formatPace(a.durationSec, a.distanceKm) }}/km</span>
       </span>
-      <span v-if="record || needsReview(a)" class="tags">
+      <span v-if="record || needsReview(a) || a.indoor" class="tags">
+        <!-- Sur tapis : le lieu est une étiquette, pour garder la ligne des chiffres sur une seule ligne -->
+        <span v-if="a.indoor" class="tag tag--place">{{ placeLabel(a) }}</span>
         <span v-if="record" class="tag tag--rec">Record {{ record.label }}</span>
         <span v-if="needsReview(a)" class="tag tag--todo">Nom à revoir</span>
       </span>
@@ -52,7 +53,9 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
 
 .meta {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  white-space: nowrap;
   font-size: 13px;
   color: var(--muted);
 }
@@ -80,6 +83,11 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
 .tag--rec {
   color: var(--ok);
   background: color-mix(in srgb, var(--ok) 15%, transparent);
+}
+
+.tag--place {
+  color: var(--ink-2);
+  background: var(--surface-2);
 }
 
 .tag--todo {
