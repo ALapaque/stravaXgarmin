@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StepResult } from '../shared/utils/compliance'
-import { composeBlock, DEFAULT_PARTS, describeContext, effortTimes, mergeDebrief, needsDebrief, OUTCOME_LABELS, partsOf, planVsDone, RPE_LABELS, seedTitle, stepLines } from '../shared/utils/debrief'
+import { composeBlock, debriefTitle, DEFAULT_PARTS, describeContext, effortTimes, mergeDebrief, needsDebrief, OUTCOME_LABELS, partsOf, planVsDone, RPE_LABELS, seedTitle, stepLines } from '../shared/utils/debrief'
 
 const SINCE = '2026-11-18T12:00:00.000Z'
 const run = (o: Partial<{ id: string; startedAt: string; stravaName: string }> = {}) => ({
@@ -170,6 +170,36 @@ describe('étapes, efforts et contexte de l’analyse', () => {
     ])
     expect(describeContext({ feeling: { rpe: null, note: 'x'.repeat(900) } })).toEqual([`Note du coureur : ${'x'.repeat(500)}`])
     expect(describeContext({ indoor: 'oui', plan: 'n’importe quoi', feeling: 3 })).toEqual([])
+  })
+})
+
+describe('debriefTitle : le titre écrit par le coureur est toujours respecté', () => {
+  it('convention active : source et échec devant le titre écrit', () => {
+    expect(debriefTitle({ typed: 'Petit tour entre amis', convention: true, source: 'CUSTOM' })).toMatchObject({ ok: true, final: '[CUSTOM] - Petit tour entre amis', title: 'Petit tour entre amis' })
+    expect(debriefTitle({ typed: '  Côtes   du jeudi ', convention: true, source: 'KIPRUN', failed: true }).final).toBe('[FAIL][KIPRUN] - Côtes du jeudi')
+    expect(debriefTitle({ typed: 'Sortie libre', convention: true, source: '' }).final).toBe('Sortie libre')
+  })
+  it('étiquettes écrites à la main : ce sont elles qui comptent', () => {
+    expect(debriefTitle({ typed: '[CUSTOM] - Petit tour entre amis', convention: true, source: 'KIPRUN' })).toMatchObject({ final: '[CUSTOM] - Petit tour entre amis', source: 'CUSTOM', failed: false })
+    expect(debriefTitle({ typed: '[fail][perso] - Séance ratée', convention: true, source: 'KIPRUN' })).toMatchObject({ final: '[FAIL][PERSO] - Séance ratée', source: 'PERSO', failed: true })
+  })
+  it('convention inactive : publié tel quel, crochets compris', () => {
+    expect(debriefTitle({ typed: ' [CLUB] -  Sortie du mardi ', convention: false, source: 'KIPRUN', failed: true })).toMatchObject({ ok: true, final: '[CLUB] - Sortie du mardi', title: '[CLUB] - Sortie du mardi' })
+  })
+  it('un titre tient sur une ligne ; l’étiquette d’échec choisie dans les réglages est reconnue', () => {
+    expect(debriefTitle({ typed: 'Deux\n lignes\r\ncollées', convention: false }).final).toBe('Deux lignes collées')
+    expect(debriefTitle({ typed: 'Côtes', convention: true, source: 'kiprun', failed: true, failTag: 'raté' }).final).toBe('[RATÉ][KIPRUN] - Côtes')
+    expect(debriefTitle({ typed: '[raté][club] - Côtes', convention: true, failTag: 'raté' })).toMatchObject({ final: '[RATÉ][CLUB] - Côtes', source: 'CLUB', failed: true })
+    // Un « [FAIL] » écrit seul : pas de source ajoutée derrière le dos du coureur
+    expect(debriefTitle({ typed: '[FAIL] - Jambes lourdes', convention: true, source: 'KIPRUN' })).toMatchObject({ final: '[FAIL] - Jambes lourdes', source: '', failed: true })
+    // Des crochets ailleurs qu'au début ne sont pas des étiquettes
+    expect(debriefTitle({ typed: 'Sortie [avec le club]', convention: true, source: 'CUSTOM' }).final).toBe('[CUSTOM] - Sortie [avec le club]')
+  })
+  it('rien d’écrit : pas de titre, jamais des étiquettes seules', () => {
+    expect(debriefTitle({ typed: '', convention: true, source: 'KIPRUN', failed: true })).toMatchObject({ ok: false, final: '' })
+    expect(debriefTitle({ typed: '   ', convention: false })).toMatchObject({ ok: false, final: '' })
+    expect(debriefTitle({ typed: '[KIPRUN] - ', convention: true })).toMatchObject({ ok: false, final: '' })
+    expect(debriefTitle({ typed: null, convention: true })).toMatchObject({ ok: false, final: '' })
   })
 })
 

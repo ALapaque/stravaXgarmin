@@ -6,7 +6,7 @@
  * au fur et à mesure (useDebriefs, brouillon) : fermer puis rouvrir retrouve tout.
  * Règles (texte publié, libellés, titre proposé) : shared/utils/debrief.ts.
  */
-import { X, Check, ChevronDown, Sparkles, RefreshCw, Gauge, HeartPulse, Lightbulb, ArrowRight, CalendarClock, Clock } from 'lucide-vue-next'
+import { X, Check, ChevronDown, Sparkles, RefreshCw, Gauge, HeartPulse, Lightbulb, ArrowRight, CalendarClock, Clock, Pencil } from 'lucide-vue-next'
 import type { Outcome } from '#shared/utils/compliance'
 import type { Debrief, DebriefParts } from '#shared/utils/debrief'
 import type { RunType } from '#shared/utils/runs'
@@ -132,17 +132,49 @@ const aiReturn = computed(() => `/connexion/ia?retour=${encodeURIComponent(`/act
 
 const failTag = computed(() => convention.failTag.value)
 const ownTags = computed(() => parseTitle(a.value?.stravaName).tags)
-const seed = computed(() =>
-  a.value
-    ? seedTitle({
-        stravaName: a.value.stravaName,
-        planTitle: session.value?.title,
-        garminName: a.value.garminId || a.value.garminName !== a.value.stravaName ? a.value.garminName : null,
-        ruleTitle: ruleTitle(a.value),
-      })
-    : '',
-)
-const titlePart = computed({ get: () => d.value?.title ?? seed.value, set: (v: string) => patch({ title: v }) })
+const seed = computed(() => {
+  const r = a.value
+  if (!r) return ''
+  // Sans convention, le champ porte le titre entier : un titre Strava déjà écrit est repris tel quel, crochets compris
+  if (!convention.enabled.value && r.stravaName && !isGenericName(r.stravaName)) return r.stravaName
+  return seedTitle({
+    stravaName: r.stravaName,
+    planTitle: session.value?.title,
+    garminName: r.garminId || r.garminName !== r.stravaName ? r.garminName : null,
+    ruleTitle: ruleTitle(r),
+  })
+})
+/** Ce que le coureur écrit dans « Ton titre » (prérempli, entièrement libre). Un titre tient sur une ligne : un texte collé perd ses retours */
+const titlePart = computed({ get: () => d.value?.title ?? seed.value, set: (v: string) => patch({ title: v.replace(/\s*[\r\n]+\s*/g, ' ') }) })
+const titleField = ref<HTMLTextAreaElement | null>(null)
+/** Le texte tel qu'il est à l'écran, suivi frappe par frappe (même pendant qu'un clavier compose un mot) : il donne sa hauteur au champ */
+const titleShown = ref('')
+watch(titlePart, (v) => (titleShown.value = v), { immediate: true })
+function mirrorTitle(e: Event) {
+  titleShown.value = (e.target as HTMLTextAreaElement).value.replace(/[\r\n]+/g, ' ')
+}
+/** Vide le champ et y place le curseur : repartir de zéro en un toucher */
+function clearTitle() {
+  titlePart.value = ''
+  titleField.value?.focus()
+}
+/** Un toucher n'importe où dans le cadre (le crayon, la marge) place le curseur dans le champ */
+function focusTitle(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('button')) titleField.value?.focus()
+}
+/** « Entrée » termine la saisie (pas de retour à la ligne dans un titre) */
+function endTitle(e: KeyboardEvent) {
+  if (e.isComposing) return
+  e.preventDefault()
+  titleField.value?.blur()
+}
+/** Depuis l'aperçu : revenir au champ quand il manque un titre */
+function goTitle() {
+  const el = titleField.value
+  if (!el) return
+  el.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' })
+  el.focus({ preventScroll: true })
+}
 
 // Titres déjà publiés avec une source, du plus récent au plus ancien (cette course exclue)
 const titleHistory = computed(() =>
@@ -164,10 +196,25 @@ const source = computed({
   set: (v: string) => patch({ source: v }),
 })
 const fail = computed({ get: () => d.value?.fail ?? outcome.value === 'failed', set: (v: boolean) => patch({ fail: v }) })
-const finalTitle = computed(() =>
-  convention.enabled.value ? formatTitle({ source: source.value || null, title: titlePart.value, failed: fail.value, failTag: failTag.value }) : parseTitle(titlePart.value).title,
-)
+/** Le titre publié : toujours ce qui est écrit dans le champ (règle : debriefTitle) */
+const built = computed(() => debriefTitle({ typed: titlePart.value, convention: convention.enabled.value, source: source.value, failed: fail.value, failTag: failTag.value }))
+const finalTitle = computed(() => built.value.final)
 const TITLE_MAX = 100
+/** Sources écrites à la main pendant cette visite : leur pastille reste, même si une autre est choisie ensuite */
+const typedSources = ref<string[]>([])
+/** Sources proposées : celles connues, plus celles que le coureur a écrites lui-même */
+const sourceChoices = computed(() => {
+  const list = [...convention.sources.value]
+  for (const s of [...typedSources.value, source.value]) if (s && !list.includes(s)) list.push(s)
+  return list
+})
+/** En quittant le champ : des étiquettes écrites à la main (« [PERSO] - … ») deviennent la source choisie */
+function adoptTypedTags() {
+  if (!convention.enabled.value || !parseTitle(titlePart.value).tagged) return
+  const b = built.value
+  if (b.source && !typedSources.value.includes(b.source)) typedSources.value.push(b.source)
+  patch({ title: b.title, source: b.source, ...(b.failed ? { fail: true } : {}) })
+}
 
 const proposals = computed(() => {
   const r = a.value
@@ -284,7 +331,7 @@ const upToDate = computed(() => {
 const publishing = ref(false)
 const success = ref(false)
 const alsoGarmin = computed(() => Boolean(settings.value.garmin.rename && accounts.value.garmin.connected && a.value?.garminId))
-const canPublish = computed(() => !publishing.value && !upToDate.value && finalTitle.value.trim().length > 0 && descState.value !== 'loading' && !overflow.value)
+const canPublish = computed(() => !publishing.value && !upToDate.value && built.value.ok && descState.value !== 'loading' && !overflow.value)
 const publishLabel = computed(() => {
   if (publishing.value) return 'Publication…'
   if (!everPublished.value) return alsoGarmin.value ? 'Publier sur Strava et Garmin' : 'Publier sur Strava'
@@ -296,9 +343,11 @@ const snapshot = (): Partial<Debrief> => ({
   outcome: outcome.value,
   rpe: rpe.value,
   note: note.value,
-  source: source.value,
-  title: parseTitle(titlePart.value).title,
-  fail: d.value?.fail ?? null,
+  // Sans convention, la source n'est pas montrée : celle devinée est gardée pour le jour où la convention sert
+  source: convention.enabled.value ? built.value.source : source.value,
+  title: built.value.title,
+  // Un « [FAIL] » écrit à la main vaut la bascule
+  fail: built.value.failed && !fail.value ? true : (d.value?.fail ?? null),
 })
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -361,7 +410,7 @@ const filled = computed(() => [
   Boolean(outcome.value),
   rpe.value !== null,
   Boolean(analysis.value),
-  finalTitle.value.trim().length > 0,
+  built.value.ok,
   upToDate.value,
 ])
 const filledCount = computed(() => filled.value.filter(Boolean).length)
@@ -573,43 +622,65 @@ const resultBig = computed(() => {
             <h2 id="s4" class="step-title"><span class="sr-only">Étape 4 : </span>Le titre</h2>
             <div class="card card--pad step-body s-title">
               <div class="t-main">
-                <p v-if="convention.enabled.value" class="sub-title">Source</p>
-                <div v-if="convention.enabled.value" class="sources" role="group" aria-label="Source de la séance">
-                  <button
-                    v-for="s in convention.sources.value"
-                    :key="s"
-                    type="button"
-                    class="pill pill--tag"
-                    :aria-pressed="source === s"
-                    @click="source = s"
-                  >
-                    {{ s }}
+                <label for="title-field" class="sub-title">Ton titre</label>
+                <div class="t-box" :class="{ empty: !built.ok }" @click="focusTitle">
+                  <Pencil class="t-ico" :size="18" aria-hidden="true" />
+                  <!-- Le champ grandit avec le texte : un long titre reste lisible en entier (la copie invisible lui donne sa hauteur) -->
+                  <div class="t-grow" :data-copy="titleShown">
+                    <textarea
+                      id="title-field"
+                      ref="titleField"
+                      v-model="titlePart"
+                      class="t-field"
+                      rows="1"
+                      :maxlength="TITLE_MAX"
+                      autocomplete="off"
+                      autocapitalize="sentences"
+                      enterkeyhint="done"
+                      placeholder="Écris ton titre"
+                      aria-describedby="title-help"
+                      @input="mirrorTitle"
+                      @change="adoptTypedTags"
+                      @keydown.enter="endTitle"
+                    />
+                  </div>
+                  <button v-if="titlePart" type="button" class="t-clear" aria-label="Effacer le titre" @click="clearTitle">
+                    <X :size="18" aria-hidden="true" />
                   </button>
-                  <button type="button" class="pill pill--tag" :aria-pressed="source === ''" @click="source = ''">Aucune</button>
                 </div>
-                <!-- L'échec n'est pas une source : une bascule à part -->
-                <div v-if="convention.enabled.value" class="fail-row" :class="{ on: fail }">
-                  <span class="row__main">
-                    <span class="fail-label">Marquer la séance comme ratée</span>
-                    <span class="fine">Ajoute <span class="fail-tag">[{{ failTag }}]</span> au début du titre.</span>
-                  </span>
-                  <ToggleSwitch v-model="fail" label="Marquer la séance comme ratée" />
-                </div>
-                <label for="title-field" class="sr-only">Titre de la séance</label>
-                <input
-                  id="title-field"
-                  v-model="titlePart"
-                  class="t-field"
-                  type="text"
-                  :maxlength="TITLE_MAX"
-                  autocomplete="off"
-                  enterkeyhint="done"
-                  placeholder="Titre de ta séance"
-                >
-                <p class="t-final" aria-live="polite"><span class="sr-only">Titre complet : </span>{{ finalTitle || '…' }}</p>
+                <p id="title-help" class="fine t-help">
+                  <template v-if="built.ok">Écris ce que tu veux : les propositions ne sont que des raccourcis.</template>
+                  <span v-else class="t-need" role="status">Écris un titre pour pouvoir publier.</span>
+                </p>
+                <template v-if="convention.enabled.value">
+                  <p class="sub-title">Source</p>
+                  <div class="sources" role="group" aria-label="Source de la séance">
+                    <button
+                      v-for="s in sourceChoices"
+                      :key="s"
+                      type="button"
+                      class="pill pill--tag"
+                      :aria-pressed="source === s"
+                      @click="source = s"
+                    >
+                      {{ s }}
+                    </button>
+                    <button type="button" class="pill pill--tag" :aria-pressed="source === ''" @click="source = ''">Aucune</button>
+                  </div>
+                  <!-- L'échec n'est pas une source : une bascule à part -->
+                  <div class="fail-row" :class="{ on: fail }">
+                    <span class="row__main">
+                      <span class="fail-label">Marquer la séance comme ratée</span>
+                      <span class="fine">Ajoute <span class="fail-tag">[{{ failTag }}]</span> au début du titre.</span>
+                    </span>
+                    <ToggleSwitch v-model="fail" label="Marquer la séance comme ratée" />
+                  </div>
+                  <p class="sub-title">Sur Strava, ça donnera</p>
+                  <p class="t-final" aria-live="polite"><span class="sr-only">Titre complet : </span>{{ finalTitle || '…' }}</p>
+                </template>
               </div>
               <div class="t-ideas">
-                <p class="sub-title">Propositions</p>
+                <p class="sub-title">Ou reprends une proposition</p>
                 <div class="props">
                   <button v-for="p in proposals" :key="p.label" type="button" class="prop" :class="{ on: titlePart === p.text }" @click="titlePart = p.text">
                     <span class="prop-k">{{ p.label }}</span>
@@ -676,6 +747,10 @@ const resultBig = computed(() => {
               </button>
             </div>
             <p v-if="overflow" class="err" role="alert">Ta description Strava est trop longue pour y ajouter ce texte. Coupe des parties, ou raccourcis-la sur Strava.</p>
+            <p v-if="!built.ok" class="fine need-title">
+              Il manque un titre pour publier.
+              <button type="button" class="link" @click="goTitle">Écrire mon titre</button>
+            </p>
 
             <button type="button" class="btn btn--primary side-publish" :disabled="!canPublish" @click="publish">
               {{ publishLabel }}
@@ -1303,24 +1378,138 @@ const resultBig = computed(() => {
   min-width: 0;
 }
 
-.t-field {
-  width: 100%;
-  min-height: 52px;
-  padding: 4px 0;
-  border: 0;
-  border-bottom: 2px solid var(--line-strong);
-  border-radius: 0;
-  background: transparent;
+/* Un vrai champ, reconnaissable d'un coup d'œil : même cadre que la note, un crayon, un bouton pour tout effacer */
+.t-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 4px 0 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-ctrl);
+  background: color-mix(in srgb, var(--bg) 40%, transparent);
+  cursor: text;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.t-box:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
+}
+
+.t-box.empty:not(:focus-within) {
+  border-color: var(--ko);
+}
+
+/* Crayon et croix restent alignés sur la première ligne quand le titre passe à la ligne */
+.t-ico {
+  flex: none;
+  margin-top: 19px;
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+
+.t-box:focus-within .t-ico {
+  color: var(--accent-text);
+}
+
+/* Le champ et sa copie invisible occupent la même case : la copie, qui passe à la ligne comme lui, fixe la hauteur */
+.t-grow {
+  flex: 1;
+  min-width: 0;
+  display: grid;
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: var(--title-weight);
-  font-size: 22px;
-  outline: none;
-  transition: border-color 0.2s ease;
+  font-size: 20px;
+  line-height: 28px;
+  /* Un champ montre exactement ce qui est tapé : pas de « x » changé en « × » par la police */
+  font-variant-ligatures: no-contextual;
 }
 
-.t-field:focus {
-  border-bottom-color: var(--focus);
+.t-grow::after,
+.t-field {
+  grid-area: 1 / 1;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 0;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  word-spacing: inherit;
+  text-transform: none;
+  text-indent: 0;
+  text-align: start;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.t-grow::after {
+  content: attr(data-copy) ' ';
+  visibility: hidden;
+}
+
+.t-field {
+  width: 100%;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  appearance: none;
+}
+
+.t-field::placeholder {
+  color: var(--muted);
+  font-weight: 500;
+  opacity: 1;
+}
+
+.t-clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: var(--r-ctrl);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.t-clear:hover,
+.t-clear:focus-visible {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.t-help {
+  margin-top: -4px;
+}
+
+/* Champ vide : une consigne tant que tu écris, une alerte seulement une fois le champ quitté */
+.t-need {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.t-box.empty:not(:focus-within) + .t-help .t-need {
+  color: var(--ko);
+}
+
+.need-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--ko);
+}
+
+.t-main .sub-title:not(:first-child) {
+  margin-top: 8px;
 }
 
 .t-final {

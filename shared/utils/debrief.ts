@@ -4,7 +4,7 @@
  */
 import type { Outcome, PlanComparison, StepResult } from './compliance'
 import { isGenericName } from './naming'
-import { cleanWatchName, parseTitle } from './titles'
+import { cleanWatchName, formatTitle, parseTitle } from './titles'
 import { stepDistance, stepDuration, type StepKind } from './workout'
 
 export interface Debrief {
@@ -316,6 +316,35 @@ export function seedTitle(i: { stravaName?: string | null; planTitle?: string | 
   const watch = cleanWatchName(i.garminName).title
   if (watch && !isGenericName(watch)) return watch
   return oneLine(i.ruleTitle) || strava || 'Course'
+}
+
+/**
+ * Le titre publié, à partir de ce que le coureur a écrit dans le champ « Ton titre ».
+ * - Le texte écrit est toujours respecté : les propositions ne sont que des raccourcis.
+ * - Convention active : étiquettes ajoutées devant (échec, source). Si le coureur écrit lui-même des
+ *   étiquettes (« [CUSTOM] - Petit push cardio »), ce sont les siennes qui comptent.
+ * - Convention inactive : le texte est publié tel quel (espaces en trop retirés), crochets compris.
+ * - Rien d'écrit : pas de titre (« ok » faux), on ne publie jamais des étiquettes seules.
+ */
+export function debriefTitle(i: { typed: string | null | undefined; convention: boolean; source?: string | null; failed?: boolean; failTag?: string }): {
+  ok: boolean
+  final: string
+  /** Le titre sans étiquettes (ce qui est gardé dans le débrief) */
+  title: string
+  /** Source et échec réellement utilisés (ceux écrits à la main l'emportent) */
+  source: string
+  failed: boolean
+} {
+  const text = oneLine(i.typed)
+  const failTag = (i.failTag || 'FAIL').toUpperCase()
+  if (!i.convention) return { ok: text.length > 0, final: text, title: text, source: '', failed: false }
+  const typed = parseTitle(text)
+  const own = typed.tags.filter((t) => t !== failTag)
+  const source = typed.tagged ? (own[0] ?? '') : oneLine(i.source)
+  const failed = Boolean(i.failed) || typed.tags.includes(failTag)
+  const title = oneLine(typed.title)
+  if (!title) return { ok: false, final: '', title: '', source, failed }
+  return { ok: true, final: formatTitle({ source: source || null, title, failed, failTag }), title, source, failed }
 }
 
 /* ───── Profils « Prévu » et « Fait », sur le même axe de temps ───── */
