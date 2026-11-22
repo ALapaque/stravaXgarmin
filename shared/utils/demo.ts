@@ -14,7 +14,7 @@ import { streamFromLaps, type RunStream } from './streams'
 import { flattenSteps, stepDistance, stepDuration, type PlanStep } from './workout'
 
 /** À changer quand la forme des données de démo change : une démo gardée plus ancienne est régénérée. */
-export const DEMO_VERSION = 5
+export const DEMO_VERSION = 6
 
 export const DEMO_SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },
@@ -490,7 +490,7 @@ export function buildDemo(today: string): DemoData {
     { id: 'seed-2', activityId: 'a1', field: 'name', before: 'Course à pied le matin', after: a1.stravaName, source: 'manuel', at: later(a1.startedAt, 100) },
   ]
 
-  // Récap de la semaine dernière (lundi → dimanche)
+  // Bilan de la semaine dernière (lundi → dimanche)
   const t = new Date(`${today}T12:00:00Z`)
   const monday = new Date(t.getTime() - ((t.getUTCDay() + 6) % 7) * DAY).toISOString().slice(0, 10)
   const lastMonday = shift(monday, -7)
@@ -499,7 +499,7 @@ export function buildDemo(today: string): DemoData {
 
   const notifications: AppNotification[] = [
     { id: 'n1', kind: 'review', title: 'Ta séance attend son débrief', body: '8x400m (R=1’)', to: '/activites/a2/debrief', at: later(a2.startedAt, 70), read: false },
-    { id: 'n2', kind: 'recap', title: 'Ton récap de la semaine est prêt', body: `${formatKm(lastWeekKm)} km sur la semaine du ${monthName}.`, to: '/recap', at: at(monday, 8), read: false },
+    { id: 'n2', kind: 'recap', title: 'Ton bilan de la semaine est prêt', body: `${formatKm(lastWeekKm)} km sur la semaine du ${monthName}.`, to: `/bilan?semaine=${lastMonday}`, at: at(monday, 8), read: false },
     { id: 'n3', kind: 'records', title: 'Nouveau record sur 10 km', body: `${formatDuration(race.bestEfforts['10k']!)} au 10 km des Étangs.`, to: `/activites/${race.id}`, at: later(race.startedAt, 80), read: true },
     { id: 'n4', kind: 'records', title: 'Nouveau record sur 5 km', body: `${formatDuration(race.bestEfforts['5k']!)} pendant le 10 km des Étangs.`, to: `/activites/${race.id}`, at: later(race.startedAt, 81), read: true },
   ]

@@ -7,7 +7,6 @@
  */
 import { ArrowRight, ClipboardCheck, Footprints, Heart, Mountain, Share2, Trophy } from 'lucide-vue-next'
 
-const router = useRouter()
 const { activities } = useActivities()
 const { recordsOf } = useRecords()
 const { show } = useToast()
@@ -91,7 +90,7 @@ const maxHrFrom = computed(() => (settings.value.hrMax ? 'set' : estimated.value
 /* Retour : vers l'écran d'où l'on vient (connu seulement dans le navigateur, après le montage) */
 const back = ref(backTarget(null))
 onMounted(() => (back.value = backTarget(window.history.state?.back)))
-const hrSettings = computed(() => (router.resolve('/reglages/coureur').matched.length ? '/reglages/coureur' : null))
+const hrSettings = '/reglages/coureur'
 
 /* ───── Kilomètres ou tours ───── */
 

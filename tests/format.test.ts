@@ -28,6 +28,9 @@ describe('formats', () => {
   it('heures', () => {
     expect(formatHours(8520)).toBe('2 h 22')
     expect(formatHours(2700)).toBe('45 min')
+    // Arrondi à la minute avant de compter les heures
+    expect(formatHours(8 * 3600 + 59 * 60 + 40)).toBe('9 h 00')
+    expect(formatHours(3570)).toBe('1 h 00')
   })
 
   it('jour et heure à Bruxelles', () => {

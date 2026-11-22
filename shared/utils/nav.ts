@@ -22,6 +22,14 @@ export const STATS_TABS: Record<string, string> = {
 /** Rubrique par défaut de Progression : pas besoin de l'écrire dans l'adresse. */
 export const PROGRESSION_DEFAULT = 'regularite'
 
+/** Rubriques de l'ancienne page unique des réglages → leurs sous-pages. */
+export const SETTINGS_TABS: Record<string, string> = {
+  comptes: '/reglages/comptes',
+  synchro: '/reglages/synchro',
+  notifs: '/reglages/notifications',
+  style: '/reglages/apparence',
+}
+
 const one = (v: unknown) => (Array.isArray(v) ? v[0] : v)
 
 /**
@@ -45,6 +53,12 @@ export function legacyRedirect(path: string, query: Record<string, unknown> = {}
   }
   // Rubrique « Niveau IA » de la version 1.15 : rejointe par Forme
   if (p === '/progression' && tab === 'niveau') return { path: '/progression', query: { ...rest, onglet: 'forme' } }
+  if (p === '/recap') return { path: '/bilan', query: rest }
+  // Ancienne page unique des réglages : la rubrique mène à sa sous-page ; sans rubrique, la page ne bouge pas
+  if (p === '/reglages' && typeof tab === 'string') {
+    const sub = SETTINGS_TABS[tab]
+    return { path: sub ?? '/reglages', query: rest }
+  }
   return null
 }
 
@@ -57,7 +71,7 @@ export function backTarget(previous: unknown): { to: string; label: string } {
   const path = prev.split(/[?#]/)[0]!
   if (path === '/') return { to: '/', label: 'Aujourd’hui' }
   if (path === '/journal') return { to: prev, label: 'Journal' }
-  if (path === '/progression' || path === '/bilan' || path === '/recap') return { to: prev, label: 'Progression' }
+  if (path === '/progression' || path === '/bilan') return { to: prev, label: 'Progression' }
   if (path === '/notifications') return { to: prev, label: 'Notifications' }
   return { to: '/journal', label: 'Journal' }
 }

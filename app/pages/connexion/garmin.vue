@@ -58,7 +58,7 @@ async function done() {
   await refresh()
   show('Garmin connecté')
   await useSync().run()
-  await router.push('/reglages')
+  await router.push('/reglages/comptes')
 }
 </script>
 

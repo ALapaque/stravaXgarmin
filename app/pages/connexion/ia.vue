@@ -34,7 +34,7 @@ const { show } = useToast()
 
 const back = computed(() => {
   const r = String(route.query.retour ?? '')
-  return r.startsWith('/') && !r.startsWith('//') ? r : '/reglages'
+  return r.startsWith('/') && !r.startsWith('//') ? r : '/reglages/comptes'
 })
 
 const provider = ref<Provider>('gemini')

@@ -4,6 +4,7 @@
  */
 import type { Activity } from './useActivities'
 import { MAX_NOTE, type PlanContext } from '#shared/utils/debrief'
+import type { ReviewFeeling, ReviewPlan } from '#shared/utils/bilan'
 
 export type TitleStyle = 'sobre' | 'drole' | 'epique'
 
@@ -39,8 +40,10 @@ export function useAiResults() {
   return useState<{
     level: (Level & { at: string }) | null
     analyses: Record<string, Analysis & { at: string }>
-    /** Dernier bilan de semaine ; « key » dit pour quelles courses il a été écrit */
+    /** Ancien bilan des 7 derniers jours (versions précédentes) : gardé, plus affiché */
     week?: (WeekReview & { at: string; key: string }) | null
+    /** Lecture de chaque semaine par l'IA, par lundi ; « key » dit pour quelles courses elle a été écrite */
+    reviews?: Record<string, WeekReview & { at: string; key: string }>
   }>('aiResults', () => ({ level: null, analyses: {}, week: null }))
 }
 
@@ -94,7 +97,8 @@ export function useAi() {
     return call<Analysis>('/api/ai/analyse', { run: toRun(a), ...(ctx.plan ? { plan: ctx.plan } : {}), ...(feeling ? { feeling } : {}) })
   }
   const estimateLevel = (selected: Activity[]) => call<Level>('/api/ai/level', { runs: selected.map(toRun) })
-  const reviewWeek = (runs: Activity[], extra: { previous?: { km: number; count: number }; next?: string[]; goal?: string }) =>
+  /** Bilan de la semaine : chiffres des courses, plan suivi et ressentis sur 10 (reviewContext), jamais les notes écrites. */
+  const reviewWeek = (runs: Activity[], extra: { previous?: { km: number; count: number }; next?: string[]; goal?: string; plan?: ReviewPlan; feelings?: ReviewFeeling[] }) =>
     call<WeekReview>('/api/ai/week', { runs: runs.map(toRun), ...extra })
 
   return { suggestTitles, analyse, estimateLevel, reviewWeek }

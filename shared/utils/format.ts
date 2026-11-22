@@ -21,8 +21,10 @@ export function formatKm(km: number): string {
 
 /** 2 h 22 */
 export function formatHours(totalSec: number): string {
-  const h = Math.floor(totalSec / 3600)
-  const m = Math.round((totalSec % 3600) / 60)
+  // Arrondi à la minute d'abord : 8 h 59 min 40 s donne « 9 h 00 », jamais « 8 h 60 »
+  const total = Math.round(totalSec / 60)
+  const h = Math.floor(total / 60)
+  const m = total % 60
   return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`
 }
 

@@ -43,10 +43,22 @@ const fontOptions = [
 
 <template>
   <div class="stack">
-    <BackLink to="/reglages?onglet=style" label="Réglages" />
+    <BackLink to="/reglages" label="Réglages" />
     <div class="title-block">
       <p class="eyebrow">Ton appli, ton style</p>
       <h1 class="h1 h1--xl">Apparence</h1>
+    </div>
+
+    <h2 id="theme-title" class="eyebrow group">Thème</h2>
+    <div class="themes" role="radiogroup" aria-labelledby="theme-title">
+      <label v-for="t in themes" :key="t.id" class="theme card" :class="{ on: theme === t.id }">
+        <input v-model="theme" class="sr-only" type="radio" name="theme" :value="t.id">
+        <span class="swatch" :style="{ background: t.bg }" aria-hidden="true">
+          <span v-for="c in t.swatch" :key="c" :style="{ background: c }" />
+        </span>
+        <span class="title">{{ t.label }}</span>
+        <span class="hint">{{ t.description }}</span>
+      </label>
     </div>
 
     <!-- Aperçu : change en direct avec chaque réglage -->
@@ -69,17 +81,7 @@ const fontOptions = [
       <button type="button" class="btn btn--primary" tabindex="-1">Bouton principal <ArrowRight :size="20" aria-hidden="true" /></button>
     </section>
 
-    <h2 id="base-title" class="eyebrow group">Thème de base</h2>
-    <div class="bases" role="radiogroup" aria-labelledby="base-title">
-      <label v-for="t in themes" :key="t.id" class="base" :class="{ on: theme === t.id }">
-        <input v-model="theme" class="sr-only" type="radio" name="base" :value="t.id">
-        <span class="dots" :style="{ background: t.bg }" aria-hidden="true">
-          <span v-for="c in t.swatch" :key="c" :style="{ background: c }" />
-        </span>
-        <span class="base-name">{{ t.label }}</span>
-      </label>
-    </div>
-
+    <h2 class="h2 custom-title">Personnaliser ton thème</h2>
     <h2 id="accent-title" class="eyebrow group">Couleur d’accent</h2>
     <div class="card card--pad block-ctl">
       <div class="swatches" role="radiogroup" aria-labelledby="accent-title">
@@ -221,56 +223,65 @@ const fontOptions = [
   gap: 12px;
 }
 
-/* ── Thème de base ── */
-.bases {
+/* ── Thèmes ── */
+.themes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.base {
+@media (min-width: 720px) {
+  .themes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.theme {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 6px;
-  border-radius: var(--r-ctrl);
-  border: 2px solid transparent;
-  background: var(--surface-2);
+  gap: 4px;
+  padding: 14px;
   cursor: pointer;
-  transition: border-color 0.2s ease, transform 0.15s ease;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 
-.base:active {
-  transform: scale(0.96);
+.theme:active {
+  transform: scale(0.98);
 }
 
-.base.on {
-  border-color: var(--primary-solid);
+.theme.on {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--primary-solid);
 }
 
-.base:has(input:focus-visible) {
+.theme:has(input:focus-visible) {
   outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
-.dots {
+.swatch {
   display: flex;
-  gap: 3px;
-  padding: 5px;
-  border-radius: 99px;
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 6px;
+  border-radius: calc(var(--r-ctrl) * 0.7);
   border: 1px solid var(--line-strong);
 }
 
-.dots span {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+.swatch span {
+  flex: 1;
+  height: 22px;
+  border-radius: calc(var(--r-ctrl) * 0.45);
 }
 
-.base-name {
+.theme .hint {
   font-size: 13px;
-  font-weight: 700;
+  line-height: 1.35;
+}
+
+.custom-title {
+  margin-top: 14px;
 }
 
 /* ── Couleurs ── */

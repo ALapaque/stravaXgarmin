@@ -6,7 +6,7 @@ export const NOTIF_KINDS: Record<NotifKind, { label: string; hint: string }> = {
   titles: { label: 'Titres appliqués', hint: 'Quand un nom est copié ou publié sur Strava' },
   records: { label: 'Records', hint: 'Quand tu bats un record personnel' },
   review: { label: 'Courses à débriefer', hint: 'Quand une séance attend son débrief' },
-  recap: { label: 'Récaps', hint: 'Chaque lundi et chaque début de mois' },
+  recap: { label: 'Bilans', hint: 'Ton bilan de la semaine chaque lundi, celui du mois au début du mois' },
 }
 
 export const demoNotifications = (): AppNotification[] => demoData().notifications

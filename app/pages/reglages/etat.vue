@@ -78,7 +78,7 @@ async function copyDiagnostic() {
 
 <template>
   <div class="stack stack--wide etat-page">
-    <BackLink to="/reglages" label="Réglages" />
+    <BackLink to="/reglages/comptes" label="Comptes" />
     <div class="title-block">
       <h1 class="h1">État des connexions</h1>
       <p class="lead">Ce que l’appli a réussi à lire, et quand.</p>

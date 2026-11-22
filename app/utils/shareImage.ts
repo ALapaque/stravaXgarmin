@@ -1,4 +1,4 @@
-/** Image 1080×1920 (format story) du récap, dessinée sur un canvas. */
+/** Image 1080×1920 (format story) du bilan, dessinée sur un canvas. */
 export interface RecapImageData {
   period: string
   km: string

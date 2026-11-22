@@ -100,17 +100,23 @@ export function usePlan() {
     return past.value.filter((s) => ids.has(s.id))
   })
 
-  /** Suivi du plan sur 8 semaines ; l'issue choisie dans le débrief passe avant celle calculée. */
-  const adherence = computed(() => {
-    const outcomes: Record<string, Outcome | null> = {}
+  /** Séance du plan reliée à chaque course (identifiant de course → identifiant de séance) */
+  const linked = computed(() => match.value.byRun)
+
+  /** Issue de chaque course reliée : celle choisie dans le débrief passe avant celle calculée. */
+  const outcomes = computed(() => {
+    const out: Record<string, Outcome | null> = {}
     for (const runId of Object.keys(match.value.byRun)) {
       const a = activities.value.find((x) => x.id === runId)
-      outcomes[runId] = debriefs.value?.[runId]?.outcome ?? (a ? (resultFor(a)?.outcome ?? null) : null)
+      out[runId] = debriefs.value?.[runId]?.outcome ?? (a ? (resultFor(a)?.outcome ?? null) : null)
     }
-    return planAdherence(list.value.filter((s) => !s.synthetic), match.value.byRun, outcomes, TODAY)
+    return out
   })
 
-  return { state, list, upcoming, next, past, byId, load, reset, sessionFor, resultFor, skipped, done, adherence }
+  /** Suivi du plan sur 8 semaines */
+  const adherence = computed(() => planAdherence(list.value.filter((s) => !s.synthetic), match.value.byRun, outcomes.value, TODAY))
+
+  return { state, list, upcoming, next, past, byId, load, reset, sessionFor, resultFor, skipped, done, adherence, linked, outcomes }
 }
 
 /** « Demain », « Jeudi 20 nov. »… */

@@ -29,8 +29,11 @@ function totals(runs: Activity[]) {
   }
 }
 
-/** Récap de la semaine (lundi → dimanche) ou du mois en cours, comparé à la période précédente. */
-export function useRecap(kind: Ref<RecapKind>) {
+/**
+ * Chiffres du bilan : la semaine choisie (lundi « week » → dimanche, la semaine en cours par défaut)
+ * ou le mois en cours, comparés à la période précédente.
+ */
+export function useRecap(kind: Ref<RecapKind>, week?: Ref<string>) {
   const { activities } = useActivities()
   const { recordsOf } = useRecords()
 
@@ -43,11 +46,12 @@ export function useRecap(kind: Ref<RecapKind>) {
     let buckets: { label: string; from: string; to: string }[]
 
     if (kind.value === 'semaine') {
-      const monday = addDays(today, -((today.getUTCDay() + 6) % 7))
+      const thisMonday = addDays(today, -((today.getUTCDay() + 6) % 7))
+      const monday = week?.value ? new Date(`${week.value}T12:00:00Z`) : thisMonday
       current = { from: iso(monday), to: iso(addDays(monday, 6)) }
       previous = { from: iso(addDays(monday, -7)), to: iso(addDays(monday, -1)) }
       title = `Semaine du ${monday.getUTCDate()} ${monthName(monday)}`
-      compareLabel = 'la semaine dernière'
+      compareLabel = iso(monday) === iso(thisMonday) ? 'la semaine dernière' : 'la semaine d’avant'
       buckets = Array.from({ length: 7 }, (_, i) => {
         const d = addDays(monday, i)
         const k = iso(d)
@@ -66,7 +70,9 @@ export function useRecap(kind: Ref<RecapKind>) {
       previous = { from: iso(prevFirst), to: iso(addDays(prevFirst, today.getUTCDate() - 1)) }
       const m = monthName(first)
       title = m.charAt(0).toUpperCase() + m.slice(1)
-      compareLabel = `le 1er au ${today.getUTCDate()} ${monthName(prevFirst)}`
+      const pm = monthName(prevFirst)
+      const of = /^[aeiouéèâ]/i.test(pm) ? `d’${pm}` : `de ${pm}`
+      compareLabel = `la même période ${of} (${today.getUTCDate() === 1 ? 'le 1er' : `du 1er au ${today.getUTCDate()}`})`
       buckets = []
       for (let start = 1; start <= last.getUTCDate(); start += 7) {
         const end = Math.min(start + 6, last.getUTCDate())
@@ -84,6 +90,8 @@ export function useRecap(kind: Ref<RecapKind>) {
     const before = totals(prevRuns)
 
     return {
+      from: current.from,
+      to: current.to,
       title,
       compareLabel,
       ...now,

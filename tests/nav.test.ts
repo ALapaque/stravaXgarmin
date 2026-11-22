@@ -25,13 +25,29 @@ describe('anciennes adresses', () => {
     expect(legacyRedirect('/progression', { onglet: 'records' })).toBeNull()
   })
 
+  it('Récap mène au Bilan, la période gardée', () => {
+    expect(legacyRedirect('/recap')).toEqual({ path: '/bilan', query: {} })
+    expect(legacyRedirect('/recap', { p: 'mois' })).toEqual({ path: '/bilan', query: { p: 'mois' } })
+  })
+
+  it('les rubriques de l’ancienne page des réglages mènent à leur sous-page', () => {
+    expect(legacyRedirect('/reglages', { onglet: 'comptes' })).toEqual({ path: '/reglages/comptes', query: {} })
+    expect(legacyRedirect('/reglages', { onglet: 'synchro' })).toEqual({ path: '/reglages/synchro', query: {} })
+    expect(legacyRedirect('/reglages', { onglet: 'notifs' })).toEqual({ path: '/reglages/notifications', query: {} })
+    expect(legacyRedirect('/reglages', { onglet: 'style' })).toEqual({ path: '/reglages/apparence', query: {} })
+    expect(legacyRedirect('/reglages/', { onglet: ['style'], x: '1' })).toEqual({ path: '/reglages/apparence', query: { x: '1' } })
+    // Rubrique inconnue : la page d'accueil des réglages, sans la rubrique (pas de boucle)
+    expect(legacyRedirect('/reglages', { onglet: 'zzz' })).toEqual({ path: '/reglages', query: {} })
+    expect(legacyRedirect('/reglages')).toBeNull()
+  })
+
   it('une rubrique inconnue est oubliée, les autres paramètres sont gardés', () => {
     expect(legacyRedirect('/stats', { onglet: 'zzz', x: '1' })).toEqual({ path: '/progression', query: { x: '1' } })
     expect(legacyRedirect('/plan', { onglet: ['tout'], y: ['2', '3'] })).toEqual({ path: '/journal', query: { y: '2', onglet: 'a-venir' } })
   })
 
   it('les adresses actuelles ne bougent pas (la page de départ ne redirige jamais)', () => {
-    for (const p of ['/', '/journal', '/progression', '/activites/a2', '/reglages', '/recap', '/objectif']) expect(legacyRedirect(p)).toBeNull()
+    for (const p of ['/', '/journal', '/progression', '/activites/a2', '/reglages', '/reglages/coureur', '/bilan', '/objectif']) expect(legacyRedirect(p)).toBeNull()
   })
 })
 
@@ -41,6 +57,7 @@ describe('retour depuis une course', () => {
     expect(backTarget('/journal?onglet=a-debriefer')).toEqual({ to: '/journal?onglet=a-debriefer', label: 'Journal' })
     expect(backTarget('/progression?onglet=records')).toEqual({ to: '/progression?onglet=records', label: 'Progression' })
     expect(backTarget('/notifications')).toEqual({ to: '/notifications', label: 'Notifications' })
+    expect(backTarget('/bilan?semaine=2026-11-09')).toEqual({ to: '/bilan?semaine=2026-11-09', label: 'Progression' })
   })
 
   it('sinon le Journal (arrivée directe, débrief, adresse étrangère)', () => {

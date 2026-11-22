@@ -1,26 +1,34 @@
 <script setup lang="ts">
 /*
- * Bilan IA des 7 derniers jours : points forts, points à surveiller, conseil pour la suite.
- * Gardé dans le navigateur ; proposé à nouveau quand de nouvelles courses s'ajoutent.
+ * Lecture par l'IA de la semaine choisie (lundi « from » → dimanche) : points forts, points à surveiller,
+ * conseil pour la suite. Ce qui part chez l'IA : les chiffres des courses, le plan suivi de la semaine et les
+ * ressentis sur 10 des débriefs, jamais les notes écrites (reviewContext, shared/utils/bilan.ts).
+ * Gardée dans le navigateur, une par semaine ; proposée à nouveau quand de nouvelles courses s'ajoutent.
  */
 import { Sparkles, ThumbsUp, Eye, ArrowRight, RefreshCw } from 'lucide-vue-next'
 import { aiError, useAiResults } from '~/composables/useAi'
+import { reviewContext, type WeekPlan } from '#shared/utils/bilan'
+import { mondayOf } from '#shared/utils/today'
+
+const props = defineProps<{ from: string; plan?: WeekPlan | null }>()
 
 const { sorted } = useActivities()
 const { connected } = useChatGpt()
 const { reviewWeek } = useAi()
 const { upcoming } = usePlan()
 const { goalInfo } = useFitness()
+const debriefs = useDebriefState()
 const results = useAiResults()
 
 const DAY = 86_400_000
-const end = Date.parse(`${TODAY}T23:59:59Z`)
-const within = (from: number, to: number) => sorted.value.filter((a) => Date.parse(a.startedAt) > end - from * DAY && Date.parse(a.startedAt) <= end - to * DAY)
-const runs = computed(() => within(7, 0))
-const before = computed(() => within(14, 7))
+const shift = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) + n * DAY).toISOString().slice(0, 10)
+const between = (a: string, b: string) => sorted.value.filter((r) => r.localDate >= a && r.localDate <= b)
+const runs = computed(() => between(props.from, shift(props.from, 6)))
+const before = computed(() => between(shift(props.from, -7), shift(props.from, -1)))
+const current = computed(() => props.from === mondayOf(TODAY))
 const key = computed(() => runs.value.map((a) => a.id).join(','))
 
-const saved = computed(() => results.value.week ?? null)
+const saved = computed(() => results.value.reviews?.[props.from] ?? null)
 const stale = computed(() => Boolean(saved.value && saved.value.key !== key.value))
 const loading = ref(false)
 const error = ref('')
@@ -30,12 +38,20 @@ async function run() {
   loading.value = true
   error.value = ''
   try {
+    const ctx = reviewContext({
+      plan: props.plan ?? null,
+      runs: runs.value.map((a) => ({ id: a.id, localDate: a.localDate, title: displayTitle(a).title })),
+      debriefs: debriefs.value ?? {},
+    })
     const r = await reviewWeek(runs.value, {
       previous: { km: before.value.reduce((s, a) => s + a.distanceKm, 0), count: before.value.length },
-      next: upcoming.value.slice(0, 5).map((s) => `${planDay(s.date)} : ${s.title}`),
+      // La suite du plan n'a de sens que pour la semaine en cours
+      next: current.value ? upcoming.value.slice(0, 5).map((s) => `${planDay(s.date)} : ${s.title}`) : undefined,
       goal: goalInfo.value && !goalInfo.value.past ? `${goalInfo.value.name || goalInfo.value.distance} dans ${goalInfo.value.days} jours` : undefined,
+      ...ctx,
     })
-    results.value = { ...results.value, week: { ...r, at: new Date().toISOString(), key: key.value } }
+    const reviews = { ...(results.value.reviews ?? {}), [props.from]: { ...r, at: new Date().toISOString(), key: key.value } }
+    results.value = { ...results.value, reviews }
   } catch (e) {
     error.value = aiError(e)
   } finally {
@@ -47,11 +63,11 @@ async function run() {
 <template>
   <section v-if="runs.length" class="review" aria-labelledby="review-title">
     <div class="section-head">
-      <h2 id="review-title" class="h2">Bilan de tes 7 derniers jours</h2>
+      <h2 id="review-title" class="h2">La lecture de l’IA</h2>
       <span class="label">par IA</span>
     </div>
 
-    <AiLock v-if="!connected" text="Active l’IA pour recevoir le bilan de ta semaine. C’est gratuit avec Gemini.">
+    <AiLock v-if="!connected" text="Active l’IA pour une lecture de ta semaine : ce qui a marché, ce qui fatigue, la suite. C’est gratuit avec Gemini.">
       <div class="card card--pad body">
         <p class="headline">Le résumé de ta semaine en une phrase.</p>
         <ul class="points"><li>Un point fort de ta semaine</li><li>Un autre point fort</li><li>Un point à surveiller</li></ul>
@@ -74,14 +90,15 @@ async function run() {
 
       <p v-if="error" class="err" role="alert">{{ error }}</p>
       <button v-if="!saved" type="button" class="btn btn--primary" :disabled="loading" @click="run">
-        {{ loading ? 'Rédaction du bilan…' : 'Faire le bilan de ma semaine' }}
+        {{ loading ? 'Lecture en cours…' : 'Demander la lecture de ma semaine' }}
         <Sparkles :size="20" aria-hidden="true" />
       </button>
       <button v-else type="button" class="link again" :disabled="loading" @click="run">
         <RefreshCw :size="16" :class="{ spin: loading }" aria-hidden="true" />
-        {{ loading ? 'Rédaction…' : stale ? 'Nouvelles courses : refaire le bilan' : 'Refaire le bilan' }}
+        {{ loading ? 'Lecture en cours…' : stale ? 'Nouvelles courses : relancer la lecture' : 'Relancer la lecture' }}
       </button>
     </template>
+    <p v-if="!saved" class="fine">Partent chez l’IA : tes chiffres, le plan suivi et tes ressentis sur 10. Jamais les notes que tu écris.</p>
   </section>
 </template>
 

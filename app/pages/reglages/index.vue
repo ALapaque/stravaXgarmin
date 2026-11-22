@@ -1,348 +1,198 @@
 <script setup lang="ts">
-import { ChevronRight, History, Type, Sparkles, Palette, Activity as Pulse } from 'lucide-vue-next'
+/*
+ * Accueil des réglages : une rubrique par thème (tuile, titre, état en une ligne, chevron), chacune sur sa
+ * page, puis « À propos ». On y entre par l'avatar ; aucune rubrique dans la barre du bas.
+ * Les anciennes adresses /reglages?onglet=… mènent à la bonne sous-page (shared/utils/nav.ts).
+ */
+import { ChevronRight, Link2, PenLine, HeartPulse, Bell, Palette, Sparkles, LogOut } from 'lucide-vue-next'
+import { legacyRedirect } from '#shared/utils/nav'
+import { estimateHrMax } from '#shared/utils/zones'
+
+definePageMeta({
+  middleware: [(to) => {
+    const t = legacyRedirect(to.path, to.query)
+    if (t) return navigateTo(t, { replace: true, redirectCode: 301 })
+  }],
+})
 
 useHead({ title: 'Réglages · stravaXgarmin' })
 
 const settings = useSettings()
 const { theme, themes, customized } = useTheme()
-const { show } = useToast()
-const { permission, syncPermission, requestPermission } = useNotifications()
-const { entries } = useHistory()
+const { permission, syncPermission } = useNotifications()
 const { current: appVersion, showHistory } = useUpdates()
-const { accounts, disconnect } = useAccounts()
-const { run: sync, syncing } = useSync()
+const { accounts } = useAccounts()
+const { active: demo, exit } = useDemo()
 const { summary: health } = useHealth()
-// L'état des lectures n'est connu qu'une fois l'état sauvegardé chargé (après l'hydratation)
+const { activities } = useActivities()
+const convention = useConvention()
+const { goalInfo } = useFitness()
+
+// L'état gardé (lectures, autorisation des notifications) n'est connu qu'après l'hydratation
 const mounted = ref(false)
-onMounted(() => (mounted.value = true))
+onMounted(() => {
+  mounted.value = true
+  syncPermission()
+})
 const healthErrors = computed(() => (mounted.value ? health.value.errors.length : 0))
 
-async function logout(provider: 'strava' | 'garmin' | 'ai') {
-  await disconnect(provider)
-  if (provider === 'ai') return show('IA désactivée')
-  if (provider === 'garmin') settings.value.garmin.rename = false
-  show(provider === 'strava' ? 'Strava déconnecté' : 'Garmin déconnecté')
-  await sync()
-  if (provider === 'strava') await navigateTo('/')
-}
-
-const { tab, direction } = useTab(['comptes', 'synchro', 'notifs', 'style'] as const, 'comptes')
-// Rubriques affichées sur la deuxième face de la barre du bas
-useSubnav('reglages', 'Rubriques des réglages', () => [
-  { id: 'comptes', label: 'Comptes', icon: 'accounts', dot: healthErrors.value > 0 },
-  { id: 'synchro', label: 'Synchro', icon: 'sync' },
-  { id: 'notifs', label: 'Notifs', icon: 'bell' },
-  { id: 'style', label: 'Style', icon: 'style' },
-], tab)
-
-onMounted(syncPermission)
-
-
-/** Activer les notifications système demande d'abord l'autorisation au navigateur. */
-const systemNotif = computed({
-  get: () => settings.value.notify.system && permission.value === 'granted',
-  set: async (on: boolean) => {
-    if (!on) {
-      settings.value.notify.system = false
-      return
-    }
-    const ok = await requestPermission()
-    settings.value.notify.system = ok
-    if (!ok) show(permission.value === 'unsupported' ? 'Ton navigateur ne gère pas les notifications' : 'Notifications refusées par le navigateur')
-  },
+const accountsLine = computed(() => {
+  if (demo.value) return 'Mode démo · aucun compte connecté'
+  const bits = [
+    accounts.value.strava.connected ? 'Strava' : null,
+    accounts.value.garmin.connected ? 'Garmin' : null,
+    accounts.value.ai.connected ? (accounts.value.ai.name?.split(' · ')[0] ?? 'IA') : null,
+  ].filter(Boolean)
+  return bits.length ? `${bits.join(', ')} ${bits.length > 1 ? 'connectés' : 'connecté'}` : 'Aucun compte connecté'
 })
-
-const notifHint = computed(() => {
-  if (permission.value === 'unsupported') return 'Non disponible ici. Sur iPhone : installe l’appli sur l’écran d’accueil.'
-  if (permission.value === 'denied') return 'Bloquées dans les réglages du navigateur'
-  return 'Pendant que l’appli est ouverte ou en arrière-plan'
+const publishLine = computed(() =>
+  [settings.value.autoSync ? 'Synchro automatique' : 'Synchro à la main', convention.enabled.value ? `[${convention.sources.value[0] ?? 'SOURCE'}] - Titre` : 'titres sans étiquette'].join(' · '),
+)
+const hrMax = computed(() => settings.value.hrMax || estimateHrMax(activities.value))
+const runnerLine = computed(() => {
+  const hr = hrMax.value ? `FC max ${hrMax.value} bpm` : 'FC max à préciser'
+  const goal = goalInfo.value && !goalInfo.value.past ? `objectif J-${goalInfo.value.days}` : `chaussures ${settings.value.shoeLimitKm} km`
+  return `${hr} · ${goal}`
 })
+const notifLine = computed(() => {
+  const kinds = Object.values(settings.value.notify.kinds ?? {})
+  const on = kinds.filter(Boolean).length
+  const phone = mounted.value && settings.value.notify.system && permission.value === 'granted' ? 'Sur le téléphone' : 'Dans l’appli'
+  return `${phone} · ${on} sur ${kinds.length} activées`
+})
+const themeLine = computed(() => `${themes.find((t) => t.id === theme.value)?.label ?? 'Néon'}${customized.value ? ' · réglages sur mesure' : ''}`)
 
-const descriptionParts = [
-  { key: 'note', label: 'Ma note', hint: 'Les mots que tu écris dans le débrief' },
-  { key: 'feeling', label: 'Ressenti', hint: 'Ta note sur 10 et l’issue de la séance' },
-  { key: 'analysis', label: 'Analyse', hint: 'Le verdict et les constats de l’IA' },
-  { key: 'numbers', label: 'Chiffres', hint: 'Le temps de chaque effort, sinon de chaque kilomètre' },
-  { key: 'shoes', label: 'Chaussures', hint: 'Modèle et kilométrage' },
-  { key: 'signature', label: 'Signature', hint: '« — via stravaXgarmin »' },
-] as const
+const SECTIONS = computed(() => [
+  { to: '/reglages/comptes', title: 'Comptes', line: healthErrors.value ? `${healthErrors.value} ${healthErrors.value > 1 ? 'lectures' : 'lecture'} en échec · à vérifier` : accountsLine.value, icon: Link2, tile: 'var(--info)', alert: healthErrors.value > 0 },
+  { to: '/reglages/synchro', title: 'Titres et publication', line: publishLine.value, icon: PenLine, tile: 'var(--accent-text)', alert: false },
+  { to: '/reglages/coureur', title: 'Coureur', line: runnerLine.value, icon: HeartPulse, tile: 'var(--ko)', alert: false },
+  { to: '/reglages/notifications', title: 'Notifications', line: notifLine.value, icon: Bell, tile: 'var(--ok)', alert: false },
+  { to: '/reglages/apparence', title: 'Apparence', line: themeLine.value, icon: Palette, tile: 'var(--type-race)', alert: false },
+])
 </script>
 
 <template>
   <div class="stack stack--wide">
-    <h1 class="h1 h1--xl">Réglages</h1>
+    <div class="title-block">
+      <p class="eyebrow">Ton compte et ton appli</p>
+      <h1 class="h1 h1--xl">Réglages</h1>
+    </div>
 
-    <Transition :name="`tab-${direction}`" mode="out-in">
-      <div v-if="tab === 'comptes'" key="comptes" class="panel cols">
-        <div class="col">
-        <h2 class="eyebrow group">Comptes</h2>
-        <div class="card list">
-          <div class="row">
-            <BrandMark brand="strava" />
-            <span class="row__main">
-              <span class="title">Strava</span>
-              <span class="hint">{{ accounts.strava.connected ? (accounts.strava.name ?? 'Connecté') : 'Données de démo pour l’instant' }}</span>
-            </span>
-            <button v-if="accounts.strava.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('strava')">Déconnecter</button>
-            <a v-else href="/api/auth/strava/login" class="btn btn--sm btn--brand" style="--brand: var(--strava)">Connecter</a>
-          </div>
-          <div class="row">
-            <BrandMark brand="garmin" />
-            <span class="row__main">
-              <span class="title">Garmin Connect</span>
-              <span class="hint">{{ accounts.garmin.connected ? (accounts.garmin.name ?? 'Connecté') : 'Pour lire les noms de ta montre' }}</span>
-            </span>
-            <button v-if="accounts.garmin.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('garmin')">Déconnecter</button>
-            <NuxtLink v-else to="/connexion/garmin" class="btn btn--sm btn--brand" style="--brand: var(--garmin)">Connecter</NuxtLink>
-          </div>
-          <div v-if="accounts.garmin.connected" class="row sub">
-            <span class="row__main">
-              <span class="title">Renommer aussi sur Garmin</span>
-              <span class="hint warn">API non officielle : peut casser, à tes risques</span>
-            </span>
-            <ToggleSwitch v-model="settings.garmin.rename" label="Renommer aussi sur Garmin" />
-          </div>
-          <div class="row">
-            <BrandMark v-if="accounts.ai.provider === 'openai'" brand="chatgpt" />
-            <span v-else class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><Sparkles :size="22" /></span>
-            <span class="row__main">
-              <span class="title">IA</span>
-              <span class="hint">{{ accounts.ai.connected ? accounts.ai.name : 'Titres et analyses, gratuit avec Gemini' }}</span>
-            </span>
-            <button v-if="accounts.ai.connected" type="button" class="btn btn--sm btn--secondary" @click="logout('ai')">Retirer</button>
-            <NuxtLink v-else :to="{ path: '/connexion/ia', query: { retour: '/reglages' } }" class="btn btn--sm btn--primary">Activer</NuxtLink>
-          </div>
-          <button v-if="accounts.strava.connected" type="button" class="row" :disabled="syncing" @click="sync(true)">
-            <span class="row__main">
-              <span class="title">{{ syncing ? 'Synchro en cours…' : 'Synchroniser maintenant' }}</span>
-              <span class="hint">Se fait aussi à chaque ouverture de l’appli</span>
-            </span>
-          </button>
-        </div>
-        <NuxtLink to="/reglages/etat" class="card row health-link">
-          <span class="tile" :style="healthErrors ? { '--tile': 'var(--ko)' } : undefined" aria-hidden="true"><Pulse :size="22" /></span>
+    <nav class="card list list--grid sections" aria-label="Rubriques des réglages">
+      <NuxtLink v-for="(s, i) in SECTIONS" :key="s.to" :to="s.to" class="row section" :style="{ '--i': i }">
+        <span class="tile" :style="{ '--tile': s.alert ? 'var(--ko)' : s.tile }" aria-hidden="true"><component :is="s.icon" :size="22" /></span>
+        <span class="row__main">
+          <span class="title">{{ s.title }}</span>
+          <span class="hint" :class="{ warn: s.alert }">{{ s.line }}</span>
+        </span>
+        <span v-if="s.alert" class="dot" aria-label="à vérifier" />
+        <ChevronRight class="go" :size="20" aria-hidden="true" />
+      </NuxtLink>
+    </nav>
+
+    <section class="about" aria-labelledby="about-title">
+      <h2 id="about-title" class="eyebrow group">À propos</h2>
+      <div class="card list">
+        <button type="button" class="row" @click="showHistory">
+          <span class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><Sparkles :size="22" /></span>
           <span class="row__main">
-            <span class="title">État des connexions</span>
-            <span class="hint" :class="{ warn: healthErrors }">{{ healthErrors ? `${healthErrors} ${healthErrors > 1 ? 'lectures' : 'lecture'} en échec` : 'Tout fonctionne' }}</span>
+            <span class="title">Quoi de neuf</span>
+            <span class="hint">Version {{ appVersion }} · notes de version</span>
           </span>
-          <ChevronRight :size="20" aria-hidden="true" />
-        </NuxtLink>
-        </div>
-        <div class="col">
-        <h2 class="eyebrow group">Application</h2>
-        <div class="card list">
-          <button type="button" class="row" @click="showHistory">
-            <span class="tile" aria-hidden="true"><Sparkles :size="22" /></span>
-            <span class="row__main">
-              <span class="title">Quoi de neuf</span>
-              <span class="hint">Version {{ appVersion }} · notes de version</span>
-            </span>
-            <ChevronRight :size="20" aria-hidden="true" />
-          </button>
-        </div>
-        </div>
-      </div>
-
-      <div v-else-if="tab === 'synchro'" key="synchro" class="panel cols">
-        <div class="col">
-        <h2 class="eyebrow group">Synchronisation</h2>
-        <div class="card list">
-          <div class="row">
-            <span class="row__main">
-              <span class="title">Synchro automatique</span>
-              <span class="hint">Dès qu’une course arrive</span>
-            </span>
-            <ToggleSwitch v-model="settings.autoSync" label="Synchro automatique" />
-          </div>
-          <div class="row">
-            <span class="row__main">
-              <span class="title">Écraser un nom Strava</span>
-              <span class="hint">Même modifié à la main</span>
-            </span>
-            <ToggleSwitch v-model="settings.overwriteEdited" label="Écraser un nom Strava modifié" />
-          </div>
-          <NuxtLink to="/reglages/nommage" class="row">
-            <span class="tile" aria-hidden="true"><Type :size="22" /></span>
-            <span class="row__main">
-              <span class="title">Règles de nommage</span>
-              <span class="hint">{{ settings.naming.enabled ? 'Actives sur les noms génériques' : 'Désactivées' }}</span>
-            </span>
-            <ChevronRight :size="20" aria-hidden="true" />
-          </NuxtLink>
-          <NuxtLink to="/historique" class="row">
-            <span class="tile" aria-hidden="true"><History :size="22" /></span>
-            <span class="row__main">
-              <span class="title">Historique des modifications</span>
-              <span class="hint">{{ entries.length }} changements, annulables</span>
-            </span>
-            <ChevronRight :size="20" aria-hidden="true" />
-          </NuxtLink>
-        </div>
-        </div>
-        <div class="col">
-        <h2 class="eyebrow group">Texte du débrief sur Strava</h2>
-        <div class="card list">
-          <p class="row hint intro">Ce que le Débrief ajoute sous ton texte, sur Strava. Ton texte reste toujours tel quel.</p>
-          <div v-for="p in descriptionParts" :key="p.key" class="row">
-            <span class="row__main">
-              <span class="title">{{ p.label }}</span>
-              <span class="hint">{{ p.hint }}</span>
-            </span>
-            <ToggleSwitch v-model="settings.description[p.key]" :label="p.label" />
-          </div>
-          <div class="row">
-            <span class="row__main">
-              <span class="title">L’analyse tient compte de ma note</span>
-              <span class="hint">Ta note est envoyée à l’IA avec les chiffres de la séance</span>
-            </span>
-            <ToggleSwitch v-model="settings.ai.shareNote" label="L’analyse tient compte de ma note" />
-          </div>
-        </div>
-        </div>
-      </div>
-
-      <div v-else-if="tab === 'notifs'" key="notifs" class="panel panel--narrow">
-        <h2 class="eyebrow group">Notifications</h2>
-        <div class="card list">
-          <div class="row">
-            <span class="row__main">
-              <span class="title">Sur le téléphone</span>
-              <span class="hint">{{ notifHint }}</span>
-            </span>
-            <ToggleSwitch v-model="systemNotif" label="Notifications sur le téléphone" />
-          </div>
-          <div v-for="(k, id) in NOTIF_KINDS" :key="id" class="row sub">
-            <span class="row__main">
-              <span class="title">{{ k.label }}</span>
-              <span class="hint">{{ k.hint }}</span>
-            </span>
-            <ToggleSwitch v-model="settings.notify.kinds[id]" :label="k.label" />
-          </div>
-        </div>
-      </div>
-
-      <div v-else key="style" class="panel">
-        <h2 id="theme-title" class="eyebrow group">Thème</h2>
-        <div class="themes" role="radiogroup" aria-labelledby="theme-title">
-          <label v-for="t in themes" :key="t.id" class="theme card" :class="{ on: theme === t.id }">
-            <input v-model="theme" class="sr-only" type="radio" name="theme" :value="t.id">
-            <span class="swatch" :style="{ background: t.bg }" aria-hidden="true">
-              <span v-for="c in t.swatch" :key="c" :style="{ background: c }" />
-            </span>
-            <span class="title">{{ t.label }}</span>
-            <span class="hint">{{ t.description }}</span>
-          </label>
-        </div>
-        <NuxtLink to="/reglages/apparence" class="card row custom">
-          <span class="tile" aria-hidden="true"><Palette :size="22" /></span>
+          <ChevronRight class="go" :size="20" aria-hidden="true" />
+        </button>
+        <button v-if="demo" type="button" class="row" @click="exit">
+          <span class="tile" style="--tile: var(--muted)" aria-hidden="true"><LogOut :size="22" /></span>
           <span class="row__main">
-            <span class="title">Personnaliser</span>
-            <span class="hint">{{ customized ? 'Réglages sur mesure actifs' : 'Couleur, arrondis, police, fond animé' }}</span>
+            <span class="title">Quitter la démo</span>
+            <span class="hint">Les données fictives disparaissent ; tu retrouves la page d’accueil</span>
           </span>
-          <ChevronRight :size="20" aria-hidden="true" />
-        </NuxtLink>
+        </button>
       </div>
-    </Transition>
+      <p class="fine">Aucune donnée stockée sur nos serveurs : tes réglages restent dans ce navigateur.</p>
+    </section>
   </div>
 </template>
 
 <style scoped>
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .group {
-  margin-top: 4px;
+  margin: 4px 0 0;
   color: var(--accent-text);
 }
 
 .hint {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--muted);
-}
-
-.row .tile {
-  --tile: var(--accent-text);
-}
-
-.sub {
-  padding-left: 28px;
-}
-
-.intro {
-  min-height: 0;
-  margin: 0;
-}
-
-.soon {
-  flex-shrink: 0;
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--chatgpt);
-  background: color-mix(in srgb, var(--chatgpt) 16%, transparent);
 }
 
 .warn {
   color: var(--ko);
 }
 
-.themes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.sections {
+  margin: 0;
+}
+
+.section {
+  min-height: 76px;
+}
+
+.section .row__main {
+  gap: 3px;
+}
+
+.section .hint {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.go {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.2s var(--ease-out);
+}
+
+a.section:hover .go {
+  transform: translateX(3px);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ko);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ko) 22%, transparent);
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
 @media (min-width: 720px) {
-  .themes {
-    grid-template-columns: repeat(3, 1fr);
+  .about {
+    max-width: 640px;
+  }
+
+  .section {
+    min-height: 96px;
+    padding: 18px;
   }
 }
 
-@media (min-width: 1280px) {
-  .themes {
-    grid-template-columns: repeat(6, 1fr);
+@media (min-width: 1080px) {
+  .card.list--grid.sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-}
-
-.theme {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px;
-  cursor: pointer;
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
-}
-
-.theme:active {
-  transform: scale(0.98);
-}
-
-.theme.on {
-  border-color: transparent;
-  box-shadow: 0 0 0 2px var(--primary-solid);
-}
-
-.theme:has(input:focus-visible) {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-}
-
-.swatch {
-  display: flex;
-  gap: 4px;
-  padding: 6px;
-  margin-bottom: 6px;
-  border-radius: 10px;
-  border: 1px solid var(--line-strong);
-}
-
-.swatch span {
-  flex: 1;
-  height: 22px;
-  border-radius: 6px;
-}
-
-.theme .hint {
-  font-size: 13px;
-  line-height: 1.35;
 }
 </style>

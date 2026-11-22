@@ -67,23 +67,6 @@ const inSettings = computed(() => route.path.startsWith('/reglages') || route.pa
         <span class="ic avatar" aria-hidden="true"><span :class="{ masked }">{{ initial }}</span></span>
         Réglages
       </NuxtLink>
-      <!-- Rubriques des réglages (aucun onglet n'est actif sur ces pages) -->
-      <div class="subs" :class="{ open: active < 0 && sub }">
-        <div class="subs-in">
-          <button
-            v-for="it in active < 0 && sub ? sub.items : []"
-            :key="it.id"
-            type="button"
-            class="sub"
-            :aria-current="it.id === sub?.current ? 'true' : undefined"
-            @click="pick(it.id)"
-          >
-            <component :is="SUB_ICONS[it.icon] ?? Sparkles" :size="16" aria-hidden="true" />
-            {{ it.label }}
-            <span v-if="it.dot" class="dot" aria-label="à faire" />
-          </button>
-        </div>
-      </div>
       <p class="fine v">Version {{ version }}</p>
     </div>
   </aside>

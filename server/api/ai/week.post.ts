@@ -1,13 +1,17 @@
+import { reviewContextLines } from '#shared/utils/bilan'
+
 /** Bilan de la semaine écrit par l'IA : ce qui a marché, ce qui fatigue, quoi surveiller. */
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ runs?: RunInput[]; previous?: { km?: number; count?: number }; next?: string[]; goal?: string }>(event)
+  const body = await readBody<{ runs?: RunInput[]; previous?: { km?: number; count?: number }; next?: string[]; goal?: string; plan?: unknown; feelings?: unknown }>(event)
   const runs = (body?.runs ?? []).slice(0, 14)
   if (!runs.length) throw createError({ statusCode: 400, statusMessage: 'Aucune course cette semaine' })
 
   const context = [
     body?.previous ? `Semaine précédente : ${Number(body.previous.km ?? 0).toFixed(1)} km en ${Number(body.previous.count ?? 0)} courses.` : '',
     body?.goal ? `Objectif : ${String(body.goal).slice(0, 120)}` : '',
-    body?.next?.length ? `Séances prévues ensuite : ${body.next.slice(0, 6).map((s) => String(s).slice(0, 80)).join(' ; ')}` : '',
+    // Plan suivi et ressentis sur 10 (jamais de note écrite : reviewContextLines n'en lit aucune)
+    ...reviewContextLines(body),
+    Array.isArray(body?.next) && body.next.length ? `Séances prévues ensuite : ${body.next.slice(0, 6).map((s) => String(s).slice(0, 80)).join(' ; ')}` : '',
   ].filter(Boolean)
 
   return aiJson<{ headline: string; wins: string[]; watch: string[]; next: string }>(event, {
@@ -24,7 +28,7 @@ export default defineEventHandler(async (event) => {
       },
     },
     instructions:
-      'Tu es un entraîneur de course à pied. Fais le bilan de la semaine en français, en tutoyant, sans flatterie inutile. Appuie-toi uniquement sur les chiffres fournis (volume, allures, fréquence cardiaque, répartition des types de séance, comparaison à la semaine précédente). Phrases courtes. Si une information manque, n’en parle pas.',
+      'Tu es un entraîneur de course à pied. Fais le bilan de la semaine en français, en tutoyant, sans flatterie inutile. Appuie-toi uniquement sur les chiffres fournis (volume, allures, fréquence cardiaque, répartition des types de séance, comparaison à la semaine précédente, plan suivi et ressenti du coureur quand ils sont donnés). Une séance sautée ou ratée se constate sans reproche. Phrases courtes. Si une information manque, n’en parle pas.',
     input: `${runs.map((r, i) => `Course ${i + 1}\n${describeRun(r)}`).join('\n\n')}${context.length ? `\n\n${context.join('\n')}` : ''}`,
   })
 })
