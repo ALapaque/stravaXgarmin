@@ -100,7 +100,7 @@ function weekSummary(w: { km: number; runs: number; planned: number; done: numbe
                   <div v-else-if="it.kind === 'skipped'" class="row ghost">
                     <span class="ghost-ic" aria-hidden="true"><X :size="18" /></span>
                     <span class="row__main">
-                      <span class="title">Séance sautée · {{ it.title }}</span>
+                      <span class="title">Séance sautée · {{ it.title }}</span>
                       <span class="label">{{ shortDay.format(new Date(`${it.date}T12:00:00Z`)) }}</span>
                     </span>
                   </div>

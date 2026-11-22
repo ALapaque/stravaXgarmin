@@ -1,5 +1,9 @@
 <script setup lang="ts">
-/* Issue de la séance en trois grandes cartes : icône, mot, une ligne d'explication. Groupe radio. */
+/*
+ * Issue de la séance : trois cartes (icône, mot, une ligne d'explication), groupe radio.
+ * En lignes quand la place manque (téléphone), côte à côte dès qu'il y a la place : un mot comme « Écourtée »
+ * ne tient pas dans une colonne étroite, encore moins avec une police large.
+ */
 import { CircleCheckBig, CircleDotDashed, CircleX } from 'lucide-vue-next'
 import type { Outcome } from '#shared/utils/compliance'
 
@@ -15,37 +19,72 @@ const uid = useId()
 </script>
 
 <template>
-  <div class="outcomes" role="radiogroup" :aria-label="label ?? 'Issue de la séance'">
-    <label v-for="o in OPTIONS" :key="o.id" class="opt" :class="{ on: model === o.id }" :style="{ '--tone': o.tone }">
-      <input v-model="model" class="sr-only" type="radio" :name="`outcome-${uid}`" :value="o.id">
-      <span class="ico" aria-hidden="true"><component :is="o.icon" :size="22" /></span>
-      <span class="word">{{ OUTCOME_LABELS[o.id] }}</span>
-      <span class="hint">{{ o.hint }}</span>
-    </label>
+  <div class="wrap">
+    <div class="outcomes" role="radiogroup" :aria-label="label ?? 'Issue de la séance'">
+      <label v-for="o in OPTIONS" :key="o.id" class="opt" :class="{ on: model === o.id }" :style="{ '--tone': o.tone }">
+        <input v-model="model" class="sr-only" type="radio" :name="`outcome-${uid}`" :value="o.id">
+        <span class="ico" aria-hidden="true"><component :is="o.icon" :size="22" /></span>
+        <span class="txt">
+          <span class="word">{{ OUTCOME_LABELS[o.id] }}</span>
+          <span class="hint">{{ o.hint }}</span>
+        </span>
+      </label>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.wrap {
+  container-type: inline-size;
+}
+
+/* Par défaut (place comptée) : une ligne par issue, l'icône à gauche */
 .outcomes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
 .opt {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
-  min-height: 112px;
-  padding: 12px 10px;
+  min-height: 60px;
+  padding: 10px 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-ctrl);
   background: transparent;
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s var(--ease-spring);
+}
+
+.txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Assez de place : trois cartes côte à côte, l'icône au-dessus du mot */
+@container (min-width: 380px) {
+  .outcomes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .opt {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 112px;
+    padding: 12px 10px;
+  }
+
+  .txt {
+    gap: 6px;
+    margin-top: auto;
+  }
 }
 
 .opt:active {
@@ -58,6 +97,7 @@ const uid = useId()
 }
 
 .ico {
+  flex: none;
   display: grid;
   place-items: center;
   width: 36px;
@@ -69,12 +109,12 @@ const uid = useId()
 }
 
 .word {
-  margin-top: auto;
   font-family: var(--font-display);
   font-weight: var(--title-weight);
   font-size: 16px;
   line-height: 1.1;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 .hint {

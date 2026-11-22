@@ -559,6 +559,7 @@ async function shareImage() {
   padding: 16px;
   min-width: 0;
   color: var(--k, var(--ink));
+  container-type: inline-size;
 }
 
 .kpi--wide {
@@ -579,13 +580,14 @@ async function shareImage() {
   color: var(--k, var(--muted));
 }
 
+/* Petit écran et police large : un « 1:20:00 » rétrécit un peu plutôt que de sortir de sa tuile */
 .kpi dd {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px;
   margin: 0;
-  font-size: 28px;
+  font-size: min(28px, 21cqi);
   color: var(--ink);
 }
 

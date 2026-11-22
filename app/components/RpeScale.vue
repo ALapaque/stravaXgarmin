@@ -48,7 +48,7 @@ const tint = computed(() => rpeTint(model.value))
       <span v-if="model" :key="`n${bump}`" class="value num">{{ model }}</span>
       <span v-else class="value value--empty" />
       <span class="word">
-        <span class="title">{{ model ? RPE_LABELS[model] : 'Comment c’était ?' }}</span>
+        <span class="title">{{ model ? RPE_LABELS[model] : 'Comment c’était ?' }}</span>
         <span class="label">{{ model ? 'sur 10' : 'Touche une case, de 1 à 10' }}</span>
       </span>
     </div>

@@ -334,8 +334,10 @@ button {
   text-wrap: balance;
 }
 
+/* « --xl » : la taille du grand titre, reprise par l'en-tête des onglets pour rétrécir un mot trop long */
 .h1--xl {
-  font-size: clamp(36px, 11vw, 44px);
+  --xl: clamp(36px, 11vw, 44px);
+  font-size: var(--xl);
 }
 
 .h2 {
@@ -513,10 +515,15 @@ button {
   gap: 2px;
 }
 
+/* Un titre de ligne tient sur deux lignes au plus (« Footing de récupération 30’ » se lit en entier) ; au-delà, « … » */
 .row__main .title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 a.row,

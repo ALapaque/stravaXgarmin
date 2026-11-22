@@ -88,8 +88,8 @@ const secondary = computed(() => focus.value.secondary)
 <template>
   <LandingPage v-if="showLanding" />
   <div v-else class="stack stack--wide home">
-    <AppHeader :eyebrow="formatDay(`${TODAY}T12:00:00+01:00`)">
-      Salut<template v-if="firstName">&nbsp;<span class="ink-grad" :class="{ masked }" :aria-label="masked ? 'nom masqué' : undefined">{{ firstName }}</span></template>
+    <AppHeader :eyebrow="formatDay(`${TODAY}T12:00:00+01:00`)" :fit="`Salut ${firstName}`">
+      Salut<template v-if="firstName">{{ ' ' }}<span class="ink-grad" :class="{ masked }" :aria-label="masked ? 'nom masqué' : undefined">{{ firstName }}</span></template>
     </AppHeader>
 
     <div class="col-main">

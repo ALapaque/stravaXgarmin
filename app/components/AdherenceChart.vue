@@ -83,12 +83,20 @@ const aria = (w: AdherenceWeek, current: boolean) =>
   display: flex;
   flex-direction: column;
   gap: 16px;
+  container-type: inline-size;
+}
+
+/* « faites / prévues » reste d'un seul tenant : c'est le titre de gauche qui passe à la ligne s'il le faut */
+.section-head .label {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .cols-chart {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  /* La dernière colonne est un peu plus large : son libellé « en cours » y tient, quelle que soit la police */
+  grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.4fr);
   gap: 6px;
   height: 176px;
   margin: 0;
@@ -192,7 +200,7 @@ const aria = (w: AdherenceWeek, current: boolean) =>
 }
 
 .l {
-  font-size: 10px;
+  font-size: clamp(9px, 2.6vw, 10px);
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
@@ -258,15 +266,23 @@ const aria = (w: AdherenceWeek, current: boolean) =>
   transform: translate(0, 0);
 }
 
+/* Carte étroite (téléphone) : deux par ligne, jamais un élément seul sur la sienne. Carte large : une seule ligne */
 .legend {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px 16px;
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+@container (min-width: 460px) {
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
 
 .legend li {

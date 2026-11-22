@@ -136,13 +136,21 @@ const has = computed(() => Boolean(f.value && (f.value.vo2max || f.value.status 
   flex-direction: column;
   gap: 12px;
   padding: 16px;
+  container-type: inline-size;
 }
 
+/* Carte étroite : deux temps par ligne (un « 2:04:40 » ne tient pas en quatre colonnes, surtout avec une police large) */
 .pred-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 10px;
   margin: 0;
+}
+
+@container (min-width: 440px) {
+  .pred-row {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
 }
 
 .pred-row div {

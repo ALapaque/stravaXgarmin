@@ -80,7 +80,8 @@ const label = computed(() => {
 
 .line {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  /* Première colonne : la place de « PRÉVU » dans toutes les polices (les deux lignes restent alignées) */
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: end;
   gap: 10px;
 }

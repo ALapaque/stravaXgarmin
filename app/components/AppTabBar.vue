@@ -235,7 +235,7 @@ function onMain(i: number, e: MouseEvent) {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 11px;
+  font-size: clamp(10px, 2.9vw, 11px);
   font-weight: 600;
   letter-spacing: 0.01em;
   border-radius: var(--r-ctrl);
@@ -253,6 +253,15 @@ function onMain(i: number, e: MouseEvent) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * Rubriques : le nom s'affiche toujours en entier. Sur un petit écran, « Régularité » est un peu plus large
+ * que sa colonne : centré, il dépasse de quelques pixels de chaque côté, sans toucher ses voisins plus courts.
+ */
+.subs .name {
+  max-width: none;
+  overflow: visible;
 }
 
 .icon {

@@ -46,11 +46,13 @@ onBeforeUnmount(markAllRead)
 </template>
 
 <style scoped>
+/* Le lien passe sous le titre quand ils ne tiennent pas côte à côte (petit écran, police large) */
 .head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
 }
 
 .items {

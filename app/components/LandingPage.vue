@@ -26,7 +26,9 @@ const error = computed(() => ERRORS[String(route.query.erreur ?? '')])
 const TITLE = [
   { t: 'Fini' },
   { t: 'les' },
-  { t: '« Morning Run ».', cls: 'strike' },
+  // Deux mots barrés plutôt qu'un bloc insécable : avec une police large, le titre va à la ligne au lieu de sortir de l'écran
+  { t: '« Morning', cls: 'strike strike--join' },
+  { t: 'Run ».', cls: 'strike' },
   { t: 'Tes' },
   { t: 'courses' },
   { t: 'Garmin,', cls: 'garmin' },
@@ -184,7 +186,7 @@ const STEPS = [
     </section>
 
     <section class="final narrow">
-      <h2 class="h1 sec-title">Prêt pour ta prochaine sortie ?</h2>
+      <h2 class="h1 sec-title">Prêt pour ta prochaine sortie ?</h2>
       <a v-if="!accounts.strava.connected" href="/api/auth/strava/login" class="btn btn--brand cta">
         <BrandMark brand="strava" :size="28" />
         Commencer avec Strava
@@ -256,6 +258,11 @@ const STEPS = [
   position: relative;
   color: var(--muted);
   white-space: nowrap;
+}
+
+/* Le trait couvre aussi l'espace jusqu'au mot barré suivant : un seul trait quand ils sont sur la même ligne */
+.strike--join::after {
+  width: calc(104% + 0.3em);
 }
 
 .strike::after {
