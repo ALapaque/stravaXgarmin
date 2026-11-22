@@ -49,16 +49,38 @@ export function normalizeNewlines(text: string | null | undefined): string {
   return (text ?? '').replace(/\r\n?/g, '\n')
 }
 
-/** Le bloc de l'appli figure-t-il tel quel dans la description ? (fins de ligne ignorées) */
+const escapeRegExp = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Où se trouve le bloc de l'appli dans la description : la DERNIÈRE occurrence, ou null.
+ * Même texte, mais toute suite de blancs du bloc (espaces, retours à la ligne, espaces insécables
+ * U+00A0 / U+202F…) correspond à une suite quelconque de blancs dans la description : Strava (ou le
+ * coureur) peut retirer des espaces de fin de ligne, changer une espace insécable, ajouter une ligne vide.
+ * Un seul mot différent, et le bloc n'est plus reconnu.
+ */
+export function locateBlock(description: string | null | undefined, block: string | null | undefined): { start: number; end: number } | null {
+  const words = normalizeNewlines(block).trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return null
+  const text = normalizeNewlines(description)
+  const re = new RegExp(words.map(escapeRegExp).join('\\s+'), 'g')
+  let found: { start: number; end: number } | null = null
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    found = { start: m.index, end: m.index + m[0].length }
+    re.lastIndex = m.index + 1 // occurrences qui se chevauchent comprises : on veut vraiment la dernière
+  }
+  return found
+}
+
+/** Le bloc de l'appli figure-t-il dans la description ? (fins de ligne et blancs ignorés, voir locateBlock) */
 export function hasBlock(description: string | null | undefined, block: string | null | undefined): boolean {
-  const b = normalizeNewlines(block).trim()
-  return Boolean(b) && normalizeNewlines(description).includes(b)
+  return locateBlock(description, block) !== null
 }
 
 /**
  * Place le texte de l'appli (« block ») dans la description actuelle (« current ») sans jamais toucher au texte
  * de l'utilisateur : ajouté à la suite, ou mis à la place du bloc que l'appli avait publié avant (« previous »),
  * ou retiré quand « block » est vide. « block » dans le résultat : le texte réellement placé (raccourci si besoin).
+ * Le bloc est retrouvé même si ses blancs ont été retouchés (locateBlock).
  */
 export function mergeDescription(
   current: string | null | undefined,
@@ -80,10 +102,11 @@ export function mergeDescription(
     return { text: before + short + after, change, block: short }
   }
 
-  const at = prev ? cur.lastIndexOf(prev) : -1
-  if (at >= 0) {
-    let before = cur.slice(0, at)
-    let after = cur.slice(at + prev.length)
+  // Remplacement et retrait portent sur l'étendue réellement trouvée dans la description
+  const found = prev ? locateBlock(cur, prev) : null
+  if (found) {
+    let before = cur.slice(0, found.start)
+    let after = cur.slice(found.end)
     if (!add) {
       // Retrait : le bloc part avec la ligne vide qui le séparait du reste
       if (/\n\n$/.test(before)) before = before.slice(0, -2)
@@ -99,6 +122,6 @@ export function mergeDescription(
 
   if (!add) return none
   if (!cur.trim()) return fit('', '', 'added')
-  if (cur.includes(add)) return none // appuyer deux fois ne double rien
+  if (locateBlock(cur, add)) return none // appuyer deux fois ne double rien
   return fit(`${cur.trimEnd()}\n\n`, '', 'added')
 }

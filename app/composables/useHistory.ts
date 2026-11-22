@@ -1,5 +1,5 @@
 import type { Activity, BlockKind, ChangeSource } from './useActivities'
-import { pushField, sendBlock, usePublished } from './useActivities'
+import { pushField, rememberBlock, sendBlock } from './useActivities'
 
 export interface HistoryEntry {
   id: string
@@ -93,11 +93,7 @@ export function useHistory() {
     }
     a.stravaDescription = r.after
     const kind: BlockKind = entry.source === 'analyse' ? 'analyse' : 'infos'
-    const published = usePublished()
-    const mine = { ...published.value[a.id] }
-    if (r.block) mine[kind] = r.block
-    else delete mine[kind]
-    published.value = { ...published.value, [a.id]: mine }
+    rememberBlock(a.id, kind, r.block)
     return true
   }
 

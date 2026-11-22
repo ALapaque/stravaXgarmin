@@ -258,15 +258,7 @@ export function useActivities() {
    */
   const published = usePublished()
 
-  function remember(id: string, kind: BlockKind, block: string) {
-    const mine = { ...published.value[id] }
-    if (block) mine[kind] = block
-    else delete mine[kind]
-    const next = { ...published.value }
-    if (Object.keys(mine).length) next[id] = mine
-    else delete next[id]
-    published.value = next
-  }
+  const remember = rememberBlock
 
   /** Le texte de l'appli de cette sorte est-il dans la description (telle que connue) ? */
   function isPublished(id: string, kind: BlockKind) {
@@ -289,6 +281,8 @@ export function useActivities() {
     if (!r) return false
     a.stravaDescription = r.after
     if (r.change === 'added' || r.change === 'replaced') {
+      // Bloc pas retrouvé après écriture (blancs retouchés au-delà du tolérable) : rien n'est mémorisé,
+      // et l'historique garde le texte demandé
       remember(id, kind, r.block)
       useHistory().record({
         activityId: id,
@@ -296,7 +290,7 @@ export function useActivities() {
         before: r.before,
         after: r.after,
         source,
-        block: r.block,
+        block: r.block || normalizeNewlines(text).trim(),
         previousBlock: r.change === 'replaced' ? normalizeNewlines(previous).trim() : '',
       })
     } else if (r.change === 'removed') {
@@ -357,6 +351,18 @@ export function lastDays(n: number) {
 /** Textes publiés par l'appli dans les descriptions Strava (gardés dans le navigateur). */
 export const usePublished = () => useState<Record<string, Partial<Record<BlockKind, string>>>>('published', () => ({}))
 
+/** Mémorise le texte publié pour cette course et cette sorte ('' : l'oublie). */
+export function rememberBlock(id: string, kind: BlockKind, block: string) {
+  const published = usePublished()
+  const mine = { ...published.value[id] }
+  if (block) mine[kind] = block
+  else delete mine[kind]
+  const next = { ...published.value }
+  if (Object.keys(mine).length) next[id] = mine
+  else delete next[id]
+  published.value = next
+}
+
 /**
  * Envoie un nouveau nom à Strava ou Garmin quand l'activité vient des API.
  * En mode démo (pas d'identifiant), ne fait rien et réussit toujours.
@@ -405,10 +411,16 @@ export async function sendBlock(a: Activity, text: string, previous?: string) {
     const before = normalizeNewlines(res.previousDescription)
     const after = normalizeNewlines(res.description)
     // Même fusion que le serveur, pour connaître le texte exact placé (raccourci s'il était trop long)
-    const block = mergeDescription(before, text, prev).block
+    let block = mergeDescription(before, text, prev).block
     if ((res.change === 'added' || res.change === 'replaced') && !hasBlock(after, block)) {
-      useToast().show('Strava n’a pas pris la modification, réessaie')
-      return null
+      // Description inchangée : Strava n'a rien pris, on peut réessayer
+      if (after === before) {
+        useToast().show('Strava n’a pas pris la modification, réessaie')
+        return null
+      }
+      // Elle a changé mais le bloc n'y est pas retrouvé : le texte est écrit (réessayer créerait un doublon),
+      // seulement on ne sait pas le retrouver : rien ne sera mémorisé
+      block = ''
     }
     return { before, after, change: res.change, block }
   } catch (e) {

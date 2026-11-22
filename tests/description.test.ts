@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDescription, hasBlock, mergeDescription, MAX_DESCRIPTION, normalizeNewlines } from '../shared/utils/description'
+import { buildDescription, hasBlock, locateBlock, mergeDescription, MAX_DESCRIPTION, normalizeNewlines } from '../shared/utils/description'
 
 // Notes et blocs inventés
 const NOTE = 'Séance costaud sous la pluie. Les deux derniers 400 étaient de trop, à refaire plus frais.'
@@ -132,5 +132,62 @@ describe('mergeDescription', () => {
   it('normalizeNewlines', () => {
     expect(normalizeNewlines('a\r\nb\rc\nd')).toBe('a\nb\nc\nd')
     expect(normalizeNewlines(null)).toBe('')
+  })
+})
+
+describe('blancs retouchés dans la description', () => {
+  // Bloc publié par l'appli (avec des espaces insécables, comme en écrit l'IA) et nouveau bloc
+  const PUBLISHED = 'Régularité\u00a0: bonne\nCardio\u202f: stable  \n\nConseil : garde ce rythme'
+  const NEXT = 'Régularité : excellente\nConseil : accélère sur la fin'
+
+  const variants: [string, string][] = [
+    ['espace insécable devenue espace normale', 'Régularité : bonne\nCardio : stable  \n\nConseil : garde ce rythme'],
+    ['espaces de fin de ligne retirés', 'Régularité\u00a0: bonne\nCardio\u202f: stable\n\nConseil : garde ce rythme'],
+    ['ligne vide supprimée dans le bloc', 'Régularité\u00a0: bonne\nCardio\u202f: stable\nConseil : garde ce rythme'],
+    ['ligne vide ajoutée dans le bloc', 'Régularité\u00a0: bonne\n\nCardio\u202f: stable  \n\nConseil : garde ce rythme'],
+  ]
+
+  it.each(variants)('%s : bloc retrouvé, remplacé, retiré, la note reste intacte', (_, onStrava) => {
+    const current = `${NOTE}\n\n${onStrava}\n\nNote ajoutée plus tard.`
+    // Retrouvé : l'étendue exacte du bloc tel qu'il est sur Strava
+    const at = locateBlock(current, PUBLISHED)
+    expect(at).toEqual({ start: NOTE.length + 2, end: NOTE.length + 2 + onStrava.length })
+    expect(hasBlock(current, PUBLISHED)).toBe(true)
+    // Pas d'ajout en double
+    expect(mergeDescription(current, PUBLISHED).change).toBe('none')
+    // Remplacé : le texte autour ne bouge pas
+    expect(mergeDescription(current, NEXT, PUBLISHED)).toEqual({
+      text: `${NOTE}\n\n${NEXT}\n\nNote ajoutée plus tard.`,
+      change: 'replaced',
+      block: NEXT,
+    })
+    // Retiré
+    expect(mergeDescription(current, '', PUBLISHED)).toEqual({ text: `${NOTE}\n\nNote ajoutée plus tard.`, change: 'removed', block: '' })
+    // Retiré quand il est à la fin, après un ajout normal
+    const added = `${NOTE}\n\n${onStrava}`
+    expect(mergeDescription(added, '', PUBLISHED).text).toBe(NOTE)
+  })
+
+  it('un texte seulement ressemblant (un mot différent) n’est pas retrouvé', () => {
+    const current = `${NOTE}\n\nRégularité : bonne\nCardio : stable\n\nConseil : garde ton rythme`
+    expect(locateBlock(current, PUBLISHED)).toBeNull()
+    expect(mergeDescription(current, '', PUBLISHED)).toEqual({ text: current, change: 'none', block: '' })
+    expect(mergeDescription(current, NEXT, PUBLISHED).text).toBe(`${current}\n\n${NEXT}`)
+  })
+
+  it('les blancs ne remplacent pas un mot : « 5:12 · 5:30 » ≠ « 5:12·5:30 »', () => {
+    expect(locateBlock('Km : 5:12·5:30', 'Km : 5:12 · 5:30')).toBeNull()
+  })
+
+  it('la dernière occurrence est retenue, caractères spéciaux échappés', () => {
+    const block = 'Allure (moy.) : 5:12 /km [+3 %]'
+    const text = `${block}\n\nNote\n\n${block.replace(/ /g, '  ')}`
+    expect(locateBlock(text, block)).toEqual({ start: block.length + 8, end: text.length })
+    expect(locateBlock('Allure (moy) : 5:12 /km [+3 %]', block)).toBeNull()
+  })
+
+  it('bloc vide : rien à chercher', () => {
+    expect(locateBlock(NOTE, '  ')).toBeNull()
+    expect(hasBlock(NOTE, '')).toBe(false)
   })
 })
