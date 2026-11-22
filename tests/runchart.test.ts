@@ -90,6 +90,44 @@ describe('lapProfile', () => {
   })
 })
 
+describe('lapProfile : fragments de tours', () => {
+  it('étape entamée puis arrêtée : une seule barre, même si la montre a laissé plusieurs petits tours', () => {
+    // 2 efforts faits, le 3ᵉ arrêté en cours, puis trois fragments laissés par l'arrêt de la montre
+    const stopped = [...WARM, ...efforts(2), lap(240, 70, 168), lap(40, 14, 172), lap(0, 3, 170), lap(9, 25, 160)]
+    const r = comparePlan({ steps: PLAN }, run(stopped))!
+    expect(r).toMatchObject({ doneReps: 2, plannedReps: 4 })
+    const p = lapProfile(stopped, r.steps)
+    const partial = p.bars.filter((b) => b.state === 'partial')
+    expect(partial).toHaveLength(1)
+    expect(partial[0]).toMatchObject({ label: 'Effort 3', m: 289, sec: 112, part: null })
+    // Le temps couru reste la somme de tous les tours
+    expect(p.ran).toBe(stopped.reduce((s, l) => s + l.sec, 0))
+    expect(lapDetail(partial[0]!)).toMatch(/^Effort 3, arrêté en cours · 289 m · 1:52/)
+  })
+
+  it('sans séance reliée : un fragment rejoint le tour d’avant, un tour court normal reste', () => {
+    const p = lapProfile([lap(1000, 400), lap(6, 4), lap(1000, 395), lap(60, 15)])
+    expect(p.bars.map((b) => [b.m, b.sec])).toEqual([[1006, 404], [1000, 395], [60, 15]])
+  })
+
+  it('un fragment en tête d’étape rejoint le tour suivant de la même étape', () => {
+    // Bouton pressé juste après le début d'un effort en temps : 4 s puis 176 s
+    const plan: PlanStep[] = [st('warmup', 600), st('interval', 180), st('cooldown', 300)]
+    const laps = [...WARM, lap(9, 4, 150), lap(520, 176, 172), lap(700, 300, 140)]
+    const r = comparePlan({ steps: plan, durationSec: 1080 }, run(laps))!
+    const p = lapProfile(laps, r.steps)
+    const effort = p.bars.filter((b) => b.kind === 'interval')
+    expect(effort).toHaveLength(1)
+    expect(effort[0]).toMatchObject({ m: 529, sec: 180 })
+  })
+
+  it('pas d’allure affichée pour un tour presque à l’arrêt', () => {
+    const p = lapProfile([lap(1000, 400), lap(40, 60, 120)])
+    expect(lapDetail(p.bars[1]!)).not.toMatch(/\/km/)
+    expect(lapDetail(p.bars[0]!)).toMatch(/6:40 \/km/)
+  })
+})
+
 describe('lapDetail', () => {
   it('détail d’un tour, d’un tour dans une étape, d’une étape pas faite', () => {
     const p = lapProfile(laps3, result3.steps)

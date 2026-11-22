@@ -74,13 +74,7 @@ function stepNames(steps: StepResult[]): string[] {
  * que si au moins deux natures d'étapes ont été courues (un footing reste coloré par intensité).
  */
 export function lapProfile(laps: Lap[] | null | undefined, steps?: StepResult[] | null): LapProfile {
-  const list = (Array.isArray(laps) ? laps : []).map((l) => ({ m: num(l?.m), sec: num(l?.sec), hr: num(l?.hr) || null })).filter((l) => l.sec > 0)
-  const speeds = list.filter((l) => l.sec >= 10 && l.m > 0).map((l) => l.m / l.sec)
-  const vMin = speeds.length ? Math.min(...speeds) : 0
-  const vMax = speeds.length ? Math.max(...speeds) : 0
-  const rel = (v: number) => (vMax > vMin ? Math.min(1, Math.max(0, (v - vMin) / (vMax - vMin))) : 0.6)
-  const levelOf = (l: { m: number; sec: number }) => (l.m > 0 ? Math.max(0.06, Math.min(1, 0.2 + 0.8 * rel(l.m / l.sec))) : 0.06)
-  const tierOf = (l: { m: number; sec: number }) => (l.m > 0 ? (Math.min(3, Math.floor(rel(l.m / l.sec) * 4)) as 0 | 1 | 2 | 3) : 0)
+  const raw = (Array.isArray(laps) ? laps : []).map((l) => ({ m: num(l?.m), sec: num(l?.sec), hr: num(l?.hr) || null })).filter((l) => l.sec > 0)
 
   const run = (Array.isArray(steps) ? steps : []).filter((s) => s && s.actual && s.actual.sec > 0 && typeof s.at === 'number')
   const linked = run.length > 0 && new Set(run.map((s) => s.kind)).size > 1
@@ -90,16 +84,49 @@ export function lapProfile(laps: Lap[] | null | undefined, steps?: StepResult[] 
   // Étape qui contient un instant donné (index dans « all »)
   const stepAt = (t: number) => all.findIndex((s) => s.actual && s.actual.sec > 0 && typeof s.at === 'number' && t >= s.at && t < s.at + s.actual.sec)
 
+  /*
+   * Tours regroupés avant le dessin. La montre laisse de petits fragments (bouton pressé, arrêt : quelques
+   * secondes, quelques mètres) qui feraient des barres minuscules aux allures absurdes :
+   * - un fragment rejoint le tour voisin de la même étape ;
+   * - une étape entamée puis arrêtée devient une seule barre, quel que soit le nombre de tours qu'elle a laissés.
+   * Un tour court qui est à lui seul une étape faite (une ligne droite de 15 s) n'est jamais fondu dans une autre étape.
+   */
+  const fragment = (l: { m: number; sec: number }) => l.sec < 10 || l.m < 30
+  const list: { m: number; sec: number; hr: number | null; first: number; owner: number; onlyFragments: boolean }[] = []
+  let at = 0
+  raw.forEach((l, i) => {
+    const owner = linked ? stepAt(at + l.sec / 2) : -1
+    at += l.sec
+    const last = list[list.length - 1]
+    const partial = owner >= 0 && !all[owner]!.done
+    if (last && last.owner === owner && (partial || fragment(l) || last.onlyFragments)) {
+      const hrSec = (last.hr ? last.sec : 0) + (l.hr ? l.sec : 0)
+      last.hr = hrSec ? Math.round(((last.hr ?? 0) * (last.hr ? last.sec : 0) + (l.hr ?? 0) * (l.hr ? l.sec : 0)) / hrSec) : null
+      last.m += l.m
+      last.sec += l.sec
+      last.onlyFragments = last.onlyFragments && fragment(l)
+    } else {
+      list.push({ ...l, first: i, owner, onlyFragments: fragment(l) })
+    }
+  })
+
+  const speeds = list.filter((l) => l.sec >= 10 && l.m > 0).map((l) => l.m / l.sec)
+  const vMin = speeds.length ? Math.min(...speeds) : 0
+  const vMax = speeds.length ? Math.max(...speeds) : 0
+  const rel = (v: number) => (vMax > vMin ? Math.min(1, Math.max(0, (v - vMin) / (vMax - vMin))) : 0.6)
+  const levelOf = (l: { m: number; sec: number }) => (l.m > 0 ? Math.max(0.06, Math.min(1, 0.2 + 0.8 * rel(l.m / l.sec))) : 0.06)
+  const tierOf = (l: { m: number; sec: number }) => (l.m > 0 ? (Math.min(3, Math.floor(rel(l.m / l.sec) * 4)) as 0 | 1 | 2 | 3) : 0)
+
   const bars: LapBar[] = []
-  /** Étape de chaque tour (index dans « all », -1 : aucune) */
+  /** Étape de chaque barre (index dans « all », -1 : aucune) */
   const owner: number[] = []
   let t = 0
   list.forEach((l, i) => {
-    const idx = linked ? stepAt(t + l.sec / 2) : -1
+    const idx = l.owner
     const s = idx >= 0 ? all[idx]! : null
     owner.push(idx)
     bars.push({
-      lap: i,
+      lap: l.first,
       t0: t,
       sec: l.sec,
       m: l.m,
@@ -151,8 +178,9 @@ export function lapDetail(b: LapBar): string {
   const bits = [b.state === 'partial' ? `${name}, arrêté en cours` : name]
   if (b.m > 0) bits.push(lapDistance(b.m))
   bits.push(clock(b.sec))
+  // Pas d'allure pour quelques secondes ou pour un tour presque à l'arrêt (plus lent que 15 min/km) : elle ne dit rien
   const pace = paceText(b.sec, b.m)
-  if (pace && b.sec >= 10) bits.push(pace)
+  if (pace && b.sec >= 10 && b.m / b.sec >= 1000 / 900) bits.push(pace)
   if (b.hr) bits.push(`${b.hr} bpm`)
   return bits.join(' · ')
 }
