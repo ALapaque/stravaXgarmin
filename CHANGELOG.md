@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.13.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.12.0...v1.13.0) (2026-11-22)
+
+### Nouveautés
+
+* les séances sur tapis sont reconnues et les listes affichent le titre publié sur Strava ([5353ba3](https://github.com/ALapaque/stravaXgarmin/commit/5353ba3dd7af06817e141a6bc377ffcdf3143576))
+* type « Compétition » pour tes courses officielles ([de1a84e](https://github.com/ALapaque/stravaXgarmin/commit/de1a84e82abfcf0b5a2ae61adff2d58523181666))
+
+### Corrections
+
+* « Nom à revoir » ne s'affiche plus que pour les noms par défaut ([23cda78](https://github.com/ALapaque/stravaXgarmin/commit/23cda78663fd0697bbde426b9855733cdd05e090))
+
 ## [1.12.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.11.1...v1.12.0) (2026-11-22)
 
 ### Nouveautés
