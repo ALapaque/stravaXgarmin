@@ -47,7 +47,7 @@ const GENERIC: RegExp[] = [
  * et ne commence pas par un mot de coureur (« Easy Running », « Sortie course à pied » restent des titres écrits).
  */
 const PLACE_TYPE = /^(\p{Lu}[^\s\d]*(?: [^\s\d]+){0,3}) (Course à pied|Running|Trail Running)$/u
-const RUNNER_WORDS = new Set([
+export const RUNNER_WORDS = new Set([
   'Easy', 'Long', 'Slow', 'Fast', 'Hard', 'Tempo', 'Recovery', 'Steady', 'Interval', 'Intervals', 'Hill', 'Hills', 'Trail', 'Track',
   'Morning', 'Lunch', 'Afternoon', 'Evening', 'Night', 'Sortie', 'Footing', 'Séance', 'Petite', 'Grande', 'Belle', 'Bonne',
   'Première', 'Dernière', 'Ma', 'Mon', 'Notre',
