@@ -153,6 +153,25 @@ watch(titlePart, (v) => (titleShown.value = v), { immediate: true })
 function mirrorTitle(e: Event) {
   titleShown.value = (e.target as HTMLTextAreaElement).value.replace(/[\r\n]+/g, ' ')
 }
+/*
+ * Filet de sécurité pour la hauteur du champ. La copie invisible suffit presque toujours, mais un iPhone garde
+ * une petite marge à l'intérieur d'une zone de texte (elle ne se retire pas) : le texte peut y passer à la ligne
+ * un mot plus tôt que dans la copie. Si le texte dépasse, sa hauteur réelle l'emporte : rien n'est jamais coupé.
+ */
+function fitTitle() {
+  const el = titleField.value
+  if (!el) return
+  el.style.minHeight = ''
+  if (el.scrollHeight > el.clientHeight + 1) el.style.minHeight = `${el.scrollHeight}px`
+}
+onUpdated(fitTitle)
+onMounted(() => {
+  fitTitle()
+  window.addEventListener('resize', fitTitle)
+  // Une police arrivée après coup change la largeur des mots
+  document.fonts?.ready.then(fitTitle)
+})
+onBeforeUnmount(() => window.removeEventListener('resize', fitTitle))
 /** Vide le champ et y place le curseur : repartir de zéro en un toucher */
 function clearTitle() {
   titlePart.value = ''
