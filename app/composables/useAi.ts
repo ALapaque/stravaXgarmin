@@ -3,6 +3,7 @@
  * Les erreurs (clé refusée, crédit épuisé…) remontent avec un message en français.
  */
 import type { Activity } from './useActivities'
+import { MAX_NOTE, type PlanContext } from '#shared/utils/debrief'
 
 export type TitleStyle = 'sobre' | 'drole' | 'epique'
 
@@ -75,12 +76,23 @@ export function useAi() {
     }
   }
 
-  async function suggestTitles(a: Activity, style: TitleStyle, avoid: string[] = []) {
-    const { titles } = await call<{ titles: string[] }>('/api/ai/titles', { run: toRun(a), style, avoid })
+  /** Trois titres seuls (sans étiquettes : l'appli les ajoute). « planTitle » : titre de la séance prévue. */
+  async function suggestTitles(a: Activity, style: TitleStyle, avoid: string[] = [], planTitle?: string | null) {
+    const { titles } = await call<{ titles: string[] }>('/api/ai/titles', { run: toRun(a), style, avoid, ...(planTitle ? { planTitle } : {}) })
     return titles
   }
 
-  const analyse = (a: Activity) => call<Analysis>('/api/ai/analyse', { run: toRun(a) })
+  const settings = useSettings()
+
+  /**
+   * Analyse d'une course. Le Débrief y joint la séance prévue et le ressenti ; la note n'est mise dans
+   * la requête que si le réglage « L’analyse tient compte de ma note » est activé.
+   */
+  function analyse(a: Activity, ctx: { plan?: PlanContext | null; rpe?: number | null; note?: string } = {}) {
+    const note = settings.value.ai?.shareNote ? (ctx.note ?? '').trim().slice(0, MAX_NOTE) : ''
+    const feeling = ctx.rpe || note ? { rpe: ctx.rpe ?? null, ...(note ? { note } : {}) } : undefined
+    return call<Analysis>('/api/ai/analyse', { run: toRun(a), ...(ctx.plan ? { plan: ctx.plan } : {}), ...(feeling ? { feeling } : {}) })
+  }
   const estimateLevel = (selected: Activity[]) => call<Level>('/api/ai/level', { runs: selected.map(toRun) })
   const reviewWeek = (runs: Activity[], extra: { previous?: { km: number; count: number }; next?: string[]; goal?: string }) =>
     call<WeekReview>('/api/ai/week', { runs: runs.map(toRun), ...extra })

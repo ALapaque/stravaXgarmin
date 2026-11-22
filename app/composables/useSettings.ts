@@ -1,4 +1,5 @@
 import type { NotifKind } from './useNotifications'
+import { DEFAULT_PARTS, type DebriefParts } from '#shared/utils/debrief'
 
 export function useSettings() {
   return useState('settings', () => ({
@@ -11,13 +12,13 @@ export function useSettings() {
       enabled: true,
       templates: { ...DEFAULT_TEMPLATES },
     },
-    description: {
-      enabled: true,
-      weather: true,
-      splits: true,
-      shoes: true,
-      signature: true,
-    },
+    /*
+     * Parties du texte que le Débrief ajoute sous ta description Strava (shared/utils/debrief.ts).
+     * Un état gardé par une version précédente garde ses anciennes clés (enabled, weather, splits) : ignorées.
+     */
+    description: { ...DEFAULT_PARTS } as DebriefParts,
+    /** L'analyse IA tient compte de ta note (envoyée au fournisseur d'IA) */
+    ai: { shareNote: false },
     notify: {
       /** Notifications système (en plus du centre de notifications) */
       system: false,

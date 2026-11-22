@@ -59,8 +59,10 @@ const notifHint = computed(() => {
 })
 
 const descriptionParts = [
-  { key: 'weather', label: 'Météo', hint: 'Température, ciel et vent' },
-  { key: 'splits', label: 'Temps au kilomètre', hint: 'Chaque kilomètre complet' },
+  { key: 'note', label: 'Ma note', hint: 'Les mots que tu écris dans le débrief' },
+  { key: 'feeling', label: 'Ressenti', hint: 'Ta note sur 10 et l’issue de la séance' },
+  { key: 'analysis', label: 'Analyse', hint: 'Le verdict et les constats de l’IA' },
+  { key: 'numbers', label: 'Chiffres', hint: 'Le temps de chaque effort, sinon de chaque kilomètre' },
   { key: 'shoes', label: 'Chaussures', hint: 'Modèle et kilométrage' },
   { key: 'signature', label: 'Signature', hint: '« — via stravaXgarmin »' },
 ] as const
@@ -178,24 +180,23 @@ const descriptionParts = [
         </div>
         </div>
         <div class="col">
-        <h2 class="eyebrow group">Description Strava</h2>
+        <h2 class="eyebrow group">Texte du débrief sur Strava</h2>
         <div class="card list">
+          <p class="row hint intro">Ce que le Débrief ajoute sous ton texte, sur Strava. Ton texte reste toujours tel quel.</p>
+          <div v-for="p in descriptionParts" :key="p.key" class="row">
+            <span class="row__main">
+              <span class="title">{{ p.label }}</span>
+              <span class="hint">{{ p.hint }}</span>
+            </span>
+            <ToggleSwitch v-model="settings.description[p.key]" :label="p.label" />
+          </div>
           <div class="row">
             <span class="row__main">
-              <span class="title">Description enrichie</span>
-              <span class="hint">Proposée sur la page de chaque course, à la suite de ton texte</span>
+              <span class="title">L’analyse tient compte de ma note</span>
+              <span class="hint">Ta note est envoyée à l’IA avec les chiffres de la séance</span>
             </span>
-            <ToggleSwitch v-model="settings.description.enabled" label="Description enrichie" />
+            <ToggleSwitch v-model="settings.ai.shareNote" label="L’analyse tient compte de ma note" />
           </div>
-          <template v-if="settings.description.enabled">
-            <div v-for="p in descriptionParts" :key="p.key" class="row sub">
-              <span class="row__main">
-                <span class="title">{{ p.label }}</span>
-                <span class="hint">{{ p.hint }}</span>
-              </span>
-              <ToggleSwitch v-model="settings.description[p.key]" :label="p.label" />
-            </div>
-          </template>
         </div>
         </div>
       </div>
@@ -262,6 +263,11 @@ const descriptionParts = [
 
 .sub {
   padding-left: 28px;
+}
+
+.intro {
+  min-height: 0;
+  margin: 0;
 }
 
 .soon {

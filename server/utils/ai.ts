@@ -221,17 +221,25 @@ const pace = (sec: number, km: number) => {
 }
 const dur = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)} h ` : ''}${Math.floor((s % 3600) / 60)} min ${s % 60} s`
 
-export function describeRun(r: RunInput, details?: StravaDetails) {
+/** Contexte de la séance envoyé par le Débrief (lecture défensive dans describeContext). */
+export interface RunContext {
+  plan?: unknown
+  feeling?: unknown
+}
+
+export function describeRun(r: RunInput, details?: StravaDetails, ctx: RunContext = {}) {
   const km = Number(r.distanceKm ?? 0)
   const sec = Number(r.durationSec ?? 0)
   const lines = [
     `Titre : ${String(r.title ?? r.garminName ?? '').slice(0, 100)}`,
     r.startedAt ? `Date : ${String(r.startedAt).slice(0, 16).replace('T', ' ')}` : '',
-    r.indoor === true ? 'Lieu : sur tapis (pas de GPS, pas de dénivelé, allure donnée par la montre)' : r.place ? `Lieu : ${String(r.place).slice(0, 60)}` : '',
+    r.indoor !== true && r.place ? `Lieu : ${String(r.place).slice(0, 60)}` : '',
     `Distance : ${km.toFixed(2)} km, durée ${dur(sec)}, allure moyenne ${pace(sec, km)}`,
     r.avgHr ? `FC moyenne : ${r.avgHr} bpm${details?.max_heartrate ? `, max ${Math.round(details.max_heartrate)} bpm` : ''}` : '',
     r.elevationM ? `Dénivelé : ${r.elevationM} m` : '',
     r.type ? `Type estimé : ${r.type}` : '',
+    // Tapis, séance prévue, réalisé, étapes, ressenti (et la note seulement si le coureur l'a permis)
+    ...describeContext({ indoor: r.indoor, plan: ctx.plan, feeling: ctx.feeling }),
   ]
   const splits = details?.splits_metric?.filter((s) => s.distance > 900)
   if (splits?.length) {

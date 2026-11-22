@@ -243,7 +243,7 @@ async function addDescription() {
           <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
             Ou copier le nom Strava vers Garmin
           </button>
-          <section v-if="settings.description.enabled && description" class="card card--pad desc" aria-labelledby="desc-title">
+          <section v-if="description" class="card card--pad desc" aria-labelledby="desc-title">
             <div class="desc-head">
               <h2 id="desc-title" class="eyebrow">Description Strava</h2>
               <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
