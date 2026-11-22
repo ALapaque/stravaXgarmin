@@ -4,7 +4,10 @@
  * Garmin : Activity API (lecture seule, accès développeur à demander).
  */
 
-export type RunType = 'long' | 'easy' | 'interval' | 'recovery' | 'tempo'
+import { RUN_LABELS, type RunType } from '#shared/utils/runs'
+
+// Ré-exporté ici pour ne pas casser les imports existants (« from '~/composables/useActivities' »)
+export type { RunType }
 export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
 export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava'
 
@@ -50,13 +53,10 @@ export interface Shoe {
   km: number
 }
 
-export const RUN_TYPES: Record<RunType, { label: string; color: string }> = {
-  long: { label: 'Sortie longue', color: 'var(--type-long)' },
-  easy: { label: 'Footing', color: 'var(--type-easy)' },
-  interval: { label: 'Fractionné', color: 'var(--type-interval)' },
-  recovery: { label: 'Récupération', color: 'var(--type-recovery)' },
-  tempo: { label: 'Tempo', color: 'var(--type-tempo)' },
-}
+/** Libellé (shared/utils/runs.ts) et couleur du thème de chaque type de séance. */
+export const RUN_TYPES = Object.fromEntries(
+  (Object.keys(RUN_LABELS) as RunType[]).map((t) => [t, { label: RUN_LABELS[t], color: `var(--type-${t})` }]),
+) as Record<RunType, { label: string; color: string }>
 
 export const SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },

@@ -2,30 +2,8 @@
  * Passage des données de démo aux vraies données Strava et Garmin.
  * Sans base de données, la synchro se fait à l'ouverture de l'appli.
  */
-import type { Activity, EffortKey, RunType } from './useActivities'
+import type { Activity, EffortKey } from './useActivities'
 import type { GarminRecord } from './useRecords'
-
-interface StravaRun {
-  id: number
-  name: string
-  start_date: string
-  distance: number
-  moving_time: number
-  total_elevation_gain: number
-  average_heartrate?: number
-  workout_type?: number | null
-  location_city?: string | null
-  map?: { summary_polyline?: string | null }
-  gear_id?: string | null
-}
-
-interface GarminRun {
-  id: number
-  name: string
-  startTimeGMT: string
-  distance?: number
-  effect?: string | null
-}
 
 export interface Accounts {
   loaded: boolean
@@ -61,67 +39,6 @@ export function useAccounts() {
 
   const isDemo = computed(() => !accounts.value.strava.connected)
   return { accounts, refresh, disconnect, isDemo }
-}
-
-/** Repères personnels : allure et distance habituelles sur les courses chargées. */
-interface Habits {
-  pace: number
-  km: number
-}
-
-const median = (v: number[]) => {
-  const s = [...v].sort((x, y) => x - y)
-  return s.length ? s[Math.floor(s.length / 2)]! : 0
-}
-
-function habitsOf(runs: StravaRun[]): Habits {
-  const ok = runs.filter((r) => r.distance >= 2000 && r.moving_time > 0)
-  if (ok.length < 4) return { pace: 330, km: 8 }
-  return {
-    pace: median(ok.map((r) => r.moving_time / (r.distance / 1000))),
-    km: median(ok.map((r) => r.distance / 1000)),
-  }
-}
-
-/*
- * Type de séance, du signal le plus sûr au plus approximatif :
- * 1. ce que tu as indiqué (type « Sortie longue » ou « Entraînement » sur Strava, mots du nom) ;
- * 2. l'effet principal calculé par ta montre Garmin (sur ta fréquence cardiaque et ton profil) ;
- * 3. sinon ton allure et ta distance comparées à tes habitudes des 60 derniers jours.
- */
-function classify(s: StravaRun, g: GarminRun | undefined, h: Habits): { type: RunType; reason: string } {
-  const km = s.distance / 1000
-  const pace = s.moving_time / Math.max(km, 0.1)
-  const long = km >= Math.max(12, h.km * 1.6) || km >= 18
-
-  if (s.workout_type === 2) return { type: 'long', reason: 'marquée sortie longue sur Strava' }
-  if (/fraction|interval|vma|piste|\d+\s*[x×]\s*\d+/i.test(s.name)) return { type: 'interval', reason: 'd’après son nom' }
-  if (/tempo|seuil|threshold/i.test(s.name)) return { type: 'tempo', reason: 'd’après son nom' }
-  if (/r[ée]cup|recovery/i.test(s.name)) return { type: 'recovery', reason: 'd’après son nom' }
-  if (/sortie longue|long run/i.test(s.name)) return { type: 'long', reason: 'd’après son nom' }
-
-  const effect = (g?.effect ?? '').toUpperCase()
-  if (effect) {
-    const watch = 'selon ta montre'
-    if (/RECOVERY/.test(effect)) return { type: 'recovery', reason: watch }
-    if (/BASE|AEROBIC/.test(effect) && !/ANAEROBIC/.test(effect)) return { type: long ? 'long' : 'easy', reason: watch }
-    if (/TEMPO|THRESHOLD/.test(effect)) return { type: long ? 'long' : 'tempo', reason: watch }
-    if (/VO2|ANAEROBIC|SPEED|SPRINT/.test(effect)) return { type: 'interval', reason: watch }
-  }
-
-  if (s.workout_type === 3) return { type: pace <= h.pace * 0.97 ? 'interval' : 'tempo', reason: 'marquée entraînement sur Strava' }
-
-  const mine = 'selon ton allure habituelle'
-  if (long) return { type: 'long', reason: 'plus longue que d’habitude' }
-  if (pace <= h.pace * 0.93) return { type: 'tempo', reason: mine }
-  if (pace >= h.pace * 1.07) return { type: 'recovery', reason: mine }
-  return { type: 'easy', reason: mine }
-}
-
-/** Relie une course Strava à l'activité Garmin qui a commencé à moins de 3 minutes d'écart. */
-function matchGarmin(s: StravaRun, garmin: GarminRun[]) {
-  const t = Date.parse(s.start_date)
-  return garmin.find((g) => Math.abs(Date.parse(`${g.startTimeGMT.replace(' ', 'T')}Z`) - t) < 180_000)
 }
 
 function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits): Activity {
@@ -239,19 +156,16 @@ export function useSync() {
     const touched = new Set(historyState.value.map((e) => e.activityId))
     for (const a of activities.value) {
       if (a.startedAt <= since || touched.has(a.id)) continue
-      const stravaGeneric = isGenericName(a.stravaName)
-      const garminIsGood = Boolean(a.garminId) && !isGenericName(a.garminName)
       const rule = settings.value.naming.enabled ? ruleTitle(a) : ''
-
-      let target = ''
-      let source: 'garmin' | 'regle' = 'garmin'
-      if (garminIsGood && a.garminName !== a.stravaName && (stravaGeneric || settings.value.overwriteEdited)) target = a.garminName
-      else if (stravaGeneric && rule) {
-        target = rule
-        source = 'regle'
-      }
-      if (target && target !== a.stravaName && (await setStravaName(a.id, target, source))) {
-        notify({ kind: 'titles', title: 'Nom appliqué sur Strava', body: target, to: `/activites/${a.id}` })
+      const decision = decideAutoName({
+        stravaName: a.stravaName,
+        garminName: a.garminName,
+        hasGarmin: Boolean(a.garminId),
+        ruleTitle: rule,
+        overwriteEdited: settings.value.overwriteEdited,
+      })
+      if (decision && (await setStravaName(a.id, decision.target, decision.source))) {
+        notify({ kind: 'titles', title: 'Nom appliqué sur Strava', body: decision.target, to: `/activites/${a.id}` })
       }
 
       // Option : le nom générique côté montre est aussi remplacé dans Garmin Connect

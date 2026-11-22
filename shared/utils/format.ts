@@ -42,3 +42,21 @@ export function formatTime(iso: string): string {
   return timeFmt.format(new Date(iso))
 }
 
+
+const agoFmt = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', timeZone })
+
+/**
+ * Depuis quand : « à l’instant », « il y a 3 min », « il y a 2 h », « hier », « il y a 3 jours », « le 3 nov. ».
+ * « now » est passé en paramètre pour les tests ; une date absente ou illisible donne « jamais ».
+ */
+export function formatAgo(iso: string | null | undefined, now: number = Date.now()): string {
+  const t = iso ? Date.parse(iso) : Number.NaN
+  if (!Number.isFinite(t)) return 'jamais'
+  const sec = (now - t) / 1000
+  if (sec < 60) return 'à l’instant'
+  if (sec < 3600) return `il y a ${Math.floor(sec / 60)} min`
+  if (sec < 86_400) return `il y a ${Math.floor(sec / 3600)} h`
+  if (sec < 2 * 86_400) return 'hier'
+  if (sec < 7 * 86_400) return `il y a ${Math.floor(sec / 86_400)} jours`
+  return `le ${agoFmt.format(new Date(t))}`
+}
