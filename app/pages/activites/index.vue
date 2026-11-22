@@ -1,44 +1,12 @@
 <script setup lang="ts">
-useHead({ title: 'Activités · stravaXgarmin' })
+/* Ancienne adresse (menu à cinq onglets) : redirige, côté serveur comme dans le navigateur (shared/utils/nav.ts). */
+import { legacyRedirect } from '#shared/utils/nav'
 
-const { sorted: activities } = useActivities()
-const { toDebrief } = useDebriefs()
-const { accounts } = useAccounts()
-const { active: demo } = useDemo()
-const filter = ref<'all' | 'review'>('all')
-const shown = computed(() => (filter.value === 'all' ? activities.value : toDebrief.value))
-const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceKm, 0))
+definePageMeta({
+  redirect: (to) => legacyRedirect(to.path, to.query) ?? '/',
+})
 </script>
 
 <template>
-  <div class="stack stack--wide">
-    <div class="title-block">
-      <p class="eyebrow">60 derniers jours<template v-if="activities.length"> · {{ activities.length }} courses · {{ formatKm(totalKm) }} km</template></p>
-      <h1 class="h1 h1--xl">Activités</h1>
-    </div>
-
-    <ConnectPrompt v-if="!activities.length && !accounts.strava.connected && !demo" />
-
-    <template v-else>
-    <div class="segmented" role="group" aria-label="Filtrer les activités">
-      <button type="button" :aria-pressed="filter === 'all'" @click="filter = 'all'">Toutes</button>
-      <button type="button" :aria-pressed="filter === 'review'" @click="filter = 'review'">
-        À débriefer ({{ toDebrief.length }})
-      </button>
-    </div>
-
-    <div v-if="shown.length" class="card list list--grid">
-      <ActivityRow v-for="a in shown" :key="a.id" :activity="a" />
-    </div>
-    <p v-else class="card card--pad lead">{{ activities.length ? 'Tout est débriefé : aucune course n’attend.' : 'Aucune course sur les 60 derniers jours.' }}</p>
-    </template>
-  </div>
+  <div />
 </template>
-
-<style scoped>
-.title-block {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-</style>

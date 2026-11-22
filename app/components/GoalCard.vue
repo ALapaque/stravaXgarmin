@@ -27,7 +27,7 @@ const dateFmt = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long'
     <span class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><Plus :size="22" /></span>
     <span class="row__main">
       <span class="title">Fixer un objectif course</span>
-      <span class="meta">Compte à rebours et temps prédit sur l’accueil</span>
+      <span class="meta">Compte à rebours et temps prédit sur Aujourd’hui</span>
     </span>
     <ChevronRight class="go" :size="18" aria-hidden="true" />
   </NuxtLink>

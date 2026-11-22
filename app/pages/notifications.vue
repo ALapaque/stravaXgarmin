@@ -20,7 +20,7 @@ onBeforeUnmount(markAllRead)
 
 <template>
   <div class="stack">
-    <BackLink to="/" label="Accueil" />
+    <BackLink to="/" label="Aujourd’hui" />
     <div class="head">
       <h1 class="h1">Notifications</h1>
       <button v-if="unread" type="button" class="link" @click="markAllRead">Tout marquer comme lu</button>

@@ -15,7 +15,7 @@ defineProps<{ state: 'loading' | 'missing' }>()
       <span class="tile" aria-hidden="true"><SearchX :size="22" /></span>
       <p class="h2">Course introuvable.</p>
       <p class="lead">Elle n’est peut-être plus dans tes 60 derniers jours.</p>
-      <NuxtLink to="/activites" class="btn btn--secondary btn--sm">Voir mes activités</NuxtLink>
+      <NuxtLink to="/journal" class="btn btn--secondary btn--sm">Voir mon journal</NuxtLink>
     </template>
   </div>
 </template>

@@ -1,33 +1,41 @@
 <script setup lang="ts">
 /*
- * Barre du bas à deux faces. La face avant est le menu principal ; quand l'écran a des
- * rubriques (Stats, Réglages, une course), la barre pivote comme un rouleau pour montrer
- * son sous-menu. Le bouton de gauche la fait pivoter à nouveau vers le menu principal,
- * et toucher l'onglet déjà actif rouvre le sous-menu.
+ * Barre du bas à deux faces, qui tourne comme un rouleau.
+ * - Face avant : les trois onglets (icône + nom), avec un indicateur qui glisse.
+ * - Face arrière : quand l'écran a des rubriques (Journal, Progression, Réglages), la barre pivote pour les
+ *   montrer. À gauche, les AUTRES onglets en petit (un seul toucher pour changer d'onglet), un filet,
+ *   puis les rubriques avec leur point d'attention.
+ * On ne reste jamais bloqué : la face arrière donne toujours accès aux autres onglets, quitter un écran
+ * à rubriques ramène la face avant, et toucher l'onglet actif (face avant) rouvre les rubriques.
+ * Contrainte iPhone : chaque face porte sa propre perspective() (pas de preserve-3d, qui casse le flou).
  */
-import { LayoutGrid, Layers, Sparkles } from 'lucide-vue-next'
+import { Layers, Sparkles } from 'lucide-vue-next'
 import type { Subnav } from '~/composables/useSubnav'
 
 const route = useRoute()
-const tabs = NAV
 const { active, sub, pick } = useNav()
 
 // Dernier sous-menu connu : il reste dessiné pendant que la barre revient au menu principal
 const shown = ref<Subnav | null>(sub.value)
 const flipped = ref(false)
-let timer: ReturnType<typeof setTimeout> | undefined
+let flipTimer: ReturnType<typeof setTimeout> | undefined
+let leaveTimer: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
   watch(
     () => sub.value?.key,
     (key) => {
-      clearTimeout(timer)
+      clearTimeout(flipTimer)
+      clearTimeout(leaveTimer)
       if (key) {
         shown.value = sub.value
-        // Laisse l'écran arriver, puis la barre pivote vers ses rubriques
-        timer = setTimeout(() => (flipped.value = true), 280)
+        // Déjà sur la face arrière (d'un écran à rubriques à un autre) : les rubriques changent sur place.
+        // Sinon, on laisse l'écran arriver, puis la barre pivote vers ses rubriques.
+        if (!flipped.value) flipTimer = setTimeout(() => (flipped.value = true), 280)
       } else {
-        flipped.value = false
+        // L'écran suivant pose ses rubriques juste après le départ du précédent : on attend un instant
+        // avant de revenir au menu, pour ne pas faire un aller-retour inutile entre deux écrans à rubriques.
+        leaveTimer = setTimeout(() => (flipped.value = false), 90)
       }
     },
     { immediate: true },
@@ -36,27 +44,31 @@ onMounted(() => {
 watch(sub, (s) => {
   if (s) shown.value = s
 }, { deep: true })
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+  clearTimeout(flipTimer)
+  clearTimeout(leaveTimer)
+})
 
 const subIndex = computed(() => Math.max(shown.value?.items.findIndex((i) => i.id === shown.value?.current) ?? 0, 0))
+/** Les autres onglets, en petit sur la face arrière (les trois quand aucun n'est actif, sur les réglages) */
+const others = computed(() => NAV.map((t, i) => ({ ...t, i })).filter((t) => t.i !== active.value))
 
 function onMain(i: number, e: MouseEvent) {
   // Onglet déjà ouvert et écran à rubriques : on rouvre le sous-menu au lieu de recharger
-  if (i === active.value && sub.value && route.path === tabs[i]!.to) {
+  if (i === active.value && sub.value && route.path === NAV[i]!.to) {
     e.preventDefault()
     flipped.value = true
   }
 }
-
 </script>
 
 <template>
   <nav class="tabbar" :class="{ flipped }" :aria-label="flipped && shown ? shown.label : 'Navigation principale'">
-    <!-- Face avant : menu principal -->
-    <div class="face front" :inert="flipped || undefined" :style="{ '--i': Math.max(active, 0), '--n': 5 }">
-      <span class="indicator" :class="{ hidden: active < 0 }" aria-hidden="true"><span /></span>
+    <!-- Face avant : les trois onglets -->
+    <div class="face front" :inert="flipped || undefined" :style="{ '--i': Math.max(active, 0), '--n': NAV.length }">
+      <span class="lozenge" :class="{ hidden: active < 0 }" aria-hidden="true" />
       <NuxtLink
-        v-for="(t, i) in tabs"
+        v-for="(t, i) in NAV"
         :key="t.to"
         :to="t.to"
         class="tab"
@@ -64,38 +76,41 @@ function onMain(i: number, e: MouseEvent) {
         @click="onMain(i, $event)"
       >
         <span class="icon">
-          <component :is="t.icon" :size="20" aria-hidden="true" />
-          <Layers v-if="i === active && sub" class="has-sub" :size="11" aria-label="sous-menu disponible" />
+          <component :is="t.icon" :size="22" aria-hidden="true" />
+          <Layers v-if="i === active && sub" class="has-sub" :size="11" aria-label="rubriques disponibles" />
         </span>
         <span class="name">{{ t.label }}</span>
       </NuxtLink>
     </div>
 
-    <!-- Face arrière : rubriques de l'écran -->
-    <div v-if="shown" class="face back" :inert="!flipped || undefined" :style="{ '--i': subIndex, '--n': shown.items.length }">
-      <button type="button" class="menu" aria-label="Revenir au menu principal" @click="flipped = false">
-        <LayoutGrid :size="20" aria-hidden="true" />
-        <span class="name">Menu</span>
-      </button>
-      <div class="subs" role="tablist" :aria-label="shown.label">
-        <span class="indicator" aria-hidden="true"><span /></span>
-        <button
-          v-for="it in shown.items"
-          :key="it.id"
-          type="button"
-          role="tab"
-          class="tab"
-          :aria-selected="it.id === shown.current"
-          :aria-current="it.id === shown.current ? 'page' : undefined"
-          @click="pick(it.id)"
-        >
-          <span class="icon">
-            <component :is="SUB_ICONS[it.icon] ?? Sparkles" :size="20" aria-hidden="true" />
-            <span v-if="it.dot" class="dot" aria-label="à faire" />
-          </span>
-          <span class="name">{{ it.label }}</span>
-        </button>
+    <!-- Face arrière : les autres onglets en petit, puis les rubriques de l'écran -->
+    <div v-if="shown" class="face back" :inert="!flipped || undefined">
+      <div class="minis" :style="{ '--m': others.length }">
+        <NuxtLink v-for="t in others" :key="t.to" :to="t.to" class="mini" :aria-label="t.label" :title="t.label">
+          <component :is="t.icon" :size="19" aria-hidden="true" />
+        </NuxtLink>
       </div>
+      <Transition name="swap" mode="out-in">
+        <div :key="shown.key" class="subs" role="tablist" :aria-label="shown.label" :style="{ '--i': subIndex, '--n': shown.items.length }">
+          <span class="indicator" aria-hidden="true"><span /></span>
+          <button
+            v-for="it in shown.items"
+            :key="it.id"
+            type="button"
+            role="tab"
+            class="tab"
+            :aria-selected="it.id === shown.current"
+            :aria-current="it.id === shown.current ? 'page' : undefined"
+            @click="pick(it.id)"
+          >
+            <span class="icon">
+              <component :is="SUB_ICONS[it.icon] ?? Sparkles" :size="20" aria-hidden="true" />
+              <span v-if="it.dot" class="dot" aria-label="à faire" />
+            </span>
+            <span class="name">{{ it.label }}</span>
+          </button>
+        </div>
+      </Transition>
     </div>
   </nav>
 </template>
@@ -148,13 +163,15 @@ function onMain(i: number, e: MouseEvent) {
 }
 
 .front {
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--n), 1fr);
   transform: perspective(900px) rotateX(0deg);
 }
 
 .back {
-  grid-template-columns: 58px 1fr;
-  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
   transform: perspective(900px) rotateX(-90deg);
   opacity: 0;
   visibility: hidden;
@@ -175,55 +192,45 @@ function onMain(i: number, e: MouseEvent) {
   transition-delay: 0s;
 }
 
-.subs {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--n), 1fr);
-  min-width: 0;
-}
-
-.indicator {
+/* ── Face avant : une pastille qui glisse derrière l'onglet actif (icône et nom) ── */
+.lozenge {
   position: absolute;
-  top: 4px;
-  left: 0;
-  width: calc(100% / var(--n));
-  height: 30px;
-  display: flex;
-  justify-content: center;
+  top: 8px;
+  bottom: 8px;
+  left: 6px;
+  width: calc((100% - 12px) / var(--n));
+  border-radius: max(calc(var(--r-tab, 36px) - 8px), var(--r-pill, 15px));
   transform: translateX(calc(var(--i) * 100%));
-  transition: transform 0.5s var(--ease-spring), opacity 0.2s ease;
+  transition: transform 0.55s var(--ease-spring), opacity 0.25s ease;
   pointer-events: none;
 }
 
-.front .indicator {
-  top: 12px;
-  left: 6px;
-  width: calc((100% - 12px) / var(--n));
-}
-
-.indicator span {
-  width: 48px;
-  height: 30px;
-  border-radius: var(--r-pill, 15px);
+/* La couleur vit dans un pseudo-élément : l'arrondi s'applique à la zone utile (sans les marges) */
+.lozenge::before {
+  content: '';
+  position: absolute;
+  inset: 0 6px;
+  border-radius: inherit;
   background: var(--tab-active);
   box-shadow: var(--primary-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.indicator.hidden {
+.lozenge.hidden {
   opacity: 0;
+  transform: translateX(calc(var(--i) * 100%)) scale(0.6);
 }
 
-.tab,
-.menu {
+.tab {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 3px;
   min-width: 0;
   min-height: 56px;
-  padding: 4px 0 0;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--muted);
@@ -233,7 +240,12 @@ function onMain(i: number, e: MouseEvent) {
   letter-spacing: 0.01em;
   border-radius: var(--r-ctrl);
   cursor: pointer;
-  transition: color 0.25s ease;
+  transition: color 0.3s ease;
+}
+
+.front .tab {
+  gap: 4px;
+  font-size: 12px;
 }
 
 .name {
@@ -248,22 +260,18 @@ function onMain(i: number, e: MouseEvent) {
   display: grid;
   place-items: center;
   width: 48px;
-  height: 30px;
+  height: 26px;
   transition: transform 0.15s ease, color 0.25s ease;
 }
 
 .tab:active .icon,
-.menu:active svg {
+.mini:active svg {
   transform: scale(0.88);
 }
 
-.tab[aria-current='page'] {
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.tab[aria-current='page'] .icon {
+.front .tab[aria-current='page'] {
   color: var(--on-tab-active);
+  font-weight: 700;
 }
 
 /* Petit rebond de l'icône quand l'onglet devient actif */
@@ -274,45 +282,143 @@ function onMain(i: number, e: MouseEvent) {
 /* Signale que l'onglet actif a des rubriques : le toucher fait pivoter la barre */
 .has-sub {
   position: absolute;
-  right: 2px;
-  bottom: 1px;
-  opacity: 0.75;
+  right: 4px;
+  bottom: 0;
+  opacity: 0.8;
 }
 
-/* Bouton de retour au menu principal, séparé des rubriques par un filet */
-.menu {
-  justify-content: flex-start;
-  color: var(--ink-2);
+/* ── Face arrière ── */
+.minis {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding-right: 9px;
 }
 
-.menu svg {
-  width: 48px;
-  height: 30px;
-  padding: 5px 14px;
-  border-radius: var(--r-pill, 15px);
-  background: var(--surface-2);
-  transition: transform 0.15s ease;
-}
-
-.menu::after {
+/* Filet entre les autres onglets et les rubriques */
+.minis::after {
   content: '';
   position: absolute;
-  top: 8px;
-  bottom: 8px;
-  right: -3px;
+  top: 6px;
+  bottom: 6px;
+  right: 0;
   width: 1px;
   background: var(--line-strong);
 }
 
+.mini {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-pill, 15px);
+  color: var(--ink-2);
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+/* À chaque pivot vers les rubriques, les petits onglets arrivent l'un après l'autre */
+.flipped .mini {
+  animation: mini-in 0.5s var(--ease-spring) 0.3s backwards;
+}
+
+.flipped .mini:nth-child(2) {
+  animation-delay: 0.36s;
+}
+
+.flipped .mini:nth-child(3) {
+  animation-delay: 0.42s;
+}
+
+@keyframes mini-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.mini svg {
+  box-sizing: content-box;
+  padding: 7px;
+  border-radius: inherit;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 0.15s ease;
+}
+
+.mini:hover {
+  color: var(--ink);
+}
+
+.subs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  min-width: 0;
+}
+
+.indicator {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: calc(100% / var(--n));
+  height: 26px;
+  display: flex;
+  justify-content: center;
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform 0.5s var(--ease-spring), opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.indicator span {
+  width: min(48px, 100%);
+  height: 26px;
+  border-radius: var(--r-pill, 15px);
+  background: var(--tab-active);
+  box-shadow: var(--primary-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.subs .tab {
+  justify-content: flex-start;
+  padding-top: 2px;
+}
+
+.subs .tab[aria-current='page'] {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.subs .tab[aria-current='page'] .icon {
+  color: var(--on-tab-active);
+}
+
 .dot {
   position: absolute;
-  top: 3px;
-  right: 8px;
+  top: 1px;
+  right: calc(50% - 18px);
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--ko);
   box-shadow: 0 0 0 2px var(--bg), 0 0 8px var(--ko);
+}
+
+/* D'un écran à rubriques à un autre : les rubriques changent sur place */
+.swap-enter-active {
+  transition: opacity 0.25s ease, transform 0.45s var(--ease-spring);
+}
+
+.swap-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.swap-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.swap-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -15,6 +15,9 @@ const { unread } = useNotifications()
 const { run: sync, syncing } = useSync()
 const { accounts } = useAccounts()
 const { current: version } = useUpdates()
+const { initial, masked } = useRunner()
+const route = useRoute()
+const inSettings = computed(() => route.path.startsWith('/reglages') || route.path.startsWith('/historique'))
 </script>
 
 <template>
@@ -54,12 +57,16 @@ const { current: version } = useUpdates()
       <NuxtLink to="/notifications" class="item">
         <span class="ic"><Bell :size="20" aria-hidden="true" /></span>
         Notifications
-        <span v-if="unread" class="count">{{ unread }}</span>
+        <span v-if="ready && unread" class="count">{{ unread }}</span>
       </NuxtLink>
       <button v-if="accounts.strava.connected" type="button" class="item" :disabled="syncing" @click="sync(true)">
         <span class="ic"><RefreshCw :size="20" :class="{ spin: syncing }" aria-hidden="true" /></span>
         {{ syncing ? 'Synchronisation…' : 'Synchroniser' }}
       </button>
+      <NuxtLink to="/reglages" class="item settings" :aria-current="inSettings ? 'page' : undefined">
+        <span class="ic avatar" aria-hidden="true"><span :class="{ masked }">{{ initial }}</span></span>
+        Réglages
+      </NuxtLink>
       <p class="fine v">Version {{ version }}</p>
     </div>
   </aside>
@@ -254,13 +261,40 @@ const { current: version } = useUpdates()
   padding: 0 6px;
   border-radius: 11px;
   background: var(--ko);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 12px;
   font-weight: 700;
 }
 
 .v {
   padding: 8px 10px 0;
+}
+
+/* Réglages : l'initiale du coureur dans une pastille, comme l'avatar de l'en-tête */
+.avatar {
+  width: 30px;
+  height: 30px;
+  margin-inline: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.settings[aria-current='page'] .avatar {
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--primary-solid) 60%, transparent);
+}
+
+.masked {
+  filter: blur(4px);
+  user-select: none;
+}
+
+.settings[aria-current='page'] {
+  background: var(--surface-2);
 }
 
 .spin {

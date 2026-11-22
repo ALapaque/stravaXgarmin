@@ -24,13 +24,13 @@ async function save() {
 async function remove() {
   goal.value = null
   show('Objectif retiré')
-  await router.push('/stats')
+  await router.push('/progression')
 }
 </script>
 
 <template>
   <div class="stack">
-    <BackLink to="/stats" label="Stats" />
+    <BackLink to="/progression" label="Progression" />
     <div class="title-block">
       <p class="eyebrow">Ta prochaine course</p>
       <h1 class="h1 h1--xl">Objectif</h1>

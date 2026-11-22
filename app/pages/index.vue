@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ClipboardCheck, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight, CircleAlert } from 'lucide-vue-next'
 
-useHead({ title: 'Accueil · stravaXgarmin' })
+useHead({ title: 'Aujourd’hui · stravaXgarmin' })
 
 const { sorted, lastWeek } = useActivities()
 const { toDebrief } = useDebriefs()
@@ -121,7 +121,7 @@ const healthAlert = computed(() => {
       </div>
       <div class="col-side">
         <GoalCard compact />
-        <NuxtLink v-if="nextSession" to="/plan" class="card next">
+        <NuxtLink v-if="nextSession" to="/journal?onglet=a-venir" class="card next">
           <div class="next-head">
             <span class="next-icon" aria-hidden="true"><CalendarClock :size="20" /></span>
             <span class="row__main">
@@ -147,7 +147,7 @@ const healthAlert = computed(() => {
         </NuxtLink>
       </div>
 
-      <NuxtLink to="/activites" class="link all">Toutes tes activités <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
+      <NuxtLink to="/journal" class="link all">Ton journal <ChevronRight :size="16" aria-hidden="true" /></NuxtLink>
     </template>
   </div>
 </template>

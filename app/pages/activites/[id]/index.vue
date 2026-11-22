@@ -88,6 +88,9 @@ const estimated = computed(() => estimateHrMax(activities.value))
 const maxHr = computed(() => settings.value.hrMax || estimated.value)
 const maxHrFrom = computed(() => (settings.value.hrMax ? 'set' : estimated.value ? 'seen' : null))
 /** Le réglage de la FC max arrive avec la page « Coureur » des réglages : le lien n'apparaît qu'une fois qu'elle existe */
+/* Retour : vers l'écran d'où l'on vient (connu seulement dans le navigateur, après le montage) */
+const back = ref(backTarget(null))
+onMounted(() => (back.value = backTarget(window.history.state?.back)))
 const hrSettings = computed(() => (router.resolve('/reglages/coureur').matched.length ? '/reglages/coureur' : null))
 
 /* ───── Kilomètres ou tours ───── */
@@ -144,7 +147,7 @@ async function shareImage() {
     <RunPending v-if="state !== 'ready' || !a" :state="state === 'missing' ? 'missing' : 'loading'" />
     <template v-else>
       <div class="topbar">
-        <BackLink to="/activites" label="Activités" />
+        <BackLink :to="back.to" :label="back.label" />
         <div class="top-actions">
           <button type="button" class="card icon-btn" :disabled="sharing" :aria-label="sharing ? 'Création de l’image…' : 'Partager en image'" @click="shareImage">
             <Share2 :size="19" aria-hidden="true" />
