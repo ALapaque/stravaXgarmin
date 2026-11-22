@@ -317,3 +317,50 @@ export function seedTitle(i: { stravaName?: string | null; planTitle?: string | 
   if (watch && !isGenericName(watch)) return watch
   return oneLine(i.ruleTitle) || strava || 'Course'
 }
+
+/* ───── Profils « Prévu » et « Fait », sur le même axe de temps ───── */
+
+/** Intensité relative de chaque nature d'étape (hauteur du profil prévu). */
+export const STEP_LEVEL: Record<StepKind, number> = { warmup: 0.42, cooldown: 0.38, interval: 0.92, recovery: 0.28, rest: 0.18, other: 0.55 }
+/** Vitesse supposée (m/s) pour placer une étape prévue en distance sur l'axe du temps */
+const STEP_SPEED: Record<StepKind, number> = { warmup: 2.4, cooldown: 2.3, interval: 3.3, recovery: 2.1, rest: 2.1, other: 2.5 }
+
+export interface ProfileBar {
+  kind: StepKind
+  /** Durée (s) sur l'axe commun */
+  sec: number
+  /** Hauteur relative, de 0 à 1 */
+  level: number
+  /** done : faite ; partial : entamée ; missed : pas faite (dessinée en fantôme) */
+  state: 'done' | 'partial' | 'missed'
+}
+
+/**
+ * Deux profils alignés : « planned » (chaque étape prévue, à sa durée prévue ou estimée) et « done »
+ * (la durée réellement courue, hauteur selon la vitesse ; la part non faite d'une étape en fantôme).
+ * « total » : longueur commune de l'axe (le plus long des deux).
+ */
+export function planVsDone(steps: StepResult[] | null | undefined): { planned: ProfileBar[]; done: ProfileBar[]; total: number } {
+  const list = Array.isArray(steps) ? steps : []
+  const plannedSec = (s: StepResult) => s.planned.sec ?? (s.planned.m ? s.planned.m / (STEP_SPEED[s.kind] ?? 2.5) : (s.actual?.sec ?? 60))
+  const speeds = list.filter((s) => s.actual && s.actual.sec > 0 && s.actual.m > 0).map((s) => s.actual!.m / s.actual!.sec)
+  const vMax = speeds.length ? Math.max(...speeds) : 0
+  const vMin = speeds.length ? Math.min(...speeds) : 0
+  const levelOf = (s: StepResult) => {
+    const a = s.actual
+    if (!a || !(a.sec > 0) || !(a.m > 0) || vMax <= vMin) return STEP_LEVEL[s.kind] ?? 0.5
+    return 0.22 + 0.78 * ((a.m / a.sec - vMin) / (vMax - vMin))
+  }
+  const planned: ProfileBar[] = list.map((s) => ({ kind: s.kind, sec: plannedSec(s), level: STEP_LEVEL[s.kind] ?? 0.5, state: 'done' }))
+  const done: ProfileBar[] = []
+  for (const s of list) {
+    const p = plannedSec(s)
+    if (s.done) done.push({ kind: s.kind, sec: s.actual?.sec || p, level: levelOf(s), state: 'done' })
+    else if (s.actual && s.actual.sec > 0) {
+      done.push({ kind: s.kind, sec: s.actual.sec, level: levelOf(s), state: 'partial' })
+      if (p > s.actual.sec) done.push({ kind: s.kind, sec: p - s.actual.sec, level: STEP_LEVEL[s.kind] ?? 0.5, state: 'missed' })
+    } else done.push({ kind: s.kind, sec: p, level: STEP_LEVEL[s.kind] ?? 0.5, state: 'missed' })
+  }
+  const sum = (b: ProfileBar[]) => b.reduce((t, x) => t + x.sec, 0)
+  return { planned, done, total: Math.max(sum(planned), sum(done), 1) }
+}

@@ -9,11 +9,9 @@ import { buildDemo, DEMO_SHOES, type DemoData } from '#shared/utils/demo'
 
 // Ré-exporté ici pour ne pas casser les imports existants (« from '~/composables/useActivities' »)
 export type { RunType }
-/** Sorte de texte que l'appli place dans la description Strava : infos de la course, ou analyse IA */
-export type BlockKind = 'infos' | 'analyse'
 
 // Forme des données : shared/utils/model.ts (partagée avec la logique pure et la démo)
-export type { Activity, ChangeSource, EffortKey, Shoe, Weather } from '#shared/utils/model'
+export type { Activity, BlockKind, ChangeSource, EffortKey, Shoe, Weather } from '#shared/utils/model'
 
 /** Libellé (shared/utils/runs.ts) et couleur du thème de chaque type de séance. */
 export const RUN_TYPES = Object.fromEntries(
@@ -109,36 +107,73 @@ export function useActivities() {
   }
 
   /**
-   * Ajoute (ou met à jour) le texte de l'appli dans la description Strava, sans toucher au reste.
+   * Publie le débrief : le nouveau nom (s'il change) et le texte du débrief dans la description, en UN seul
+   * envoi. Le texte se place à la suite de la description, ou à la place du texte du débrief publié avant
+   * (published[id].debrief), sans jamais toucher au reste. Deux lignes d'historique (nom, description).
+   * Description pleine (« full ») : le serveur n'écrit rien, pas même le nom.
    * Renvoie ce qui s'est passé, ou false en cas d'échec (message affiché).
    */
-  async function publishBlock(id: string, kind: BlockKind, text: string, source: ChangeSource): Promise<MergeChange | false> {
+  async function publishDebrief(id: string, o: { name?: string | null; block: string }): Promise<false | { change: MergeChange; renamed: boolean; entries: string[] }> {
     const a = byId(id)
     if (!a) return false
-    const previous = published.value[id]?.[kind]
-    const r = await sendBlock(a, text, previous)
+    const previous = published.value[id]?.debrief
+    const beforeName = a.stravaName
+    const wanted = o.name?.trim()
+    const name = wanted && wanted !== beforeName.trim() ? wanted : undefined
+    const r = await sendBlock(a, o.block, previous, name)
     if (!r) return false
-    a.stravaDescription = r.after
+    const history = useHistory()
+    const entries: string[] = []
+
+    // Description d'abord (l'annulation la retire avant de remettre le nom)
+    if (!r.rejected) {
+      a.stravaDescription = r.after
+      const e = recordBlock(id, 'debrief', r, o.block, previous, 'debrief')
+      if (e) entries.push(e)
+    }
+
+    let renamed = false
+    if (name && r.name?.trim() === name) {
+      a.stravaName = name
+      entries.push(history.record({ activityId: id, field: 'name', before: beforeName, after: name, source: 'debrief' }).id)
+      renamed = true
+    }
+    return { change: r.rejected ? 'none' : r.change, renamed, entries }
+  }
+
+  /** Mémorise le texte placé et trace l'écriture ; renvoie l'identifiant de l'entrée d'historique, s'il y en a une. */
+  function recordBlock(id: string, kind: BlockKind, r: { before: string; after: string; change: MergeChange; block: string }, text: string, previous: string | undefined, source: ChangeSource) {
     if (r.change === 'added' || r.change === 'replaced') {
       // Bloc pas retrouvé après écriture (blancs retouchés au-delà du tolérable) : rien n'est mémorisé,
       // et l'historique garde le texte demandé
       remember(id, kind, r.block)
-      useHistory().record({
+      return useHistory().record({
         activityId: id,
         field: 'description',
         before: r.before,
         after: r.after,
         source,
+        kind,
         block: r.block || normalizeNewlines(text).trim(),
         previousBlock: r.change === 'replaced' ? normalizeNewlines(previous).trim() : '',
-      })
-    } else if (r.change === 'removed') {
-      remember(id, kind, '')
-    } else if (r.change === 'none' && hasBlock(r.after, text)) {
-      // Déjà présent (ajouté depuis un autre appareil, par exemple) : on le reconnaît comme publié
-      remember(id, kind, normalizeNewlines(text).trim())
+      }).id
     }
-    return r.change
+    if (r.change === 'removed') {
+      remember(id, kind, '')
+      return useHistory().record({
+        activityId: id,
+        field: 'description',
+        before: r.before,
+        after: r.after,
+        source,
+        kind,
+        block: '',
+        previousBlock: normalizeNewlines(previous).trim(),
+      }).id
+    }
+    // Déjà présent (ajouté depuis un autre appareil, par exemple) : on le reconnaît comme publié
+    if (r.change === 'none' && hasBlock(r.after, text)) remember(id, kind, normalizeNewlines(text).trim())
+    return null
   }
 
   /** Relit la description réelle ; oublie les textes de l'appli qui n'y sont plus (retirés ou retouchés sur Strava). */
@@ -192,7 +227,7 @@ export function useActivities() {
     a.typeReason = r.reason || undefined
   }
 
-  return { activities, sorted, byId, isSynced, needsReview, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription, typeOverrides, setType }
+  return { activities, sorted, byId, isSynced, needsReview, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishDebrief, refreshDescription, typeOverrides, setType }
 }
 
 /** Les n derniers jours jusqu'à TODAY inclus, du plus ancien au plus récent. */
@@ -224,6 +259,12 @@ export function rememberBlock(id: string, kind: BlockKind, block: string) {
   if (Object.keys(mine).length) next[id] = mine
   else delete next[id]
   published.value = next
+  // Le débrief garde le reflet du texte publié (Debrief.block)
+  if (kind === 'debrief') {
+    const debriefs = useDebriefState()
+    const d = debriefs.value?.[id]
+    if (d && (d.block ?? '') !== block) debriefs.value = { ...debriefs.value, [id]: { ...d, block: block || null } }
+  }
 }
 
 /**
@@ -259,17 +300,23 @@ const errorMessage = (e: unknown) => (e as { data?: { statusMessage?: string } }
  * si « text » est vide). Le serveur relit la description juste avant d'écrire ; en démo, la même fusion
  * est faite sur place. Renvoie la description avant/après et le texte réellement placé, ou null (message affiché).
  */
-export async function sendBlock(a: Activity, text: string, previous?: string) {
+export async function sendBlock(
+  a: Activity,
+  text: string,
+  previous?: string,
+  name?: string,
+): Promise<{ before: string; after: string; change: MergeChange; block: string; name: string; rejected?: boolean } | null> {
   const prev = normalizeNewlines(previous).trim()
   if (!a.stravaId) {
     const before = normalizeNewlines(a.stravaDescription)
     const r = mergeDescription(before, text, prev)
-    return { before, after: r.text, change: r.change, block: r.block }
+    // Comme le serveur : description pleine, rien n'est écrit (pas même le nom)
+    return { before, after: r.text, change: r.change, block: r.block, name: name && r.change !== 'full' ? name : a.stravaName }
   }
   try {
-    const res = await $fetch<{ description: string; previousDescription: string; change: MergeChange }>(
+    const res = await $fetch<{ name: string; description: string; previousDescription: string; change: MergeChange }>(
       `/api/strava/activities/${a.stravaId}`,
-      { method: 'PUT', body: { descriptionBlock: { text, previous: prev || undefined } } },
+      { method: 'PUT', body: { ...(name ? { name } : {}), descriptionBlock: { text, previous: prev || undefined } } },
     )
     const before = normalizeNewlines(res.previousDescription)
     const after = normalizeNewlines(res.description)
@@ -279,13 +326,14 @@ export async function sendBlock(a: Activity, text: string, previous?: string) {
       // Description inchangée : Strava n'a rien pris, on peut réessayer
       if (after === before) {
         useToast().show('Strava n’a pas pris la modification, réessaie')
-        return null
+        // Le nom envoyé avec, lui, a pu être pris : on le dit pour qu'il soit tracé
+        return name ? { before, after, change: 'none', block: '', name: res.name, rejected: true } : null
       }
       // Elle a changé mais le bloc n'y est pas retrouvé : le texte est écrit (réessayer créerait un doublon),
       // seulement on ne sait pas le retrouver : rien ne sera mémorisé
       block = ''
     }
-    return { before, after, change: res.change, block }
+    return { before, after, change: res.change, block, name: res.name }
   } catch (e) {
     useToast().show(errorMessage(e) ?? 'Strava a refusé la modification')
     return null

@@ -1,38 +1,28 @@
 <script setup lang="ts">
-import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
+import { ClipboardCheck, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
 
 const route = useRoute()
-const { byId, isSynced, needsReview, setStravaName, setGarminName, isPublished, publishBlock, refreshDescription } = useActivities()
+const { isSynced, setStravaName, setGarminName } = useActivities()
 const { accounts } = useAccounts()
 const { recordsOf } = useRecords()
-const { describe } = useDescription()
 const { undo, entries } = useHistory()
 const { show } = useToast()
 const { notify } = useNotifications()
 const settings = useSettings()
+const { get: getDebrief, toDebrief } = useDebriefs()
 
-const a = computed(() => byId(String(route.params.id)))
-if (!a.value) throw createError({ statusCode: 404, statusMessage: 'Activité introuvable' })
+// Course ouverte par son adresse : jamais de 404 avant d'avoir rechargé l'état gardé et synchronisé
+const { run: a, state } = useRunPage()
+
+/** « Débriefer », ou « Modifier le débrief » une fois fait */
+const debriefDone = computed(() => (a.value ? getDebrief(a.value.id)?.status === 'done' : false))
+const debriefDot = computed(() => Boolean(a.value) && toDebrief.value.some((x) => x.id === a.value!.id))
 
 useHead({ title: () => `${a.value ? displayTitle(a.value).title : 'Course'} · stravaXgarmin` })
 
 const synced = computed(() => (a.value ? isSynced(a.value) : false))
 const records = computed(() => (a.value ? recordsOf(a.value) : []))
 const paceSec = computed(() => (a.value ? Math.round(a.value.durationSec / a.value.distanceKm) : 0))
-const description = computed(() => (a.value ? describe(a.value) : ''))
-const descriptionAdded = computed(() => (a.value ? isPublished(a.value.id, 'infos') : false))
-
-/*
- * Description réelle, relue une fois par visite (mode réel) : c'est elle qu'on montre,
- * pour que le coureur voie que sa note reste en place. En démo, elle est déjà connue.
- */
-const descState = ref<'idle' | 'loading' | 'error'>('idle')
-onMounted(async () => {
-  if (!a.value?.stravaId) return
-  descState.value = 'loading'
-  descState.value = (await refreshDescription(a.value.id)) ? 'idle' : 'error'
-})
-const publishing = ref(false)
 
 // Temps au km : barre plus haute = km plus rapide, le plus rapide mis en avant
 const splits = computed(() => a.value?.splits ?? [])
@@ -83,7 +73,7 @@ const { tab, direction } = useTab(['chiffres', 'nom'] as const, 'chiffres')
 // Rubriques affichées sur la deuxième face de la barre du bas
 useSubnav(`course-${String(route.params.id)}`, 'Rubriques de la course', () => [
   { id: 'chiffres', label: 'Chiffres', icon: 'numbers' },
-  { id: 'nom', label: 'Nom', icon: 'name', dot: Boolean(a.value) && needsReview(a.value!) },
+  { id: 'nom', label: 'Nom', icon: 'name' },
 ], tab)
 
 const sharing = ref(false)
@@ -118,21 +108,12 @@ async function shareImage() {
     sharing.value = false
   }
 }
-
-async function addDescription() {
-  if (!a.value || !description.value) return
-  publishing.value = true
-  const change = await publishBlock(a.value.id, 'infos', description.value, 'description')
-  publishing.value = false
-  if (change === 'added' || change === 'replaced') show('Texte ajouté à ta description Strava', undoLast('Texte retiré de ta description'))
-  else if (change === 'none') show('Ce texte est déjà dans ta description Strava.')
-  else if (change === 'full') show('Ta description Strava est déjà trop longue : rien n’a été ajouté.')
-}
 </script>
 
 <template>
   <div class="stack stack--wide detail">
-    <template v-if="a">
+    <RunPending v-if="state !== 'ready' || !a" :state="state === 'missing' ? 'missing' : 'loading'" />
+    <template v-else>
       <BackLink to="/activites" label="Activités" />
 
       <section class="card hero" :style="{ '--c': typeColor }">
@@ -152,15 +133,12 @@ async function addDescription() {
         </div>
       </section>
 
-      <!-- Trois actions toujours sous la main -->
+      <!-- Deux actions toujours sous la main : le Débrief (titre, analyse et publication en un seul écran) et le partage -->
       <div class="actions">
-        <NuxtLink :to="`/activites/${a.id}/titre`" class="card action">
-          <Sparkles :size="20" aria-hidden="true" />
-          <span>Titre</span>
-        </NuxtLink>
-        <NuxtLink :to="`/activites/${a.id}/analyse`" class="card action">
-          <ChartLine :size="20" aria-hidden="true" />
-          <span>Analyse</span>
+        <NuxtLink :to="`/activites/${a.id}/debrief`" class="card action action--main" :class="{ todo: debriefDot }">
+          <ClipboardCheck :size="20" aria-hidden="true" />
+          <span>{{ debriefDone ? 'Modifier le débrief' : 'Débriefer' }}</span>
+          <span v-if="debriefDot" class="todo-dot" aria-label="à faire" />
         </NuxtLink>
         <button type="button" class="card action" :disabled="sharing" @click="shareImage">
           <Share2 :size="20" aria-hidden="true" />
@@ -170,6 +148,7 @@ async function addDescription() {
 
       <Transition :name="`tab-${direction}`" mode="out-in">
         <div v-if="tab === 'chiffres'" key="chiffres" class="panel">
+          <DebriefSummary v-if="debriefDone" :activity="a" />
           <div v-for="r in records" :key="r.key" class="block block--secondary record">
             <span class="trophy" aria-hidden="true"><Trophy :size="22" /></span>
             <span class="row__main">
@@ -243,29 +222,6 @@ async function addDescription() {
           <button v-if="!synced && canRenameGarmin" type="button" class="btn btn--secondary" :disabled="busy" @click="copyToGarmin">
             Ou copier le nom Strava vers Garmin
           </button>
-          <section v-if="description" class="card card--pad desc" aria-labelledby="desc-title">
-            <div class="desc-head">
-              <h2 id="desc-title" class="eyebrow">Description Strava</h2>
-              <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
-            </div>
-            <div class="desc-part">
-              <p class="label">Sur Strava aujourd’hui</p>
-              <p v-if="descState === 'loading'" class="desc-note">Lecture de ta description…</p>
-              <p v-else-if="descState === 'error'" class="desc-note">Impossible de lire ta description pour l’instant.</p>
-              <p v-else-if="a.stravaDescription" class="desc-current">{{ a.stravaDescription }}</p>
-              <p v-else class="desc-note">Pas encore de description sur Strava.</p>
-            </div>
-            <template v-if="!descriptionAdded">
-              <div class="desc-part desc-part--add">
-                <p class="label">Ce que l’appli ajoute</p>
-                <p class="desc-text">{{ description }}</p>
-              </div>
-              <button type="button" class="btn btn--secondary btn--sm" :disabled="publishing || descState === 'loading'" @click="addDescription">
-                Ajouter à la suite
-              </button>
-              <p class="fine">Ton texte reste tel quel : celui de l’appli se place en dessous.</p>
-            </template>
-          </section>
         </div>
       </Transition>
     </template>
@@ -418,8 +374,27 @@ async function addDescription() {
 /* ── Actions ── */
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 2fr 1fr;
   gap: 8px;
+}
+
+.action--main {
+  flex-direction: row;
+  justify-content: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.action--main.todo {
+  box-shadow: var(--surface-shadow), 0 0 0 1px color-mix(in srgb, var(--accent-text) 45%, transparent);
+}
+
+.todo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-text);
+  box-shadow: 0 0 10px var(--accent-text);
 }
 
 .action {
@@ -576,58 +551,6 @@ async function addDescription() {
 .names-head {
   justify-content: space-between;
   min-height: 52px;
-}
-
-.desc {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.desc-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.desc-text {
-  margin: 0;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--ink-2);
-}
-
-.desc .btn {
-  align-self: flex-start;
-}
-
-.desc-part {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Le texte de l'appli, en attente : séparé de la description actuelle par un filet en pointillés */
-.desc-part--add {
-  padding-top: 12px;
-  border-top: 1px dashed var(--line-strong);
-}
-
-.desc-current {
-  margin: 0;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  line-height: 1.55;
-  color: var(--ink);
-}
-
-.desc-note {
-  margin: 0;
-  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

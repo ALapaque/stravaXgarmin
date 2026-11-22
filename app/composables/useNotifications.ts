@@ -5,7 +5,7 @@ export type { AppNotification, NotifKind } from '#shared/utils/model'
 export const NOTIF_KINDS: Record<NotifKind, { label: string; hint: string }> = {
   titles: { label: 'Titres appliqués', hint: 'Quand un nom est copié ou publié sur Strava' },
   records: { label: 'Records', hint: 'Quand tu bats un record personnel' },
-  review: { label: 'Courses à valider', hint: 'Quand un nom attend ton accord' },
+  review: { label: 'Courses à débriefer', hint: 'Quand une séance attend son débrief' },
   recap: { label: 'Récaps', hint: 'Chaque lundi et chaque début de mois' },
 }
 

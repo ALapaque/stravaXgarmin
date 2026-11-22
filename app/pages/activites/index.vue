@@ -1,11 +1,12 @@
 <script setup lang="ts">
 useHead({ title: 'Activités · stravaXgarmin' })
 
-const { sorted: activities, toReview } = useActivities()
+const { sorted: activities } = useActivities()
+const { toDebrief } = useDebriefs()
 const { accounts } = useAccounts()
 const { active: demo } = useDemo()
 const filter = ref<'all' | 'review'>('all')
-const shown = computed(() => (filter.value === 'all' ? activities.value : toReview.value))
+const shown = computed(() => (filter.value === 'all' ? activities.value : toDebrief.value))
 const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceKm, 0))
 </script>
 
@@ -22,14 +23,14 @@ const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceK
     <div class="segmented" role="group" aria-label="Filtrer les activités">
       <button type="button" :aria-pressed="filter === 'all'" @click="filter = 'all'">Toutes</button>
       <button type="button" :aria-pressed="filter === 'review'" @click="filter = 'review'">
-        À revoir ({{ toReview.length }})
+        À débriefer ({{ toDebrief.length }})
       </button>
     </div>
 
     <div v-if="shown.length" class="card list list--grid">
       <ActivityRow v-for="a in shown" :key="a.id" :activity="a" />
     </div>
-    <p v-else class="card card--pad lead">{{ activities.length ? 'Aucun nom par défaut, rien à revoir.' : 'Aucune course sur les 60 derniers jours.' }}</p>
+    <p v-else class="card card--pad lead">{{ activities.length ? 'Tout est débriefé : aucune course n’attend.' : 'Aucune course sur les 60 derniers jours.' }}</p>
     </template>
   </div>
 </template>

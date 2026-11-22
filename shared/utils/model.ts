@@ -115,7 +115,13 @@ export interface PlanSession {
 /* ───── Historique, notifications, forme et chaussures ───── */
 
 /** D'où vient un changement fait par l'appli sur Strava ou Garmin */
-export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse'
+export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse' | 'debrief'
+
+/**
+ * Sorte de texte que l'appli place dans la description Strava : le débrief (seule sorte publiée
+ * depuis la phase 3), et les anciennes « infos » et « analyse » (leurs entrées restent annulables).
+ */
+export type BlockKind = 'infos' | 'analyse' | 'debrief'
 
 export interface HistoryEntry {
   id: string
@@ -128,6 +134,8 @@ export interface HistoryEntry {
   block?: string
   /** Description : texte de l'appli que ce bloc a remplacé, '' s'il a été ajouté à la suite */
   previousBlock?: string
+  /** Description : sorte du texte (absente des anciennes entrées : « analyse » si source analyse, sinon « infos ») */
+  kind?: BlockKind
   source: ChangeSource
   at: string
   undone?: boolean

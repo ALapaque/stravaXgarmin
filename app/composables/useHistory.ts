@@ -1,7 +1,7 @@
 // Forme des données : shared/utils/model.ts
 import type { HistoryEntry } from '#shared/utils/model'
 export type { HistoryEntry } from '#shared/utils/model'
-import type { Activity, BlockKind, ChangeSource } from './useActivities'
+import type { Activity, ChangeSource } from './useActivities'
 import { pushField, rememberBlock, sendBlock } from './useActivities'
 
 export const SOURCE_LABELS: Record<ChangeSource, string> = {
@@ -13,6 +13,7 @@ export const SOURCE_LABELS: Record<ChangeSource, string> = {
   description: 'Description enrichie',
   strava: 'Depuis Strava',
   analyse: 'Analyse IA',
+  debrief: 'Débrief',
 }
 
 export const demoHistory = (): HistoryEntry[] => demoData().history
@@ -60,8 +61,15 @@ export function useHistory() {
       return false
     }
     a.stravaDescription = r.after
-    const kind: BlockKind = entry.source === 'analyse' ? 'analyse' : 'infos'
+    // Les anciennes entrées n'ont pas de sorte : règle d'avant la phase 3
+    const kind: BlockKind = entry.kind ?? (entry.source === 'analyse' ? 'analyse' : 'infos')
     rememberBlock(a.id, kind, r.block)
+    // Débrief retiré de Strava : la course redevient « à débriefer » (ce qui a été saisi est gardé)
+    if (kind === 'debrief' && !r.block) {
+      const debriefs = useDebriefState()
+      const d = debriefs.value?.[a.id]
+      if (d) debriefs.value = { ...debriefs.value, [a.id]: { ...d, status: 'draft', publishedAt: null } }
+    }
     return true
   }
 

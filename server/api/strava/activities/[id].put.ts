@@ -42,6 +42,8 @@ export default defineEventHandler(async (event) => {
     merge = { previousDescription, change: r.change }
     // Texte envoyé avec des « \n » (mergeDescription a déjà normalisé)
     if (r.change === 'added' || r.change === 'replaced' || r.change === 'removed') update.description = r.text
+    // Description pleine : rien n'est écrit, pas même le nom envoyé avec (le débrief n'est pas à moitié publié)
+    if (r.change === 'full') delete update.name
   }
 
   if (!Object.keys(update).length && !merge) throw createError({ statusCode: 400, statusMessage: 'Rien à modifier' })

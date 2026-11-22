@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Sparkles, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight, CircleAlert } from 'lucide-vue-next'
+import { ClipboardCheck, ChevronRight, Bell, CalendarClock, Heart, ArrowUpRight, CircleAlert } from 'lucide-vue-next'
 
 useHead({ title: 'Accueil · stravaXgarmin' })
 
-const { sorted, toReview, lastWeek } = useActivities()
+const { sorted, lastWeek } = useActivities()
+const { toDebrief } = useDebriefs()
 const { unread } = useNotifications()
 const { accounts } = useAccounts()
 const { active: demo } = useDemo()
@@ -27,7 +28,8 @@ const hero = computed(() => sorted.value[0])
 const latest = computed(() => sorted.value.slice(1, 4))
 const { next: nextSession } = usePlan()
 const heroDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Brussels' })
-const firstToReview = computed(() => toReview.value[0])
+// Courses à débriefer : la carte mène au Débrief de la plus récente
+const firstToDebrief = computed(() => toDebrief.value[0])
 
 // Lecture principale en échec (Strava, ou les noms Garmin) : une alerte discrète, seulement une fois la page montée
 const { summary: health } = useHealth()
@@ -135,11 +137,11 @@ const healthAlert = computed(() => {
             <span v-if="nextSession.provider" class="provider">{{ nextSession.provider }}</span>
           </p>
         </NuxtLink>
-        <NuxtLink v-if="firstToReview" :to="`/activites/${firstToReview.id}/titre`" class="block block--secondary ai">
-          <span class="ai-icon" aria-hidden="true"><Sparkles :size="22" /></span>
+        <NuxtLink v-if="firstToDebrief" :to="`/activites/${firstToDebrief.id}/debrief`" class="block block--secondary ai">
+          <span class="ai-icon" aria-hidden="true"><ClipboardCheck :size="22" /></span>
           <span class="row__main">
-            <span class="title">{{ toReview.length }} titre{{ toReview.length > 1 ? 's' : '' }} à revoir</span>
-            <span class="ai-text">« {{ firstToReview.stravaName }} » a des remplaçants prêts.</span>
+            <span class="title">{{ toDebrief.length }} course{{ toDebrief.length > 1 ? 's' : '' }} à débriefer</span>
+            <span class="ai-text">« {{ displayTitle(firstToDebrief).title }} » : vingt secondes pour boucler ta séance.</span>
           </span>
           <ChevronRight :size="20" aria-hidden="true" />
         </NuxtLink>

@@ -47,6 +47,8 @@ export default defineNuxtPlugin(() => {
         }
       }, { deep: true })
     }
+    // Les pages qui dépendent de l'état gardé (une course ouverte directement) peuvent conclure
+    useRestored().value = true
   })
 })
 

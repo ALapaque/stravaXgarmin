@@ -95,6 +95,7 @@ export function useSync() {
   const details = useState<Record<number, RunDetails>>('stravaDetails', () => ({}))
   const garminRecords = useGarminRecords()
   const plan = usePlan()
+  const debriefs = useDebriefs()
   const fitness = useFitness()
   const { track, refreshDemo } = useHealth()
   const syncing = useState('syncing', () => false)
@@ -145,7 +146,8 @@ export function useSync() {
       historyState.value = historyState.value.filter((e) => !e.id.startsWith('seed-'))
       notifState.value = notifState.value.filter((n) => !/^n\d$/.test(n.id))
 
-      if (settings.value.autoSync) await autoApply()
+      const renamed = settings.value.autoSync ? await autoApply() : new Set<string>()
+      notifyDebriefs(renamed)
 
       // En arrière-plan : records et temps au km, sans bloquer la synchro.
       // Chaque échec est noté dans l'état des connexions (useHealth) au lieu de passer inaperçu.
@@ -179,10 +181,11 @@ export function useSync() {
    * - une règle ne remplace qu'un nom générique (« Morning Run »…), jamais un nom écrit par toi ;
    * - le nom Garmin remplace un nom générique, ou n'importe quel nom si « Écraser » est activé.
    */
-  async function autoApply() {
+  async function autoApply(): Promise<Set<string>> {
+    const renamed = new Set<string>()
     if (!settings.value.autoSince) {
       settings.value.autoSince = new Date().toISOString()
-      return
+      return renamed
     }
     const since = settings.value.autoSince
     const touched = new Set(historyState.value.map((e) => e.activityId))
@@ -197,6 +200,7 @@ export function useSync() {
         overwriteEdited: settings.value.overwriteEdited,
       })
       if (decision && (await setStravaName(a.id, decision.target, decision.source))) {
+        renamed.add(a.id)
         notify({ kind: 'titles', title: 'Nom appliqué sur Strava', body: decision.target, to: `/activites/${a.id}` })
       }
 
@@ -204,6 +208,19 @@ export function useSync() {
       if (settings.value.garmin.rename && a.garminId && isGenericName(a.garminName) && rule) {
         await setGarminName(a.id, rule, 'regle')
       }
+    }
+    return renamed
+  }
+
+  /**
+   * Course à débriefer : « Ta séance attend son débrief » (lien vers le Débrief), une seule fois par course,
+   * à la place de « Nom appliqué » quand la synchro n'a rien renommé. Les trois plus récentes au plus.
+   */
+  function notifyDebriefs(renamed: Set<string>) {
+    for (const a of debriefs.toDebrief.value.slice(0, 3)) {
+      const to = `/activites/${a.id}/debrief`
+      if (renamed.has(a.id) || notifState.value.some((n) => n.to === to)) continue
+      notify({ kind: 'review', title: 'Ta séance attend son débrief', body: displayTitle(a).title, to })
     }
   }
 

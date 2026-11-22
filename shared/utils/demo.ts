@@ -13,7 +13,7 @@ import { streamFromLaps, type RunStream } from './streams'
 import { flattenSteps, stepDistance, stepDuration, type PlanStep } from './workout'
 
 /** À changer quand la forme des données de démo change : une démo gardée plus ancienne est régénérée. */
-export const DEMO_VERSION = 2
+export const DEMO_VERSION = 3
 
 export const DEMO_SHOES: Record<'peg' | 'vf', Shoe> = {
   peg: { name: 'Nike Pegasus 41', km: 612 },
@@ -490,7 +490,7 @@ export function buildDemo(today: string): DemoData {
   const monthName = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${lastMonday}T12:00:00Z`))
 
   const notifications: AppNotification[] = [
-    { id: 'n1', kind: 'review', title: '1 course attend ton avis', body: `« ${a2.stravaName} » peut recevoir un vrai titre.`, to: '/activites/a2', at: later(a2.startedAt, 70), read: false },
+    { id: 'n1', kind: 'review', title: 'Ta séance attend son débrief', body: '8x400m (R=1’)', to: '/activites/a2/debrief', at: later(a2.startedAt, 70), read: false },
     { id: 'n2', kind: 'recap', title: 'Ton récap de la semaine est prêt', body: `${formatKm(lastWeekKm)} km sur la semaine du ${monthName}.`, to: '/recap', at: at(monday, 8), read: false },
     { id: 'n3', kind: 'records', title: 'Nouveau record sur 10 km', body: `${formatDuration(race.bestEfforts['10k']!)} au 10 km des Étangs.`, to: `/activites/${race.id}`, at: later(race.startedAt, 80), read: true },
     { id: 'n4', kind: 'records', title: 'Nouveau record sur 5 km', body: `${formatDuration(race.bestEfforts['5k']!)} pendant le 10 km des Étangs.`, to: `/activites/${race.id}`, at: later(race.startedAt, 81), read: true },

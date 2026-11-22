@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StepResult } from '../shared/utils/compliance'
-import { composeBlock, DEFAULT_PARTS, describeContext, effortTimes, mergeDebrief, needsDebrief, OUTCOME_LABELS, partsOf, RPE_LABELS, seedTitle, stepLines } from '../shared/utils/debrief'
+import { composeBlock, DEFAULT_PARTS, describeContext, effortTimes, mergeDebrief, needsDebrief, OUTCOME_LABELS, partsOf, planVsDone, RPE_LABELS, seedTitle, stepLines } from '../shared/utils/debrief'
 
 const SINCE = '2026-11-18T12:00:00.000Z'
 const run = (o: Partial<{ id: string; startedAt: string; stravaName: string }> = {}) => ({
@@ -179,5 +179,26 @@ describe('seedTitle', () => {
     expect(seedTitle({ stravaName: 'Course à pied en soirée', planTitle: '8x400m (R=1’)' })).toBe('8x400m (R=1’)')
     expect(seedTitle({ stravaName: 'Morning Run', garminName: 'Tapis de course - Côtes', ruleTitle: 'Footing' })).toBe('Côtes')
     expect(seedTitle({ stravaName: 'Morning Run', garminName: 'Course à pied', ruleTitle: 'Footing 8 km' })).toBe('Footing 8 km')
+  })
+})
+
+describe('planVsDone', () => {
+  const s = (o: Partial<StepResult>): StepResult => ({ kind: 'interval', planned: { sec: null, m: 400 }, done: true, fraction: 1, actual: { sec: 120, m: 400, hr: 160 }, exact: true, ...o })
+  it('étapes faites à leur durée réelle, la part non faite en fantôme, axe commun', () => {
+    const r = planVsDone([
+      s({ kind: 'warmup', planned: { sec: 600, m: null }, actual: { sec: 600, m: 1500, hr: 120 } }),
+      s({}),
+      s({ done: false, fraction: 0.5, actual: { sec: 60, m: 200, hr: 165 } }),
+      s({ done: false, fraction: 0, actual: null }),
+    ])
+    expect(r.planned.map((b) => Math.round(b.sec))).toEqual([600, 121, 121, 121])
+    expect(r.done.map((b) => [b.state, Math.round(b.sec)])).toEqual([['done', 600], ['done', 120], ['partial', 60], ['missed', 61], ['missed', 121]])
+    expect(Math.round(r.total)).toBe(964)
+    // Le plus rapide tout en haut, le plus lent en bas
+    expect(r.done[1]!.level).toBeCloseTo(1)
+    expect(r.done[0]!.level).toBeCloseTo(0.22)
+  })
+  it('rien : profils vides', () => {
+    expect(planVsDone(null)).toEqual({ planned: [], done: [], total: 1 })
   })
 })

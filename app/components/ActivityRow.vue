@@ -3,9 +3,10 @@ import { ChevronRight } from 'lucide-vue-next'
 import type { Activity } from '~/composables/useActivities'
 
 const props = defineProps<{ activity: Activity }>()
-const { needsReview } = useActivities()
 const { recordsOf } = useRecords()
+const { toDebrief } = useDebriefs()
 const a = computed(() => props.activity)
+const todo = computed(() => toDebrief.value.some((x) => x.id === a.value.id))
 const record = computed(() => recordsOf(a.value)[0])
 const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Brussels' })
 </script>
@@ -22,11 +23,11 @@ const shortDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'short', day: 'num
         <span class="num-s">{{ formatKm(a.distanceKm) }} km</span>
         <span class="num-s">{{ formatPace(a.durationSec, a.distanceKm) }}/km</span>
       </span>
-      <span v-if="record || needsReview(a) || a.indoor" class="tags">
+      <span v-if="record || todo || a.indoor" class="tags">
         <!-- Sur tapis : le lieu est une étiquette, pour garder la ligne des chiffres sur une seule ligne -->
         <span v-if="a.indoor" class="tag tag--place">{{ placeLabel(a) }}</span>
         <span v-if="record" class="tag tag--rec">Record {{ record.label }}</span>
-        <span v-if="needsReview(a)" class="tag tag--todo">Nom à revoir</span>
+        <span v-if="todo" class="tag tag--todo">À débriefer</span>
       </span>
     </span>
     <ChevronRight class="go" :size="18" aria-hidden="true" />
