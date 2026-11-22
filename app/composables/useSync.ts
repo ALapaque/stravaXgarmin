@@ -2,7 +2,7 @@
  * Passage des données de démo aux vraies données Strava et Garmin.
  * Sans base de données, la synchro se fait à l'ouverture de l'appli.
  */
-import type { Activity, EffortKey } from './useActivities'
+import type { Activity, EffortKey, RunType } from './useActivities'
 import type { GarminRecord } from './useRecords'
 
 export interface Accounts {
@@ -41,15 +41,18 @@ export function useAccounts() {
   return { accounts, refresh, disconnect, isDemo }
 }
 
-function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits): Activity {
+function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits, override?: RunType): Activity {
   const km = Math.round(s.distance / 100) / 10
-  const { type, reason } = classify(s, g, h)
+  const auto = classify(s, g, h)
+  const { type, reason } = withOverride(auto, override)
   return {
     id: `s${s.id}`,
     stravaId: s.id,
     garminId: g?.id,
     type,
     typeReason: reason,
+    autoType: auto.type,
+    autoReason: auto.reason,
     startedAt: s.start_date,
     place: s.location_city ?? '',
     distanceKm: km,
@@ -67,7 +70,7 @@ function toActivity(s: StravaRun, g: GarminRun | undefined, h: Habits): Activity
 
 export function useSync() {
   const { accounts, refresh } = useAccounts()
-  const { activities, setStravaName, setGarminName } = useActivities()
+  const { activities, setStravaName, setGarminName, typeOverrides } = useActivities()
   const { ruleTitle } = useNaming()
   const { notify } = useNotifications()
   const settings = useSettings()
@@ -116,7 +119,7 @@ export function useSync() {
       const known = new Map(activities.value.map((a) => [a.id, a.stravaDescription]))
       activities.value = strava
         .map((s) => {
-          const a = withDetails(toActivity(s, matchGarmin(s, garmin), habits), details.value[s.id])
+          const a = withDetails(toActivity(s, matchGarmin(s, garmin), habits, typeOverrides.value[`s${s.id}`]), details.value[s.id])
           const description = known.get(a.id)
           return description === undefined ? a : { ...a, stravaDescription: description }
         })

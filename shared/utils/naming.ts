@@ -22,6 +22,7 @@ export const DEFAULT_TEMPLATES: Record<RunType, string> = {
   easy: 'Footing {distance} km · {lieu}',
   recovery: 'Footing récup {distance} km',
   tempo: 'Tempo {distance} km à {allure} /km',
+  race: 'Compétition · {distance} km en {durée}',
 }
 
 /*

@@ -4,7 +4,7 @@
  * Chargé une fois l'appli hydratée et au repos (pages asynchrones comprises),
  * pour ne pas créer d'écart avec le rendu serveur.
  */
-const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health'] as const
+const KEYS = ['settings', 'activities', 'history', 'notifications', 'stravaDetails', 'garminRecords', 'aiResults', 'plan', 'forme', 'gear', 'published', 'health', 'typeOverrides'] as const
 const VERSION = 2
 const prefix = `sxg:v${VERSION}:`
 

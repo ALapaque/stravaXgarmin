@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classify, habitsOf, matchGarmin, type GarminRun, type StravaRun } from '../shared/utils/classify'
+import { classify, habitsOf, matchGarmin, withOverride, type GarminRun, type StravaRun } from '../shared/utils/classify'
 
 // Courses inventées
 const run = (o: Partial<StravaRun> = {}): StravaRun => ({
@@ -92,5 +92,25 @@ describe('matchGarmin', () => {
 
   it('à 5 minutes d’écart : pas trouvée', () => {
     expect(matchGarmin(s, [garmin({ startTimeGMT: '2026-11-17 17:47:00' })])).toBeUndefined()
+  })
+})
+
+describe('compétitions', () => {
+  it('marquée compétition sur Strava (workout_type 1), avant toute autre règle', () => {
+    expect(classify(run({ workout_type: 1, name: '10 km des Étangs' }), garmin({ effect: 'VO2MAX' }), habits)).toEqual({ type: 'race', reason: 'marquée compétition sur Strava' })
+  })
+  it('titre étiqueté [RACE]', () => {
+    expect(classify(run({ name: '[RACE] - Semi des Collines' }), undefined, habits)).toEqual({ type: 'race', reason: 'd’après son nom' })
+    // « race » au milieu d'un nom ne suffit pas
+    expect(classify(run({ name: 'Footing après la race' }), undefined, habits).type).not.toBe('race')
+  })
+})
+
+describe('withOverride', () => {
+  const auto = { type: 'easy' as const, reason: 'selon ton allure habituelle' }
+  it('le choix manuel gagne ; absent ou inconnu : type deviné', () => {
+    expect(withOverride(auto, 'race')).toEqual({ type: 'race', reason: 'choisi par toi' })
+    expect(withOverride(auto, null)).toEqual(auto)
+    expect(withOverride(auto, 'sprint' as never)).toEqual(auto)
   })
 })

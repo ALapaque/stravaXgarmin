@@ -1,5 +1,5 @@
-/** Les cinq types de séance reconnus par l'appli, et leur nom affiché. */
-export type RunType = 'long' | 'easy' | 'interval' | 'recovery' | 'tempo'
+/** Les six types de séance reconnus par l'appli, et leur nom affiché. */
+export type RunType = 'long' | 'easy' | 'interval' | 'recovery' | 'tempo' | 'race'
 
 export const RUN_LABELS: Record<RunType, string> = {
   long: 'Sortie longue',
@@ -7,4 +7,5 @@ export const RUN_LABELS: Record<RunType, string> = {
   interval: 'Fractionné',
   recovery: 'Récupération',
   tempo: 'Tempo',
+  race: 'Compétition',
 }

@@ -38,6 +38,9 @@ export interface Activity {
   gearId?: string
   /** Pourquoi ce type : « selon ta montre », « selon ton allure »… */
   typeReason?: string
+  /** Type deviné par l'appli, gardé quand tu en choisis un autre (pour pouvoir revenir en arrière) */
+  autoType?: RunType
+  autoReason?: string
   /** Tracé GPS simplifié (polyline encodée de Strava) */
   route?: string
   /** Distances où Strava a compté cette course comme record personnel (pr_rank = 1) */
@@ -89,7 +92,7 @@ const SKIES = ['ensoleillé', 'nuageux', 'couvert', 'pluie fine', 'brouillard']
 function generateHistory(): Activity[] {
   const rand = prng(42)
   const runs: Activity[] = []
-  type DemoType = Exclude<RunType, 'easy'>
+  type DemoType = Exclude<RunType, 'easy' | 'race'>
   const plan: Record<number, DemoType> = { 2: 'interval', 4: 'recovery', 6: 'tempo', 0: 'long' }
   const places: Record<DemoType, string[]> = {
     interval: ['piste'],
@@ -332,7 +335,28 @@ export function useActivities() {
     return true
   }
 
-  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription }
+  /*
+   * Type choisi à la main (gardé dans le navigateur) : il gagne sur celui deviné par l'appli,
+   * y compris aux synchros suivantes. « null » rend le type deviné.
+   */
+  const typeOverrides = useTypeOverrides()
+  function setType(id: string, type: RunType | null) {
+    const next = { ...typeOverrides.value }
+    if (type) next[id] = type
+    else delete next[id]
+    typeOverrides.value = next
+    const a = byId(id)
+    if (!a) return
+    if (!a.autoType) {
+      a.autoType = a.type
+      a.autoReason = a.typeReason
+    }
+    const r = withOverride({ type: a.autoType, reason: a.autoReason ?? '' }, type)
+    a.type = r.type
+    a.typeReason = r.reason || undefined
+  }
+
+  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription, typeOverrides, setType }
 }
 
 /** Les n derniers jours jusqu'à TODAY inclus, du plus ancien au plus récent. */
@@ -347,6 +371,9 @@ export function lastDays(n: number) {
     }
   })
 }
+
+/** Types choisis à la main, par course (gardés dans le navigateur). */
+export const useTypeOverrides = () => useState<Record<string, RunType>>('typeOverrides', () => ({}))
 
 /** Textes publiés par l'appli dans les descriptions Strava (gardés dans le navigateur). */
 export const usePublished = () => useState<Record<string, Partial<Record<BlockKind, string>>>>('published', () => ({}))

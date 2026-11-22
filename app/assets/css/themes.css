@@ -55,6 +55,7 @@
   --type-recovery: #16e08a;
   --type-easy: #ffd166;
   --type-tempo: #ff2e93;
+  --type-race: #b98bff;
 
   --glow-a: radial-gradient(closest-side, rgba(255, 90, 31, 0.85), rgba(255, 46, 147, 0.45), transparent);
   --glow-b: radial-gradient(closest-side, rgba(43, 107, 255, 0.8), rgba(0, 224, 198, 0.35), transparent);
@@ -119,6 +120,7 @@
   --type-interval: #d4ff3a;
   --type-recovery: #4ade80;
   --type-tempo: #ff4d2e;
+  --type-race: #7cc4ff;
   --glow-a: none;
   --glow-b: none;
   --font-display: 'Space Grotesk', system-ui, sans-serif;
@@ -179,6 +181,7 @@
   --type-interval: #d9573a;
   --type-recovery: #2f855a;
   --type-tempo: #9b2c2c;
+  --type-race: #6b46c1;
   --glow-a: none;
   --glow-b: none;
   --font-display: 'Fraunces', Georgia, serif;
@@ -240,6 +243,7 @@
   --type-interval: #ffb84d;
   --type-recovery: #3dffb0;
   --type-tempo: #ff6b9a;
+  --type-race: #d7ff5a;
   --glow-a: none;
   --glow-b: none;
   --font-display: 'Sora', system-ui, sans-serif;
@@ -300,6 +304,7 @@
   --type-interval: #ff9e2c;
   --type-recovery: #05ffa1;
   --type-tempo: #ff71ce;
+  --type-race: #fff275;
   --glow-a: none;
   --glow-b: none;
   --font-display: 'Unbounded', system-ui, sans-serif;
@@ -360,6 +365,7 @@
   --type-interval: #f0b44c;
   --type-recovery: #8fd16a;
   --type-tempo: #e5533d;
+  --type-race: #c9a7ff;
   --glow-a: none;
   --glow-b: none;
   --font-display: 'Barlow Condensed', system-ui, sans-serif;

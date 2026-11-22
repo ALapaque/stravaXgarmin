@@ -2,7 +2,8 @@
  * Type de séance d'une course Strava, et lien avec l'activité Garmin correspondante.
  * Logique pure, testée (tests/classify.test.ts).
  */
-import type { RunType } from './runs'
+import { RUN_LABELS, type RunType } from './runs'
+import { parseTitle } from './titles'
 
 /** Champs utiles d'une course Strava (GET /athlete/activities). */
 export interface StravaRun {
@@ -50,6 +51,7 @@ export function habitsOf(runs: StravaRun[]): Habits {
 
 /*
  * Type de séance, du signal le plus sûr au plus approximatif :
+ * 0. une compétition (marquée « Course » sur Strava, ou titre étiqueté [RACE]) passe avant tout ;
  * 1. ce que tu as indiqué (type « Sortie longue » ou « Entraînement » sur Strava, mots du nom) ;
  * 2. l'effet principal calculé par ta montre Garmin (sur ta fréquence cardiaque et ton profil) ;
  * 3. sinon ton allure et ta distance comparées à tes habitudes des 60 derniers jours.
@@ -59,6 +61,8 @@ export function classify(s: StravaRun, g: GarminRun | undefined, h: Habits): { t
   const pace = s.moving_time / Math.max(km, 0.1)
   const long = km >= Math.max(12, h.km * 1.6) || km >= 18
 
+  if (s.workout_type === 1) return { type: 'race', reason: 'marquée compétition sur Strava' }
+  if (parseTitle(s.name).tags.includes('RACE')) return { type: 'race', reason: 'd’après son nom' }
   if (s.workout_type === 2) return { type: 'long', reason: 'marquée sortie longue sur Strava' }
   if (/fraction|interval|vma|piste|\d+\s*[x×]\s*\d+/i.test(s.name)) return { type: 'interval', reason: 'd’après son nom' }
   if (/tempo|seuil|threshold/i.test(s.name)) return { type: 'tempo', reason: 'd’après son nom' }
@@ -81,6 +85,12 @@ export function classify(s: StravaRun, g: GarminRun | undefined, h: Habits): { t
   if (pace <= h.pace * 0.93) return { type: 'tempo', reason: mine }
   if (pace >= h.pace * 1.07) return { type: 'recovery', reason: mine }
   return { type: 'easy', reason: mine }
+}
+
+/** Un type choisi à la main gagne toujours sur celui deviné par l'appli. */
+export function withOverride(auto: { type: RunType; reason: string }, override: RunType | null | undefined): { type: RunType; reason: string } {
+  // Valeur gardée dans le navigateur : on ne fait confiance qu'à un type connu
+  return override && override in RUN_LABELS ? { type: override, reason: 'choisi par toi' } : auto
 }
 
 /** Relie une course Strava à l'activité Garmin qui a commencé à moins de 3 minutes d'écart. */

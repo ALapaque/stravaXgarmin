@@ -15,6 +15,7 @@ describe('renderTemplate', () => {
   it('modèle par défaut, nombres au format belge', () => {
     expect(renderTemplate(run, DEFAULT_TEMPLATES.long)).toBe('Sortie longue 12,4 km · Chemins')
     expect(renderTemplate(run, DEFAULT_TEMPLATES.tempo)).toBe('Tempo 12,4 km à 5:15 /km')
+    expect(renderTemplate({ ...run, type: 'race' }, DEFAULT_TEMPLATES.race)).toBe('Compétition · 12,4 km en 1:05:12')
   })
 
   it('lieu vide : le « · » final disparaît', () => {
