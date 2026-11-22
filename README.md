@@ -111,7 +111,7 @@ app/
   layouts/        default (avec navigation) · bare (présentation, connexion)
   pages/          un fichier par écran
   plugins/        persist.client.ts : état gardé dans le navigateur (clés sxg:v2:…)
-  utils/          fonctions pures importées automatiquement (format, image à partager…)
+  utils/          fonctions importées automatiquement (route, image à partager, ressenti…)
 server/
   api/            auth/strava, strava, garmin, ai, ia, me, changelog
   utils/          strava.ts, garmin.ts, ai.ts, sessions.ts
