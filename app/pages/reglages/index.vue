@@ -170,7 +170,7 @@ const descriptionParts = [
           <div class="row">
             <span class="row__main">
               <span class="title">Description enrichie</span>
-              <span class="hint">Ajoutée à chaque course synchronisée</span>
+              <span class="hint">Proposée sur la page de chaque course, à la suite de ton texte</span>
             </span>
             <ToggleSwitch v-model="settings.description.enabled" label="Description enrichie" />
           </div>

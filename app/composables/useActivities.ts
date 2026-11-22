@@ -9,7 +9,9 @@ import { RUN_LABELS, type RunType } from '#shared/utils/runs'
 // Ré-exporté ici pour ne pas casser les imports existants (« from '~/composables/useActivities' »)
 export type { RunType }
 export type EffortKey = '5k' | '10k' | 'half' | 'marathon'
-export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava'
+export type ChangeSource = 'garmin' | 'regle' | 'ia' | 'manuel' | 'record' | 'description' | 'strava' | 'analyse'
+/** Sorte de texte que l'appli place dans la description Strava : infos de la course, ou analyse IA */
+export type BlockKind = 'infos' | 'analyse'
 
 export interface Weather {
   tempC: number
@@ -153,6 +155,8 @@ const RECENT: Activity[] = [
     bestEfforts: { '5k': 1590 },
     garminName: 'Fractionné piste 10×400',
     stravaName: 'Morning Run',
+    // Note personnelle (inventée) déjà sur Strava : le texte de l'appli doit se placer dessous
+    stravaDescription: 'Séance costaud sous la pluie. Les deux derniers 400 étaient de trop, à refaire plus frais.',
   },
   {
     id: 'a3',
@@ -245,17 +249,79 @@ export function useActivities() {
     return true
   }
 
-  async function setStravaDescription(id: string, text: string, source: ChangeSource = 'description') {
+  /*
+   * Texte exact publié par l'appli dans chaque description, par course et par sorte.
+   * Limite connue : ce souvenir vit dans ce navigateur. Depuis un autre appareil, un texte identique
+   * n'est pas ajouté deux fois (il est retrouvé dans la description), mais un texte différent
+   * (kilométrage des chaussures qui a bougé) sera ajouté à la suite au lieu de remplacer l'ancien.
+   * Ce sera réglé avec le stockage partagé (dernière phase).
+   */
+  const published = usePublished()
+
+  function remember(id: string, kind: BlockKind, block: string) {
+    const mine = { ...published.value[id] }
+    if (block) mine[kind] = block
+    else delete mine[kind]
+    const next = { ...published.value }
+    if (Object.keys(mine).length) next[id] = mine
+    else delete next[id]
+    published.value = next
+  }
+
+  /** Le texte de l'appli de cette sorte est-il dans la description (telle que connue) ? */
+  function isPublished(id: string, kind: BlockKind) {
+    const block = published.value[id]?.[kind]
+    if (!block) return false
     const a = byId(id)
-    if (!a || a.stravaDescription === text) return true
-    const before = a.stravaDescription ?? ''
-    a.stravaDescription = text
-    if (!(await pushField(a, 'description', text))) {
-      a.stravaDescription = before || undefined
+    // Description pas encore relue (mode réel) : on se fie au souvenir
+    return a?.stravaDescription === undefined ? true : hasBlock(a.stravaDescription, block)
+  }
+
+  /**
+   * Ajoute (ou met à jour) le texte de l'appli dans la description Strava, sans toucher au reste.
+   * Renvoie ce qui s'est passé, ou false en cas d'échec (message affiché).
+   */
+  async function publishBlock(id: string, kind: BlockKind, text: string, source: ChangeSource): Promise<MergeChange | false> {
+    const a = byId(id)
+    if (!a) return false
+    const previous = published.value[id]?.[kind]
+    const r = await sendBlock(a, text, previous)
+    if (!r) return false
+    a.stravaDescription = r.after
+    if (r.change === 'added' || r.change === 'replaced') {
+      remember(id, kind, r.block)
+      useHistory().record({
+        activityId: id,
+        field: 'description',
+        before: r.before,
+        after: r.after,
+        source,
+        block: r.block,
+        previousBlock: r.change === 'replaced' ? normalizeNewlines(previous).trim() : '',
+      })
+    } else if (r.change === 'removed') {
+      remember(id, kind, '')
+    } else if (r.change === 'none' && hasBlock(r.after, text)) {
+      // Déjà présent (ajouté depuis un autre appareil, par exemple) : on le reconnaît comme publié
+      remember(id, kind, normalizeNewlines(text).trim())
+    }
+    return r.change
+  }
+
+  /** Relit la description réelle ; oublie les textes de l'appli qui n'y sont plus (retirés ou retouchés sur Strava). */
+  async function refreshDescription(id: string) {
+    const a = byId(id)
+    if (!a?.stravaId) return true
+    try {
+      const res = await $fetch<{ description: string }>(`/api/strava/activities/${a.stravaId}`)
+      a.stravaDescription = normalizeNewlines(res.description)
+      for (const kind of Object.keys(published.value[id] ?? {}) as BlockKind[]) {
+        if (!hasBlock(a.stravaDescription, published.value[id]?.[kind])) remember(id, kind, '')
+      }
+      return true
+    } catch {
       return false
     }
-    useHistory().record({ activityId: id, field: 'description', before, after: text, source })
-    return true
   }
 
   /** Renomme l'activité dans Garmin Connect (option, API non officielle). */
@@ -272,7 +338,7 @@ export function useActivities() {
     return true
   }
 
-  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setStravaDescription, setGarminName }
+  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription }
 }
 
 /** Les n derniers jours jusqu'à TODAY inclus, du plus ancien au plus récent. */
@@ -288,33 +354,66 @@ export function lastDays(n: number) {
   })
 }
 
+/** Textes publiés par l'appli dans les descriptions Strava (gardés dans le navigateur). */
+export const usePublished = () => useState<Record<string, Partial<Record<BlockKind, string>>>>('published', () => ({}))
+
 /**
- * Envoie une modification à Strava ou Garmin quand l'activité vient des API.
+ * Envoie un nouveau nom à Strava ou Garmin quand l'activité vient des API.
  * En mode démo (pas d'identifiant), ne fait rien et réussit toujours.
+ * La description ne passe jamais par ici : voir sendBlock (jamais de remplacement complet).
  */
-export async function pushField(a: Activity, field: 'name' | 'description' | 'garminName', value: string) {
+export async function pushField(a: Activity, field: 'name' | 'garminName', value: string) {
   try {
     if (field === 'garminName') {
       if (!a.garminId) return true
       await $fetch(`/api/garmin/activities/${a.garminId}`, { method: 'PUT', body: { name: value } })
     } else {
       if (!a.stravaId) return true
-      const res = await $fetch<{ name: string; description: string | null }>(`/api/strava/activities/${a.stravaId}`, {
-        method: 'PUT',
-        body: { [field]: value },
-      })
+      const res = await $fetch<{ name: string }>(`/api/strava/activities/${a.stravaId}`, { method: 'PUT', body: { name: value } })
       // Strava renvoie l'activité modifiée : on vérifie que le changement a bien été pris
-      const now = field === 'name' ? res.name : (res.description ?? '')
-      if (now.trim() !== value.trim()) {
+      if (res.name.trim() !== value.trim()) {
         useToast().show('Strava n’a pas pris la modification, réessaie')
         return false
       }
     }
     return true
   } catch (e) {
-    const msg = (e as { statusMessage?: string; data?: { statusMessage?: string } }).data?.statusMessage
-    useToast().show(msg ?? (field === 'garminName' ? 'Garmin a refusé la modification' : 'Strava a refusé la modification'))
+    useToast().show(errorMessage(e) ?? (field === 'garminName' ? 'Garmin a refusé la modification' : 'Strava a refusé la modification'))
     return false
+  }
+}
+
+const errorMessage = (e: unknown) => (e as { data?: { statusMessage?: string } }).data?.statusMessage
+
+/**
+ * Place « text » à la place de « previous » dans la description Strava (ou l'ajoute à la suite, ou le retire
+ * si « text » est vide). Le serveur relit la description juste avant d'écrire ; en démo, la même fusion
+ * est faite sur place. Renvoie la description avant/après et le texte réellement placé, ou null (message affiché).
+ */
+export async function sendBlock(a: Activity, text: string, previous?: string) {
+  const prev = normalizeNewlines(previous).trim()
+  if (!a.stravaId) {
+    const before = normalizeNewlines(a.stravaDescription)
+    const r = mergeDescription(before, text, prev)
+    return { before, after: r.text, change: r.change, block: r.block }
+  }
+  try {
+    const res = await $fetch<{ description: string; previousDescription: string; change: MergeChange }>(
+      `/api/strava/activities/${a.stravaId}`,
+      { method: 'PUT', body: { descriptionBlock: { text, previous: prev || undefined } } },
+    )
+    const before = normalizeNewlines(res.previousDescription)
+    const after = normalizeNewlines(res.description)
+    // Même fusion que le serveur, pour connaître le texte exact placé (raccourci s'il était trop long)
+    const block = mergeDescription(before, text, prev).block
+    if ((res.change === 'added' || res.change === 'replaced') && !hasBlock(after, block)) {
+      useToast().show('Strava n’a pas pris la modification, réessaie')
+      return null
+    }
+    return { before, after, change: res.change, block }
+  } catch (e) {
+    useToast().show(errorMessage(e) ?? 'Strava a refusé la modification')
+    return null
   }
 }
 

@@ -8,6 +8,7 @@ export function useDemo() {
     useState('activities').value = on ? demoActivities() : []
     useState('history').value = on ? demoHistory() : []
     useState('notifications').value = on ? demoNotifications() : []
+    usePublished().value = {}
     usePlan().reset(on)
     useFitness().reset(on)
   }
@@ -39,6 +40,7 @@ export function useDemo() {
     flag.value = false
     useState('history').value = []
     useState('notifications').value = []
+    usePublished().value = {}
     usePlan().reset(false)
     useFitness().reset(false)
   }

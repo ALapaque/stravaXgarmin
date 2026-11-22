@@ -9,6 +9,9 @@ const { show } = useToast()
 
 const when = new Intl.DateTimeFormat('fr-BE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' })
 
+/** Première ligne du texte ajouté, pour le reconnaître d'un coup d'œil. */
+const firstLine = (text: string) => text.split('\n').find((l) => l.trim())?.trim() ?? ''
+
 async function cancel(id: string) {
   if (await undo(id)) show('Modification annulée')
 }
@@ -36,6 +39,10 @@ async function cancel(id: string) {
           <span aria-hidden="true">→</span>
           <span class="after">{{ e.after }}</span>
         </p>
+        <div v-else-if="e.block !== undefined" class="change change--desc">
+          <span class="after">{{ e.previousBlock ? 'Texte de l’appli mis à jour' : 'Texte ajouté à la description' }}</span>
+          <span v-if="firstLine(e.block)" class="excerpt">{{ firstLine(e.block) }}</span>
+        </div>
         <p v-else class="change">
           <span class="after">{{ e.before ? 'Description modifiée' : 'Description ajoutée' }}</span>
         </p>
@@ -93,6 +100,21 @@ async function cancel(id: string) {
   align-items: baseline;
   gap: 6px 8px;
   margin: 0;
+}
+
+.change--desc {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.excerpt {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  color: var(--muted);
 }
 
 .change s {

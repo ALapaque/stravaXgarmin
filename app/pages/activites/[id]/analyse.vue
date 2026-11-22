@@ -3,7 +3,8 @@ import { Gauge, HeartPulse, Lightbulb, ArrowRight, Check, RefreshCw } from 'luci
 import { aiError, useAiResults, type Analysis } from '~/composables/useAi'
 
 const route = useRoute()
-const { byId, setStravaDescription } = useActivities()
+const { byId, published, isPublished, publishBlock } = useActivities()
+const { entries, undo } = useHistory()
 const { analyse } = useAi()
 const { connected: aiConnected } = useChatGpt()
 const { show } = useToast()
@@ -54,14 +55,32 @@ const ICONS = {
   tip: { icon: Lightbulb, color: 'var(--accent-text)' },
 }
 
-const added = computed(() => Boolean(a.value?.stravaDescription))
-
-function addToStrava() {
-  if (!a.value) return
+/** Texte de l'analyse tel qu'il part dans la description Strava. */
+const analysisText = computed(() => {
   const r = result.value
-  const text = [r.verdict, ...r.findings.map((f) => `${f.title} : ${f.text}`)].join('\n')
-  setStravaDescription(a.value.id, text)
-  show('Analyse ajoutée à la description Strava')
+  return [r.verdict, ...r.findings.map((f) => `${f.title} : ${f.text}`)].join('\n')
+})
+// Déjà publiée et identique : rien à faire ; publiée mais relancée depuis : on propose la mise à jour
+const publishedText = computed(() => (a.value && isPublished(a.value.id, 'analyse') ? published.value[a.value.id]?.analyse : undefined))
+const added = computed(() => publishedText.value !== undefined && publishedText.value === analysisText.value)
+const outdated = computed(() => publishedText.value !== undefined && !added.value)
+const publishing = ref(false)
+
+async function addToStrava() {
+  if (!a.value) return
+  publishing.value = true
+  const change = await publishBlock(a.value.id, 'analyse', analysisText.value, 'analyse')
+  publishing.value = false
+  if (change === 'added' || change === 'replaced') {
+    show(change === 'added' ? 'Analyse ajoutée à la suite de ta description' : 'Analyse mise à jour sur Strava', {
+      label: 'Annuler',
+      run: async () => {
+        const last = entries.value[0]
+        if (last && (await undo(last.id))) show(change === 'added' ? 'Analyse retirée de ta description' : 'Ancienne analyse remise sur Strava')
+      },
+    })
+  } else if (change === 'none') show('Ce texte est déjà dans ta description Strava.')
+  else if (change === 'full') show('Ta description Strava est déjà trop longue : rien n’a été ajouté.')
 }
 </script>
 
@@ -102,8 +121,8 @@ function addToStrava() {
         <button type="button" class="link retry" @click="load(true)"><RefreshCw :size="18" aria-hidden="true" /> Réessayer</button>
       </template>
 
-      <button v-if="aiConnected && done" type="button" class="btn btn--primary" :disabled="added" @click="addToStrava">
-        {{ added ? 'Ajouté à la description Strava' : 'Ajouter à la description Strava' }}
+      <button v-if="aiConnected && done" type="button" class="btn btn--primary" :disabled="added || publishing" @click="addToStrava">
+        {{ added ? 'Ajoutée à la description Strava' : outdated ? 'Mettre à jour sur Strava' : 'Ajouter à la description Strava' }}
         <component :is="added ? Check : ArrowRight" :size="20" aria-hidden="true" />
       </button>
       <button v-if="aiConnected && done && !loading" type="button" class="link retry" @click="load(true)">

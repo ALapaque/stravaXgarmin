@@ -1,12 +1,17 @@
-import type { Activity, ChangeSource } from './useActivities'
-import { pushField } from './useActivities'
+import type { Activity, BlockKind, ChangeSource } from './useActivities'
+import { pushField, sendBlock, usePublished } from './useActivities'
 
 export interface HistoryEntry {
   id: string
   activityId: string
   field: 'name' | 'description' | 'garminName'
+  /** Valeur complète avant/après (pour une description : toute la description) */
   before: string
   after: string
+  /** Description : texte de l'appli ajouté (absent des anciennes entrées : on prend « after ») */
+  block?: string
+  /** Description : texte de l'appli que ce bloc a remplacé, '' s'il a été ajouté à la suite */
+  previousBlock?: string
   source: ChangeSource
   at: string
   undone?: boolean
@@ -20,6 +25,7 @@ export const SOURCE_LABELS: Record<ChangeSource, string> = {
   record: 'Titre record',
   description: 'Description enrichie',
   strava: 'Depuis Strava',
+  analyse: 'Analyse IA',
 }
 
 export const demoHistory = (): HistoryEntry[] => [
@@ -60,11 +66,38 @@ export function useHistory() {
     const activities = useState<Activity[]>('activities')
     const a = activities.value.find((x) => x.id === entry.activityId)
     if (!a) return false
-    if (!(await pushField(a, entry.field, entry.before))) return false
-    if (entry.field === 'name') a.stravaName = entry.before
-    else if (entry.field === 'garminName') a.garminName = entry.before
-    else a.stravaDescription = entry.before || undefined
+    if (entry.field === 'description') {
+      if (!(await undoDescription(a, entry))) return false
+    } else {
+      if (!(await pushField(a, entry.field, entry.before))) return false
+      if (entry.field === 'name') a.stravaName = entry.before
+      else a.garminName = entry.before
+    }
     entry.undone = true
+    return true
+  }
+
+  /*
+   * Annuler un texte de description : on demande de remettre l'ancien texte de l'appli à la place du bloc,
+   * dans la description TELLE QU'ELLE EST MAINTENANT (relue par le serveur). Le reste n'est jamais touché,
+   * et on ne remet jamais une description complète.
+   */
+  async function undoDescription(a: Activity, entry: HistoryEntry) {
+    const block = entry.block ?? entry.after
+    const previousBlock = entry.previousBlock ?? ''
+    const r = await sendBlock(a, previousBlock, block)
+    if (!r) return false
+    if (r.change === 'none' || r.change === 'full') {
+      useToast().show('Ce texte a changé sur Strava depuis : rien n’a été retiré.')
+      return false
+    }
+    a.stravaDescription = r.after
+    const kind: BlockKind = entry.source === 'analyse' ? 'analyse' : 'infos'
+    const published = usePublished()
+    const mine = { ...published.value[a.id] }
+    if (r.block) mine[kind] = r.block
+    else delete mine[kind]
+    published.value = { ...published.value, [a.id]: mine }
     return true
   }
 

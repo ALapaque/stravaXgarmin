@@ -2,7 +2,7 @@
 import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
 
 const route = useRoute()
-const { byId, isSynced, setStravaName, setStravaDescription, setGarminName } = useActivities()
+const { byId, isSynced, setStravaName, setGarminName, isPublished, publishBlock, refreshDescription } = useActivities()
 const { accounts } = useAccounts()
 const { recordsOf } = useRecords()
 const { describe } = useDescription()
@@ -20,7 +20,19 @@ const synced = computed(() => (a.value ? isSynced(a.value) : false))
 const records = computed(() => (a.value ? recordsOf(a.value) : []))
 const paceSec = computed(() => (a.value ? Math.round(a.value.durationSec / a.value.distanceKm) : 0))
 const description = computed(() => (a.value ? describe(a.value) : ''))
-const descriptionAdded = computed(() => Boolean(a.value?.stravaDescription))
+const descriptionAdded = computed(() => (a.value ? isPublished(a.value.id, 'infos') : false))
+
+/*
+ * Description réelle, relue une fois par visite (mode réel) : c'est elle qu'on montre,
+ * pour que le coureur voie que sa note reste en place. En démo, elle est déjà connue.
+ */
+const descState = ref<'idle' | 'loading' | 'error'>('idle')
+onMounted(async () => {
+  if (!a.value?.stravaId) return
+  descState.value = 'loading'
+  descState.value = (await refreshDescription(a.value.id)) ? 'idle' : 'error'
+})
+const publishing = ref(false)
 
 // Temps au km : barre plus haute = km plus rapide, le plus rapide mis en avant
 const splits = computed(() => a.value?.splits ?? [])
@@ -108,7 +120,12 @@ async function shareImage() {
 
 async function addDescription() {
   if (!a.value || !description.value) return
-  if (await setStravaDescription(a.value.id, description.value)) show('Description ajoutée sur Strava', undoLast('Description retirée de Strava'))
+  publishing.value = true
+  const change = await publishBlock(a.value.id, 'infos', description.value, 'description')
+  publishing.value = false
+  if (change === 'added' || change === 'replaced') show('Texte ajouté à ta description Strava', undoLast('Texte retiré de ta description'))
+  else if (change === 'none') show('Ce texte est déjà dans ta description Strava.')
+  else if (change === 'full') show('Ta description Strava est déjà trop longue : rien n’a été ajouté.')
 }
 </script>
 
@@ -230,10 +247,23 @@ async function addDescription() {
               <h2 id="desc-title" class="eyebrow">Description Strava</h2>
               <StatusChip v-if="descriptionAdded" ok label="Ajoutée" />
             </div>
-            <p class="desc-text">{{ a.stravaDescription || description }}</p>
-            <button v-if="!descriptionAdded" type="button" class="btn btn--secondary btn--sm" @click="addDescription">
-              Ajouter sur Strava
-            </button>
+            <div class="desc-part">
+              <p class="label">Sur Strava aujourd’hui</p>
+              <p v-if="descState === 'loading'" class="desc-note">Lecture de ta description…</p>
+              <p v-else-if="descState === 'error'" class="desc-note">Impossible de lire ta description pour l’instant.</p>
+              <p v-else-if="a.stravaDescription" class="desc-current">{{ a.stravaDescription }}</p>
+              <p v-else class="desc-note">Pas encore de description sur Strava.</p>
+            </div>
+            <template v-if="!descriptionAdded">
+              <div class="desc-part desc-part--add">
+                <p class="label">Ce que l’appli ajoute</p>
+                <p class="desc-text">{{ description }}</p>
+              </div>
+              <button type="button" class="btn btn--secondary btn--sm" :disabled="publishing || descState === 'loading'" @click="addDescription">
+                Ajouter à la suite
+              </button>
+              <p class="fine">Ton texte reste tel quel : celui de l’appli se place en dessous.</p>
+            </template>
           </section>
         </div>
       </Transition>
@@ -563,6 +593,7 @@ async function addDescription() {
 .desc-text {
   margin: 0;
   white-space: pre-line;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
@@ -571,6 +602,31 @@ async function addDescription() {
 
 .desc .btn {
   align-self: flex-start;
+}
+
+.desc-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Le texte de l'appli, en attente : séparé de la description actuelle par un filet en pointillés */
+.desc-part--add {
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.desc-current {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.desc-note {
+  margin: 0;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {

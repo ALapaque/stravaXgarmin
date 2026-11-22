@@ -106,8 +106,14 @@ export function useSync() {
           : Promise.resolve([] as GarminRun[]),
       ])
       const habits = habitsOf(strava)
+      // La liste de Strava ne contient pas la description : on garde celle déjà lue pour chaque course
+      const known = new Map(activities.value.map((a) => [a.id, a.stravaDescription]))
       activities.value = strava
-        .map((s) => withDetails(toActivity(s, matchGarmin(s, garmin), habits), details.value[s.id]))
+        .map((s) => {
+          const a = withDetails(toActivity(s, matchGarmin(s, garmin), habits), details.value[s.id])
+          const description = known.get(a.id)
+          return description === undefined ? a : { ...a, stravaDescription: description }
+        })
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
 
       // Les exemples de la démo n'ont plus de sens avec de vraies données
