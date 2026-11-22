@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.16.1](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.0...v1.16.1) (2026-11-22)
+
+### Corrections
+
+* dans le Débrief, un vrai champ « Ton titre » pour écrire le titre que tu veux ; les propositions ne sont que des raccourcis ([12ce36d](https://github.com/ALapaque/stravaXgarmin/commit/12ce36dfd055c843769aeff8a74206d713d83340))
+
 ## [1.16.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.15.0...v1.16.0) (2026-11-22)
 
 ### Nouveautés
