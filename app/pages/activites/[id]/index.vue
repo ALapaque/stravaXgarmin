@@ -2,7 +2,7 @@
 import { Sparkles, ChartLine, Check, Trophy, Heart, Mountain, Share2 } from 'lucide-vue-next'
 
 const route = useRoute()
-const { byId, isSynced, setStravaName, setGarminName, isPublished, publishBlock, refreshDescription } = useActivities()
+const { byId, isSynced, needsReview, setStravaName, setGarminName, isPublished, publishBlock, refreshDescription } = useActivities()
 const { accounts } = useAccounts()
 const { recordsOf } = useRecords()
 const { describe } = useDescription()
@@ -83,7 +83,7 @@ const { tab, direction } = useTab(['chiffres', 'nom'] as const, 'chiffres')
 // Rubriques affichées sur la deuxième face de la barre du bas
 useSubnav(`course-${String(route.params.id)}`, 'Rubriques de la course', () => [
   { id: 'chiffres', label: 'Chiffres', icon: 'numbers' },
-  { id: 'nom', label: 'Nom', icon: 'name', dot: Boolean(a.value) && !synced.value },
+  { id: 'nom', label: 'Nom', icon: 'name', dot: Boolean(a.value) && needsReview(a.value!) },
 ], tab)
 
 const sharing = ref(false)

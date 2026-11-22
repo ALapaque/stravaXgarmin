@@ -179,8 +179,14 @@ export function useActivities() {
   const activities = useState<Activity[]>('activities', () => (isDemoCookie() ? demoActivities() : []))
 
   const byId = (id: string) => activities.value.find((a) => a.id === id)
+  /** Même nom sur Strava et sur la montre (sert seulement à la carte « Nom de l’activité ») */
   const isSynced = (a: Activity) => a.garminName === a.stravaName
-  const toReview = computed(() => activities.value.filter((a) => !isSynced(a)))
+  /*
+   * « Nom à revoir » : seulement un nom Strava par défaut (« Morning Run », « Course à pied en soirée »…).
+   * Un titre amélioré à la main n'est jamais à revoir, même s'il diffère du nom de la montre.
+   */
+  const needsReview = (a: Activity) => isGenericName(a.stravaName)
+  const toReview = computed(() => activities.value.filter(needsReview))
   const sorted = computed(() => [...activities.value].sort((a, b) => b.startedAt.localeCompare(a.startedAt)))
 
   /** Les 7 derniers jours, aujourd'hui compris, pour l'histogramme de l'accueil. */
@@ -195,7 +201,8 @@ export function useActivities() {
       km: runs.reduce((s, a) => s + a.distanceKm, 0),
       sec: runs.reduce((s, a) => s + a.durationSec, 0),
       count: runs.length,
-      synced: runs.filter(isSynced).length,
+      // Courses dont le nom Strava n'est pas un nom par défaut
+      synced: runs.filter((a) => !needsReview(a)).length,
     }
   })
 
@@ -317,7 +324,7 @@ export function useActivities() {
     a.typeReason = r.reason || undefined
   }
 
-  return { activities, sorted, byId, isSynced, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription, typeOverrides, setType }
+  return { activities, sorted, byId, isSynced, needsReview, toReview, lastWeek, setStravaName, setGarminName, published, isPublished, publishBlock, refreshDescription, typeOverrides, setType }
 }
 
 /** Les n derniers jours jusqu'à TODAY inclus, du plus ancien au plus récent. */

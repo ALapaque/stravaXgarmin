@@ -29,7 +29,7 @@ const totalKm = computed(() => activities.value.reduce((t, a) => t + a.distanceK
     <div v-if="shown.length" class="card list list--grid">
       <ActivityRow v-for="a in shown" :key="a.id" :activity="a" />
     </div>
-    <p v-else class="card card--pad lead">{{ activities.length ? 'Tout est synchronisé, rien à revoir.' : 'Aucune course sur les 60 derniers jours.' }}</p>
+    <p v-else class="card card--pad lead">{{ activities.length ? 'Aucun nom par défaut, rien à revoir.' : 'Aucune course sur les 60 derniers jours.' }}</p>
     </template>
   </div>
 </template>

@@ -132,3 +132,12 @@ describe('decideAutoName : toute la matrice', () => {
     expect(decideAutoName({ stravaName: 'Course', garminName: 'Course', hasGarmin: true, ruleTitle: 'Course', overwriteEdited: false })).toBeNull()
   })
 })
+
+describe('« Nom à revoir » : seulement les noms par défaut', () => {
+  it.each(['[KIPRUN] - Footing 45’', '[FAIL][KIPRUN] - 6x800m (R=2’)', 'Footing tranquille au bord du lac', 'Sortie longue'])('« %s » n’est pas à revoir', (name) => {
+    expect(isGenericName(name)).toBe(false)
+  })
+  it.each(['Course à pied en soirée', 'Morning Run', 'Tapis de course'])('« %s » est à revoir', (name) => {
+    expect(isGenericName(name)).toBe(true)
+  })
+})
