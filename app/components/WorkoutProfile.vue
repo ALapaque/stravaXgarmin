@@ -16,7 +16,7 @@ const total = computed(() => props.blocks.reduce((s, b) => s + Math.max(b.sec, 1
 </script>
 
 <template>
-  <div class="profile" :style="{ height: `${height}px` }" aria-hidden="true">
+  <div class="profile" :class="{ dense: blocks.length > 12 }" :style="{ height: `${height}px` }" aria-hidden="true">
     <span
       v-for="(b, i) in blocks"
       :key="i"
@@ -33,11 +33,18 @@ const total = computed(() => props.blocks.reduce((s, b) => s + Math.max(b.sec, 1
 </template>
 
 <style scoped>
+/* Toujours dans sa boîte : avec beaucoup d'étapes (2 × 5 × 200 m), barres et écarts se resserrent au lieu de déborder */
 .profile {
   display: flex;
   align-items: flex-end;
   gap: 2px;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.profile.dense {
+  gap: 1px;
 }
 
 .bar {
@@ -48,6 +55,11 @@ const total = computed(() => props.blocks.reduce((s, b) => s + Math.max(b.sec, 1
   transform-origin: bottom;
   animation: grow 0.7s var(--ease-spring) backwards;
   animation-delay: calc(250ms + var(--i) * 25ms);
+}
+
+.dense .bar {
+  min-width: 1px;
+  border-radius: 2px 2px 1px 1px;
 }
 
 .k-interval {
