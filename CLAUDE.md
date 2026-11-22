@@ -23,20 +23,20 @@ Toujours **arrêter l'ancien serveur avant un nouveau build** (`pkill -f ".outpu
 
 | Dossier | Contenu |
 |---|---|
-| `app/pages/` | Écrans. Un seul élément racine par page (les transitions de page l'exigent), en général `<div class="stack">`. |
-| `app/components/` | Composants. `AppTabBar` (barre du bas à deux faces), `AppSidebar` (ordinateur), `RouteMap` (MapLibre + OpenFreeMap), `RouteTrace`, `WorkoutProfile`… |
-| `app/composables/` | État et logique côté navigateur (`useActivities`, `useSync`, `usePlan`, `useFitness`, `useSettings`, `useTheme`, `useNav`, `useSubnav`, `useTab`…). |
-| `app/utils/` | Fonctions pures importées automatiquement (`format.ts`, `route.ts`, `shareImage.ts`). |
-| `shared/utils/` | Logique pure partagée navigateur + serveur, **testée**. |
+| `app/pages/` | Écrans. Un seul élément racine par page (les transitions de page l'exigent), en général `<div class="stack">`. Trois onglets : `index.vue` (**Aujourd'hui**), `journal.vue` (**Journal** : plan et courses sur une ligne de temps), `progression.vue` (**Progression** : régularité, forme, records, matériel). Puis `activites/[id]/index.vue` (une course) et `debrief.vue` (le Débrief, écran sans barre du bas : `definePageMeta({ focus: true })`), `bilan.vue`, `objectif.vue`, `reglages/*` (une page d'accueil et une sous-page par thème), `connexion/*`. Les anciennes adresses (`plan`, `stats`, `recap`, `activites/index`, `titre`, `analyse`) ne sont plus que des redirections. |
+| `app/components/` | Composants. Navigation : `AppTabBar` (barre du bas à deux faces), `AppSidebar` (ordinateur), `AppHeader` (cloche, avatar vers les réglages). Course : `LapProfile` (profil des tours), `PlanDone` / `PlanVsDone` (prévu contre réalisé), `CardioPanel` (cardio par zones), `RunThumb` (vignette), `RouteMap` (MapLibre + OpenFreeMap), `DebriefSummary`, `RpeScale`, `OutcomePicker`, `RunPending`. Plan et suivi : `SessionCard`, `PlanUpcoming`, `WorkoutProfile`, `WeekStrip`, `AdherenceChart`, `LoadChart`. |
+| `app/composables/` | État et logique côté navigateur : `useActivities` (toute écriture chez Strava/Garmin), `useSync`, `usePlan` (séances, lien avec les courses, prévu/réalisé, suivi), `useDebriefs`, `useConvention`, `useStreams`, `useHealth`, `useFitness`, `useSettings`, `useTheme`, `useNav`, `useSubnav`, `useTab`, `useRunPage`… |
+| `app/utils/` | Fonctions du navigateur importées automatiquement (`route.ts`, `shareImage.ts`, `rpe.ts`). |
+| `shared/utils/` | **Toutes les règles**, en fonctions pures partagées navigateur + serveur, testées : `titles` (convention `[SOURCE] - Titre`), `naming`, `classify`, `workout` (étapes d'une séance, lecture des titres de plans), `compliance` (prévu contre réalisé), `planmatch`, `planstate`, `debrief` (texte publié), `description` (fusion dans la description Strava), `runchart`, `zones`, `streams`, `today`, `journal`, `progress`, `bilan`, `health`, `nav`, `format`, `model` (types), `upgrade` (état gardé d'une ancienne version), `demo` (données de démo). |
 | `app/assets/css/themes.css` | Les 6 thèmes : uniquement des variables CSS. |
 | `app/assets/css/main.css` | Mise en page, utilitaires, animations, grilles tablette/ordinateur. |
-| `server/api/` | Routes : `auth/strava/*`, `strava/*`, `garmin/*`, `ai/*`, `ia/*`, `me`, `changelog`. |
+| `server/api/` | Routes : `auth/strava/*`, `strava/*` (activités, détails, courbes, chaussures), `garmin/*` (activités, plan, forme, records), `ai/*`, `ia/*`, `me`, `changelog`. |
 | `server/utils/` | `strava.ts` (`stravaFetch`, jeton rafraîchi), `garmin.ts` (connexion en deux temps, 2FA), `ai.ts`, `sessions.ts`. |
-| `tests/` | Tests Vitest. |
+| `tests/` | Tests Vitest (un fichier par module de `shared/utils/`). |
 
 ## Règles à respecter
 
-1. **Le mode démo doit montrer chaque fonction.** Cookie `sxg-demo=true` : données fictives produites par `demoActivities()`, `demoPlan()`, etc. Toute nouvelle fonction a ses données de démo, parce que c'est le seul moyen de la voir ici (les API réelles ne sont pas joignables depuis l'environnement de développement). En démo, le prénom est masqué (flou).
+1. **Le mode démo doit montrer chaque fonction.** Cookie `sxg-demo=true` : données fictives produites par `buildDemo(aujourd'hui)` (`shared/utils/demo.ts`), toujours datées du jour. Toute nouvelle fonction a ses données de démo, parce que c'est le seul moyen de la voir ici (les API réelles ne sont pas joignables depuis l'environnement de développement). Changer les données de démo demande d'augmenter `DEMO_VERSION` (les démos gardées dans les navigateurs sont alors régénérées). En démo, le prénom est masqué (flou).
 2. **Jamais de couleur, de police ni d'arrondi en dur dans un composant.** Tout passe par les variables des thèmes (`--bg`, `--ink`, `--surface`, `--primary`, `--accent-text`, `--ok`, `--ko`, `--info`, `--type-*`, `--r-card`, `--r-btn`, `--r-ctrl`, `--r-tab`, `--r-pill`, `--font-display`, `--font-body`, `--font-mono`…). Six thèmes (`neon` par défaut, `carbone`, `papier` qui est clair, `abysse`, `retro`, `trail`) plus des réglages sur mesure posés sur `<html>` (`useTheme`). Vérifier au moins Néon, Carbone (angles vifs) et Papier (clair).
 3. **Trois tailles d'écran.** Téléphone par défaut (390 px), tablette à partir de 720 px (grilles, barre du bas gardée), ordinateur à partir de 1080 px (barre latérale, `.app--nav`). Utilitaires : `.stack`, `.stack--wide`, `.cols`, `.col`, `.span-all`, `.panel`, `.panel--narrow`, `.list--grid`.
 4. **Réutiliser les utilitaires existants** de `main.css` : `.card`, `.card--pad`, `.block--primary`, `.eyebrow`, `.h1`, `.h1--xl`, `.h2`, `.num`, `.label`, `.lead`, `.fine`, `.title`, `.row`, `.list`, `.btn`, `.btn--primary`, `.btn--secondary`, `.btn--sm`, `.chip`, `.tile`, `.segmented`, `.section-head`, `.link`. Animations : `rise`, `grow`, `pop`, avec `prefers-reduced-motion` respecté.
@@ -46,6 +46,8 @@ Toujours **arrêter l'ancien serveur avant un nouveau build** (`pkill -f ".outpu
 8. **Vie privée** : aucune donnée réelle d'un utilisateur dans le dépôt (ni tests, ni démo, ni commentaires). Rien n'est stocké côté serveur ; si cela change, la phrase « Aucune donnée stockée sur nos serveurs » doit changer aussi.
 9. **Logique pure testable** : les règles (nommage, classement, comparaison prévu/réalisé, fusion de description) vivent dans `shared/utils/` ou `app/utils/`, importent explicitement ce dont elles ont besoin (pas d'import automatique Nuxt) et ont leurs tests dans `tests/`.
 10. **Logos** : seulement ceux fournis par le propriétaire dans `public/brands/`, via `BrandMark`. Ne jamais en télécharger ni en redessiner.
+11. **L'appli est en service : l'état gardé dans les navigateurs doit rester lisible.** Ne jamais changer `VERSION` dans `persist.client.ts` (l'historique, les réglages et les débriefs seraient perdus). Un nouveau champ a une valeur par défaut posée par `shared/utils/upgrade.ts` (testé), et chaque écran a son état vide. Les réglages se fusionnent avec les valeurs par défaut.
+12. **Jamais d'affirmation invérifiable à l'écran.** Les efforts d'une séance ne sont comptés que si elle a été suivie sur la montre (`comparePlan`) ; une étape dont `exact` est faux n'affiche pas de chiffres ; sans donnée, on le dit.
 
 ## Pièges déjà rencontrés
 
@@ -58,6 +60,8 @@ Toujours **arrêter l'ancien serveur avant un nouveau build** (`pkill -f ".outpu
 - **MapLibre** (1 Mo) est chargé à la demande, avec `setWorkerUrl` et l'import `?url` du worker.
 - **Descriptions Strava** : Strava renvoie les fins de ligne en `\r\n`, même quand on a envoyé `\n`. Toute comparaison passe par `normalizeNewlines` / `locateBlock` (`shared/utils/description.ts`). On n'envoie jamais une description entière : seulement un bloc (`descriptionBlock`), que le serveur fusionne après avoir relu la description actuelle.
 - **Heures en français** : en `fr-BE`, `Intl.DateTimeFormat` avec `hour: 'numeric'` rend « 11 h », pas un nombre. Pour lire l'heure, passer par `formatToParts`.
+- **Adresse d'une course ouverte directement** (rechargement, notification) : en mode réel le serveur ne connaît pas les courses. Jamais d'erreur 404 au rendu serveur : `useRunPage` et `RunPending` attendent l'état gardé puis la synchro.
+- **Vérifier les types pour de vrai** : `npx nuxi typecheck` doit sortir sans erreur ; un script qui n'affiche que la fin de sa sortie peut cacher un échec.
 - **Composables appelés après un `await`** : cela marche dans le navigateur (une seule appli), jamais côté serveur. Les chargements (`useSync`, `usePlan.load`, `useFitness.load…`) ne tournent que dans le navigateur.
 
 ## Publication
