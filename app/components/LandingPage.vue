@@ -4,11 +4,11 @@
  * Design : taste-skill (entrée du héros mot par mot, moments « word-highlight » et « iris-opens »)
  * et ui-ux-pro-max (aperçu de l'appli dans un téléphone, sections courtes, CTA répété).
  */
-import { Type, Sparkles, Trophy, FileText, RotateCcw, Bell, ShieldCheck, ArrowDown } from 'lucide-vue-next'
+import { Type, Sparkles, ClipboardCheck, CalendarCheck, RotateCcw, Footprints, ShieldCheck, ArrowDown, Sunrise, NotebookText, TrendingUp } from 'lucide-vue-next'
 
 useHead({
   title: 'stravaXgarmin · Tes courses Garmin, bien nommées sur Strava',
-  meta: [{ name: 'description', content: 'Fini les « Morning Run » : le nom de tes courses Garmin copié sur Strava, des titres par IA, tes records et tes récaps.' }],
+  meta: [{ name: 'description', content: 'Fini les « Morning Run » : le nom de ta séance sur Strava, un Débrief après chaque course, sur tapis comme dehors, et ton plan face à ce que tu as couru.' }],
 })
 
 const route = useRoute()
@@ -37,18 +37,25 @@ const TITLE = [
 ]
 
 const FEATURES = [
-  { icon: Type, color: 'var(--accent-text)', title: 'Des noms qui veulent dire quelque chose', text: 'Le nom de ta montre arrive sur Strava. Sinon, tes propres modèles : distance, allure, lieu, météo.' },
-  { icon: Sparkles, color: 'var(--chatgpt)', title: 'Des titres par IA', text: 'Sobre, drôle ou épique : trois idées par course avec l’IA de ton choix (Gemini gratuit), ou le tien écrit à la main.' },
-  { icon: Trophy, color: 'var(--ok)', title: 'Tes records repérés', text: '5 km, 10 km, semi : record battu, titre proposé.' },
-  { icon: FileText, color: 'var(--info)', title: 'Une description qui raconte', text: 'Météo, temps au kilomètre et chaussures ajoutés sur Strava.' },
+  { icon: ClipboardCheck, color: 'var(--accent-text)', title: 'Un Débrief après chaque course', text: 'Séance faite, écourtée ou ratée, ton ressenti sur 10 et quelques mots : publiés sous ta description Strava, sans jamais toucher à ton texte.' },
+  { icon: Footprints, color: 'var(--type-long)', title: 'Pensé pour le tapis', text: 'Pas de GPS ? Tes tours suffisent : chaque effort, chaque récup, ton cardio, comme dehors.' },
+  { icon: CalendarCheck, color: 'var(--ok)', title: 'Prévu contre réalisé', text: 'Ton plan Kiprun passe par Garmin : chaque course est comparée à sa séance, et tu vois semaine après semaine si tu tiens le cap.' },
+  { icon: Type, color: 'var(--info)', title: 'Des noms qui veulent dire quelque chose', text: 'Le nom de ta séance arrive sur Strava, au format « [KIPRUN] - Footing 40’ » si tu l’utilises déjà.' },
+  { icon: Sparkles, color: 'var(--chatgpt)', title: 'L’IA de ton choix', text: 'Titres, analyse de séance et lecture de ta semaine, avec Gemini (gratuit), Mistral ou OpenAI.' },
   { icon: RotateCcw, color: 'var(--type-tempo)', title: 'Tout s’annule', text: 'Chaque changement est noté et se défait d’un tap.' },
-  { icon: Bell, color: 'var(--ko)', title: 'Récaps à partager', text: 'Ta semaine et ton mois en un écran, prêts pour une story.' },
+]
+
+/* Trois onglets, trois questions */
+const TABS = [
+  { icon: Sunrise, name: 'Aujourd’hui', question: 'Qu’est-ce que j’ai à faire maintenant ?', text: 'Le débrief en attente, la séance du jour, ta semaine.' },
+  { icon: NotebookText, name: 'Journal', question: 'Qu’ai-je fait, qu’est-ce qui m’attend ?', text: 'Ton plan et tes courses sur une seule ligne de temps.' },
+  { icon: TrendingUp, name: 'Progression', question: 'Suis-je régulier ? Est-ce que je progresse ?', text: 'Plan suivi, charge, forme, records et ton bilan de la semaine.' },
 ]
 
 const STEPS = [
   { title: 'Connecte Strava', text: 'L’appli lit tes courses et peut modifier leur nom.' },
-  { title: 'Ajoute Garmin si tu veux', text: 'Pour récupérer les noms de ta montre, et même renommer côté Garmin.' },
-  { title: 'Cours', text: 'À chaque ouverture, les noms génériques sont remplacés.' },
+  { title: 'Ajoute Garmin', text: 'Pour ton plan (tes séances Kiprun exportées), les noms de ta montre et ta forme.' },
+  { title: 'Cours, puis débriefe', text: 'Le nom de la séance arrive sur Strava ; en trente secondes, ton débrief s’ajoute dessous.' },
 ]
 </script>
 
@@ -71,7 +78,7 @@ const STEPS = [
           <span class="mask" aria-hidden="true"><span class="word" :class="w.cls" :style="{ '--i': i }">{{ w.t }}</span></span>{{ ' ' }}
         </template>
       </h1>
-      <p class="lead hero-in" style="--d: 0.75s">Le nom que ta montre donne à chaque séance arrive sur Strava. En prime : titres par IA, records et récaps.</p>
+      <p class="lead hero-in" style="--d: 0.75s">Le nom de ta séance arrive sur Strava. Puis le Débrief : ce que tu as fait face au plan, même sur tapis, ton ressenti et l’analyse, publiés sous ta description.</p>
 
       <div class="actions hero-in" style="--d: 0.9s" aria-label="Connexion">
         <p v-if="error" class="card card--pad err" role="alert">{{ error }}</p>
@@ -103,7 +110,7 @@ const STEPS = [
 
     <!-- Fonctionnalités, sur leur propre fond, révélées par un disque qui s'ouvre -->
     <LandingIrisSection>
-      <h2 class="h1 sec-title">Tout ce que Strava ne fait pas pour tes noms de course</h2>
+      <h2 class="h1 sec-title">Tout ce que Strava ne fait pas pour tes séances</h2>
       <div class="features">
         <article v-for="f in FEATURES" :key="f.title" class="feature">
           <span class="tile" :style="{ '--tile': f.color }" aria-hidden="true"><component :is="f.icon" :size="22" /></span>
@@ -114,6 +121,21 @@ const STEPS = [
         </article>
       </div>
     </LandingIrisSection>
+
+    <!-- Trois onglets, trois questions -->
+    <section class="section">
+      <h2 class="h1 sec-title">Trois onglets, trois questions</h2>
+      <ol class="tabs-list">
+        <li v-for="(t, i) in TABS" :key="t.name" class="card tab-card" :style="{ '--i': i }">
+          <span class="tile" style="--tile: var(--accent-text)" aria-hidden="true"><component :is="t.icon" :size="22" /></span>
+          <span class="row__main">
+            <span class="eyebrow">{{ t.name }}</span>
+            <h3 class="title q">{{ t.question }}</h3>
+            <p class="text">{{ t.text }}</p>
+          </span>
+        </li>
+      </ol>
+    </section>
 
     <!-- Aperçu animé -->
     <section class="section">
@@ -130,7 +152,7 @@ const STEPS = [
           <KpiPulse kind="pace" :value="281" />
         </div>
       </div>
-      <p class="lead">Le cœur bat à ton vrai rythme, les lignes défilent à ton allure. Et six thèmes, de « Néon » à « Trail », que tu peux régler à ton goût.</p>
+      <p class="lead">Le cœur bat à ton vrai rythme, les lignes défilent à ton allure, dehors comme sur tapis. Et six thèmes, de « Néon » à « Trail », que tu peux régler à ton goût.</p>
     </section>
 
     <!-- Étapes -->
@@ -357,6 +379,39 @@ const STEPS = [
   font-size: 15px;
 }
 
+.tabs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tab-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+}
+
+.tab-card .eyebrow {
+  color: var(--accent-text);
+}
+
+.tab-card .q {
+  margin: 2px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.tab-card .text {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+
 .showcase {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -465,9 +520,15 @@ const STEPS = [
     gap: 28px 32px;
   }
 
-  .steps {
+  .steps,
+  .tabs-list {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tab-card {
+    flex-direction: column;
+    height: 100%;
   }
 
   .step {

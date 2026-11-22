@@ -1,8 +1,12 @@
 <script setup lang="ts">
 /*
- * Aperçu vivant de l'appli dans un téléphone : les barres poussent, le total défile,
- * puis un « Morning Run » devient le vrai nom Garmin. Trois tours, puis il se pose.
+ * Aperçu vivant de l'appli dans un téléphone, sur l'écran Aujourd'hui : la séance d'hier attend son débrief
+ * (tours sur tapis, 5 efforts sur 8), puis le « Course à pied en soirée » devient le nom de la séance et le
+ * débrief est fait. Dessous : la semaine face au plan, la prochaine séance, la barre à trois onglets.
+ * Trois tours, puis il se pose.
  */
+import { NotebookText, Sunrise, TrendingUp } from 'lucide-vue-next'
+
 const fixed = ref(false)
 let round = 0
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -25,8 +29,21 @@ onMounted(() => {
 })
 onBeforeUnmount(() => clearTimeout(timer))
 
-const BARS = [0, 0, 0, 100, 50, 64, 0]
-const DAYS = ['J', 'V', 'S', 'D', 'L', 'M', 'M']
+/* Tours de la séance sur tapis : échauffement, 8 efforts (5 tenus), retour au calme */
+const LAPS = [
+  { h: 34, w: 3 }, { h: 92, w: 1 }, { h: 30, w: 1 }, { h: 94, w: 1 }, { h: 30, w: 1 }, { h: 90, w: 1 }, { h: 30, w: 1 },
+  { h: 93, w: 1 }, { h: 30, w: 1 }, { h: 88, w: 1 }, { h: 30, w: 1 }, { h: 88, w: 1, ghost: true }, { h: 30, w: 1, ghost: true },
+  { h: 88, w: 1, ghost: true }, { h: 30, w: 1, ghost: true }, { h: 88, w: 1, ghost: true }, { h: 28, w: 2 },
+]
+/* La semaine : fait, fait, sauté, fait, hier (à débriefer), aujourd'hui prévu, demain prévu */
+const WEEK = [
+  { d: 'L', s: 'done' }, { d: 'M', s: 'done' }, { d: 'M', s: 'skip' }, { d: 'J', s: 'done' }, { d: 'V', s: 'done' }, { d: 'S', s: 'plan', today: true }, { d: 'D', s: 'plan' },
+]
+const TABS = [
+  { icon: Sunrise, label: 'Aujourd’hui', on: true },
+  { icon: NotebookText, label: 'Journal' },
+  { icon: TrendingUp, label: 'Progression' },
+]
 </script>
 
 <template>
@@ -36,41 +53,50 @@ const DAYS = ['J', 'V', 'S', 'D', 'L', 'M', 'M']
       <div class="notch" />
       <div class="screen">
         <p class="hello">Salut <span class="masked">Alex</span></p>
+
+        <!-- Carte principale : la séance d'hier, à débriefer -->
+        <div class="focus">
+          <Transition name="swap" mode="out-in">
+            <span :key="String(fixed)" class="lbl">{{ fixed ? 'Débriefée · hier' : 'À débriefer · hier' }}</span>
+          </Transition>
+          <Transition name="swap" mode="out-in">
+            <b :key="String(fixed)" class="name">{{ fixed ? '8×400m (R=1’)' : 'Course à pied en soirée' }}</b>
+          </Transition>
+          <div class="laps">
+            <span v-for="(l, i) in LAPS" :key="i" class="lap" :class="{ ghost: l.ghost }" :style="{ height: `${l.h}%`, flexGrow: l.w, '--b': i }" />
+          </div>
+          <div class="foot">
+            <span class="res">5 efforts sur 8 · sur tapis</span>
+            <Transition name="swap" mode="out-in">
+              <span :key="String(fixed)" class="cta" :class="{ done: fixed }">{{ fixed ? 'Publié ✓' : 'Débriefer' }}</span>
+            </Transition>
+          </div>
+        </div>
+
+        <!-- Ta semaine, face au plan -->
         <div class="week">
-          <span class="lbl">7 derniers jours</span>
-          <span class="km"><CountUp :value="26.6" :decimals="1" :delay="900" :duration="1200" /> km</span>
-          <div class="bars">
-            <span v-for="(h, i) in BARS" :key="i" class="bar-col">
-              <span class="bar" :class="{ off: !h }" :style="{ height: `${h || 10}%`, '--b': i }" />
-              <span class="d">{{ DAYS[i] }}</span>
+          <span class="wk-head"><b>Ta semaine</b><small>4 séances sur 5</small></span>
+          <div class="days">
+            <span v-for="(d, i) in WEEK" :key="i" class="day" :class="{ today: d.today }">
+              <span class="mark" :class="`m-${d.s}`" />
+              <span class="d">{{ d.d }}</span>
             </span>
           </div>
         </div>
+
         <div class="rows">
           <div class="r">
             <span class="tile" style="--tile: var(--type-interval)" />
-            <span class="txt">
-              <Transition name="swap" mode="out-in">
-                <b :key="String(fixed)">{{ fixed ? 'Fractionné piste 10×400' : 'Morning Run' }}</b>
-              </Transition>
-              <small>8,0 km · 42:30</small>
-            </span>
-            <Transition name="swap" mode="out-in">
-              <span :key="String(fixed)" class="chip" :class="fixed ? 'chip--ok' : 'chip--ko'">{{ fixed ? 'Synchro' : 'Différent' }}</span>
-            </Transition>
-          </div>
-          <div class="r">
-            <span class="tile" style="--tile: var(--type-recovery)" />
-            <span class="txt"><b>Footing récup</b><small>6,2 km · 35:01</small></span>
-            <span class="chip chip--ok">Synchro</span>
-          </div>
-          <div class="r">
-            <span class="tile" style="--tile: var(--type-long)" />
-            <span class="txt"><b>Sortie longue</b><small>12,4 km · 1:05:12</small></span>
-            <span class="chip chip--ok">Synchro</span>
+            <span class="txt"><b>Fractionné 6 × 800 m</b><small>Demain · 55 min · Kiprun</small></span>
           </div>
         </div>
-        <div class="tabs"><i class="on" /><i /><i /><i /></div>
+
+        <div class="tabs">
+          <span v-for="t in TABS" :key="t.label" class="t" :class="{ on: t.on }">
+            <component :is="t.icon" :size="12" />
+            <span>{{ t.label }}</span>
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -147,69 +173,170 @@ const DAYS = ['J', 'V', 'S', 'D', 'L', 'M', 'M']
   filter: blur(5px);
 }
 
-.week {
+.focus {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 12px;
-  border-radius: 18px;
+  gap: 5px;
+  padding: 11px 12px 10px;
+  border-radius: calc(var(--r-card) * 0.7);
   background: var(--primary);
   color: var(--on-primary);
 }
 
 .lbl {
   font-family: var(--font-mono);
-  font-size: 9px;
-  opacity: 0.8;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }
 
-.km {
+.name {
   font-family: var(--font-display);
   font-weight: var(--display-weight);
-  font-size: 30px;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
+  font-size: 15px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
-.bars {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  height: 46px;
-  margin-top: 6px;
+/* Profil des tours (tapis) : les 3 derniers efforts, non faits, en fantôme */
+.laps {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  margin-top: 2px;
 }
 
-.bar-col {
+.lap {
+  flex-basis: 0;
+  border-radius: 2px 2px 1px 1px;
+  background: currentColor;
+  opacity: 0.92;
+  transform-origin: bottom;
+  animation: grow 0.6s var(--ease-out) backwards;
+  animation-delay: calc(900ms + var(--b) * 35ms);
+}
+
+.lap.ghost {
+  opacity: 0.28;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.res {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  opacity: 0.85;
+}
+
+.cta {
+  padding: 4px 8px;
+  border-radius: var(--r-pill);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.cta.done {
+  color: var(--ok);
+}
+
+/* Ta semaine */
+.week {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
+  gap: 7px;
+  padding: 10px;
+  border-radius: calc(var(--r-card) * 0.62);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+}
+
+.wk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.wk-head b {
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.wk-head small {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: 3px;
 }
 
-.bar {
-  width: 100%;
-  max-width: 16px;
-  border-radius: 4px;
-  background: currentColor;
-  transform-origin: bottom;
-  animation: grow 0.7s var(--ease-out) backwards;
-  animation-delay: calc(900ms + var(--b) * 60ms);
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  border-radius: calc(var(--r-ctrl) * 0.6);
 }
 
-.bar.off {
-  opacity: 0.25;
-  max-height: 4px;
+.day.today {
+  background: var(--surface-2);
+}
+
+.mark {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.m-done {
+  background: var(--ok);
+}
+
+.m-plan {
+  box-shadow: inset 0 0 0 1.5px var(--ink-2);
+}
+
+.m-skip {
+  position: relative;
+}
+
+.m-skip::before,
+.m-skip::after {
+  content: '';
+  position: absolute;
+  inset: 5px 1px;
+  border-radius: 1px;
+  background: var(--muted);
+  transform: rotate(45deg);
+}
+
+.m-skip::after {
+  transform: rotate(-45deg);
 }
 
 .d {
   font-family: var(--font-mono);
-  font-size: 8px;
-  opacity: 0.75;
+  font-size: 7.5px;
+  color: var(--muted);
 }
 
 .rows {
-  border-radius: 16px;
+  border-radius: calc(var(--r-card) * 0.62);
   background: var(--surface);
   border: 1px solid var(--surface-border);
 }
@@ -228,7 +355,7 @@ const DAYS = ['J', 'V', 'S', 'D', 'L', 'M', 'M']
 .r .tile {
   width: 24px;
   height: 24px;
-  border-radius: 7px;
+  border-radius: calc(var(--r-ctrl) * 0.5);
 }
 
 .txt {
@@ -252,35 +379,33 @@ const DAYS = ['J', 'V', 'S', 'D', 'L', 'M', 'M']
   color: var(--muted);
 }
 
-.r .chip {
-  padding: 3px 6px;
-  font-size: 8.5px;
-  gap: 3px;
-}
 
-.r .chip::before {
-  width: 4px;
-  height: 4px;
-}
-
+/* Barre du bas : trois onglets */
 .tabs {
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 5px;
   margin-top: 2px;
-  border-radius: 20px;
+  border-radius: calc(var(--r-tab) * 0.56);
   background: var(--tab-bg);
   border: 1px solid var(--tab-border);
 }
 
-.tabs i {
-  width: 22px;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--line-strong);
+.t {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 0 4px;
+  border-radius: calc(var(--r-tab) * 0.42);
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--muted);
 }
 
-.tabs i.on {
+.t.on {
+  color: var(--on-tab-active);
   background: var(--tab-active);
 }
 
