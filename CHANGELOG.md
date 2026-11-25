@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.17.0](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.5...v1.17.0) (2026-11-25)
+
+### Nouveautés
+
+* une course courue avant un changement de zones sur ta montre est relue avec tes zones d'aujourd'hui, et un bouton ramène à celles du jour ([b2270f1](https://github.com/ALapaque/stravaXgarmin/commit/b2270f15b372c053d924f99306fe4baaf8aadc42))
+
+### Corrections
+
+* tes zones cardio viennent de ta montre Garmin (sinon de ton compte Strava), avec le temps par zone qu'elle a compté ; tu choisis la source dans Réglages → Coureur ([f51e9e3](https://github.com/ALapaque/stravaXgarmin/commit/f51e9e32c5d6809f91eb62ad07c03767a90c974b))
+
 ## [1.16.5](https://github.com/ALapaque/stravaXgarmin/compare/v1.16.4...v1.16.5) (2026-11-22)
 
 ### Corrections
