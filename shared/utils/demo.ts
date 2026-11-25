@@ -547,3 +547,12 @@ export function demoZoneFloors(runs: { maxHr?: number | null }[]): number[] {
 export function demoWatchZones(runs: { maxHr?: number | null }[]): WatchZones {
   return reserveZones(estimateHrMax(runs) ?? 185, 52)
 }
+
+/**
+ * Les zones que la montre de démo avait avant son dernier réglage (repos à 64). Les courses de plus de
+ * deux semaines les portent encore : la démo montre ainsi une course relue avec les zones d'aujourd'hui,
+ * et le bouton qui ramène à celles du jour.
+ */
+export function demoWatchZonesBefore(runs: { maxHr?: number | null }[]): WatchZones {
+  return reserveZones(estimateHrMax(runs) ?? 185, 64)
+}

@@ -3,15 +3,23 @@
  * celles de son compte Strava, sinon un calcul sur sa FC max. Le coureur peut imposer une source
  * (Réglages → Coureur). Pour la montre et pour Strava, l'appli reprend les seuils ET le temps par zone
  * comptés à la source : elle affiche alors la même chose qu'eux.
+ * Une course courue avant un changement de réglage de la montre est relue avec les zones d'aujourd'hui
+ * (temps recompté sur la courbe), celles du jour restant à portée d'un bouton.
  * Lectures à la demande seulement (jamais pendant la synchro), gardées dans le navigateur.
  * Le choix lui-même est une fonction pure : pickZones (shared/utils/zones.ts).
  */
-import type { AccountZones, RunZones, StravaZonesReply, WatchRunZonesReply, WatchZonesReply, ZonePick, ZoneProvider, ZoneSource } from '#shared/utils/zones'
+import type { AccountZones, RunZones, StravaZonesReply, WatchRunZonesReply, WatchZonesReply, ZonePick, ZoneProvider, ZoneSource, ZoneView } from '#shared/utils/zones'
 import type { Activity } from './useActivities'
 
 /** Lectures gardées (deux sources possibles par course) */
 const KEEP = 120
 const DAY_MS = 24 * 3600 * 1000
+/**
+ * Les zones réglées sur la montre servent à relire toutes les courses : pour suivre un changement de
+ * réglage, elles sont relues dès qu'elles datent de plus de cinq minutes (à l'ouverture d'une course,
+ * sans la faire attendre, et depuis les réglages).
+ */
+const WATCH_FRESH_MS = 5 * 60 * 1000
 /** Une lecture qui vient d'échouer n'est pas retentée avant dix minutes */
 const RETRY_AFTER_MS = 10 * 60 * 1000
 /** Pas de second essai automatique : un échec est noté, la source suivante prend le relais */
@@ -57,12 +65,32 @@ export function useZones() {
   /** Strava a dit « réservé aux abonnés » il y a moins d'un jour */
   const stravaOff = () => Boolean(accounts.value?.strava?.off) && age(accounts.value?.strava?.at) < DAY_MS
 
+  /**
+   * Les réglages lus sur la montre valent-ils « zones d'aujourd'hui », au point de relire une ancienne
+   * course avec ? Oui s'ils viennent bien de ses réglages (et non d'une course), et tant que la course
+   * la plus récente lue chez Garmin ne les contredit pas (watchZonesHold).
+   */
+  const watchLive = computed(() => {
+    const g = accounts.value?.garmin
+    const floors = validFloors(g?.floors)
+    if (!g?.at || !floors) return false
+    let newest: { startedAt: string; zones: RunZones } | null = null
+    for (const a of activities.value) {
+      const zones = saved.value?.[`garmin:${a.id}`]?.data
+      if (zones && (!newest || a.startedAt > newest.startedAt)) newest = { startedAt: a.startedAt, zones }
+    }
+    return watchZonesHold({ floors, low: g.low, since: g.since || g.at }, newest)
+  })
+
   /** Zones des comptes : en démo, celles de comptes fictifs (rien n'est gardé). */
-  const known = computed<Partial<Record<ZoneProvider, Pick<AccountZones, 'floors' | 'low' | 'top' | 'off' | 'custom' | 'method'>>>>(() => {
-    if (!demo.value) return accounts.value ?? {}
+  const known = computed<Partial<Record<ZoneProvider, Pick<AccountZones, 'floors' | 'low' | 'top' | 'off' | 'custom' | 'method'> & { live?: boolean }>>>(() => {
+    if (!demo.value) {
+      const stored = accounts.value ?? {}
+      return stored.garmin ? { ...stored, garmin: { ...stored.garmin, live: watchLive.value } } : stored
+    }
     const watch = demoWatchZones(activities.value)
     return {
-      garmin: { floors: watch.floors, low: watch.low, top: watch.top, off: false, custom: false, method: watch.method },
+      garmin: { floors: watch.floors, low: watch.low, top: watch.top, off: false, custom: false, method: watch.method, live: true },
       strava: { floors: demoZoneFloors(activities.value), low: null, top: null, off: false, custom: false, method: null },
     }
   })
@@ -104,9 +132,13 @@ export function useZones() {
     try {
       const r = await useHealth().track('garmin.zones', () => $fetch<WatchZonesReply>('/api/garmin/zones', ONCE), (x) => HEALTH_INFO.watchZones(x.zones))
       if (!r.zones) return void fail('garmin:account')
+      const now = new Date().toISOString()
+      const old = accounts.value?.garmin
+      // « since » ne bouge pas tant que les réglages lus restent exactement les mêmes
+      const unchanged = Boolean(old?.at && old.since) && old!.low === r.zones.low && String(old!.floors) === String(r.zones.floors)
       accounts.value = {
         ...accounts.value,
-        garmin: { at: new Date().toISOString(), runAt: '', floors: r.zones.floors, low: r.zones.low, top: r.zones.top, custom: false, off: false, method: r.zones.method },
+        garmin: { at: now, since: unchanged ? old!.since : now, runAt: '', floors: r.zones.floors, low: r.zones.low, top: r.zones.top, custom: false, off: false, method: r.zones.method },
       }
     } catch {
       fail('garmin:account')
@@ -167,11 +199,11 @@ export function useZones() {
     }
   }
 
-  /** Les zones de la montre sont relues une fois par jour, sans faire attendre l'écran. */
+  /** Les zones de la montre sont relues dès qu'elles datent de plus de cinq minutes, sans faire attendre l'écran. */
   function refreshWatch() {
     const lock = 'garmin:account'
     if (source.value !== 'garmin' || !watchReadable() || !watchKnown() || busy.value[lock]) return
-    if (age(accounts.value?.garmin?.at) < DAY_MS || justFailed(lock)) return
+    if (age(accounts.value?.garmin?.at) < WATCH_FRESH_MS || justFailed(lock)) return
     busy.value = { ...busy.value, [lock]: true }
     void readWatch().finally(() => {
       const { [lock]: _, ...rest } = busy.value
@@ -198,31 +230,42 @@ export function useZones() {
     }
   }
 
-  /** Depuis les réglages : les zones de la source voulue, relues une fois par jour au plus. */
-  async function loadLatest(): Promise<void> {
+  /**
+   * Depuis les réglages (ou « Tout relire maintenant », avec « force ») : les zones de la source voulue.
+   * La montre : relues si elles datent de plus de cinq minutes ; Strava : une fois par jour.
+   */
+  async function loadLatest(force = false): Promise<void> {
     const src = source.value
     if (demo.value || src === 'fcmax') return
     if (src === 'garmin' && watchReadable()) {
-      if (age(accounts.value?.garmin?.at) > DAY_MS && !justFailed('garmin:account')) await readWatch()
+      const stale = force || age(accounts.value?.garmin?.at) > WATCH_FRESH_MS
+      if (stale && (force || !justFailed('garmin:account'))) await readWatch()
       if (watchKnown()) return
     }
     // Strava (voulu, ou à défaut de la montre) : ses zones viennent avec la dernière course qui a du cardio
-    if (age(accounts.value?.strava?.at) < DAY_MS) return
+    if (!force && (age(accounts.value?.strava?.at) < DAY_MS || stravaOff())) return
     const last = [...activities.value].filter((a) => a.stravaId && a.avgHr > 0).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
-    if (last && !justFailed(`strava:${last.id}`)) await readStravaRun(last)
+    if (last && (force || !justFailed(`strava:${last.id}`))) await readStravaRun(last)
   }
 
-  /** Zones à afficher pour une course (ou, sans course, celles du coureur pour les réglages). */
-  function pick(a?: Activity | null): ZonePick {
+  /**
+   * Zones à afficher pour une course (ou, sans course, celles du coureur pour les réglages).
+   * « view » : pour une course dont les zones ont changé depuis, celles d'aujourd'hui (défaut) ou celles du jour.
+   */
+  function pick(a?: Activity | null, view: ZoneView = 'current'): ZonePick {
     const run = (p: ZoneProvider): RunZones | null => {
       if (!a) return null
       if (!demo.value) return saved.value?.[`${p}:${a.id}`]?.data ?? null
-      const k = known.value[p]
+      // Démo : la montre a été réglée autrement il y a deux semaines, les courses d'avant gardent leurs zones
+      const before = p === 'garmin' && Date.parse(a.startedAt) < Date.now() - 14 * DAY_MS
+      const k = before ? demoWatchZonesBefore(activities.value) : known.value[p]
       return k?.floors ? { floors: k.floors, low: k.low ?? null, sec: null, custom: false } : null
     }
     return pickZones({
       source: source.value,
       garminOn: garminOn.value,
+      view,
+      forRun: Boolean(a),
       runs: { garmin: run('garmin'), strava: run('strava') },
       accounts: known.value,
       hrMax: settings.value.hrMax,

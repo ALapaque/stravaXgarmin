@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { comparePlan } from '../shared/utils/compliance'
 import { needsDebrief } from '../shared/utils/debrief'
-import { buildDemo, demoStream, demoWatchZones, demoZoneFloors } from '../shared/utils/demo'
+import { buildDemo, demoStream, demoWatchZones, demoWatchZonesBefore, demoZoneFloors } from '../shared/utils/demo'
 import { matchPlan } from '../shared/utils/planmatch'
 import { detectConvention, displayTitle } from '../shared/utils/titles'
 import { timeInZones, validFloors } from '../shared/utils/zones'
@@ -132,6 +132,11 @@ describe.each(['2026-11-22', '2026-07-15', '2026-11-23', '2027-01-01'])('buildDe
     expect(watch.method).toBe('reserve')
     const floors = demoZoneFloors(runs)
     expect(validFloors(floors)).toEqual(floors)
+    // Avant son dernier réglage, la montre de démo avait d'autres zones : les vieilles courses de la démo sont relues
+    const before = demoWatchZonesBefore(runs)
+    expect(validFloors(before.floors)).toEqual(before.floors)
+    expect(before.floors).not.toEqual(watch.floors)
+    expect(runs.some((r) => Date.parse(r.startedAt) < Date.parse(`${today}T12:00:00Z`) - 15 * DAY)).toBe(true)
     // La montre et Strava ne découpent pas pareil : c'est ce que la démo montre
     expect(watch.floors).not.toEqual(floors)
     const easy = runs.find((r) => r.type === 'easy' && r.avgHr > 0)!

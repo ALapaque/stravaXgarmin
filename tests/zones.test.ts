@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  estimateHrMax, garminAccountZones, garminRunZones, hrZones, maxHrZones, pickZones, reserveZones, stravaDefaultFloors, stravaHrZones,
-  timeInZones, validFloors, zoneNote, zoneOf, zoneRange, zoneSourceLine,
+  estimateHrMax, garminAccountZones, garminRunZones, hrZones, maxHrZones, pickZones, reserveZones, sameZones, stravaDefaultFloors, stravaHrZones,
+  timeInZones, validFloors, watchZonesHold, zoneNote, zoneOf, zoneRange, zoneSourceLine,
 } from '../shared/utils/zones'
 
 /** Zones d'un compte Strava inventé : zone 2 dès 124, zone 3 dès 154, zone 4 dès 169, zone 5 dès 184. */
@@ -222,20 +222,24 @@ describe('lecture des réponses de Garmin', () => {
 })
 
 describe('pickZones : quelles zones afficher', () => {
+  /** Rien n'a changé depuis la course : une seule lecture */
+  const SAME = { changed: false, view: 'current' as const }
   const strava = { floors: FLOORS, low: null, sec: [300, 1800, 240, 60, 0], custom: false }
   const watch = { floors: WATCH, low: 118, sec: [120, 1500, 601, 90, 0], custom: false }
   const stravaAccount = { floors: [120, 150, 165, 180], off: false }
   const watchAccount = { floors: [130, 144, 157, 171], low: 117, top: 185, off: false }
 
   it('source montre : les zones de la course lues chez Garmin, et le temps compté par la montre', () => {
-    expect(pickZones({ source: 'garmin', garminOn: true, runs: { garmin: watch, strava }, accounts: { garmin: watchAccount, strava: stravaAccount }, hrMax: 188, estimated: 192 })).toEqual({
-      set: { floors: WATCH, low: 118, top: null }, sec: [120, 1500, 601, 90, 0], from: 'garmin', maxHr: null, wanted: 'garmin', why: null,
+    // La montre a aujourd'hui les mêmes zones que le jour de la course
+    const unchanged = { floors: WATCH, low: 118, top: 186, off: false }
+    expect(pickZones({ source: 'garmin', garminOn: true, runs: { garmin: watch, strava }, accounts: { garmin: unchanged, strava: stravaAccount }, hrMax: 188, estimated: 192 })).toEqual({
+      set: { floors: WATCH, low: 118, top: null }, sec: [120, 1500, 601, 90, 0], from: 'garmin', maxHr: null, wanted: 'garmin', why: null, ...SAME,
     })
   })
 
   it('source montre, course pas lue chez Garmin : les zones réglées sur la montre, avant celles de Strava', () => {
     expect(pickZones({ source: 'garmin', garminOn: true, runs: { garmin: null, strava }, accounts: { garmin: watchAccount, strava: stravaAccount }, hrMax: null, estimated: 192 })).toEqual({
-      set: { floors: [130, 144, 157, 171], low: 117, top: 185 }, sec: null, from: 'garmin', maxHr: null, wanted: 'garmin', why: null,
+      set: { floors: [130, 144, 157, 171], low: 117, top: 185 }, sec: null, from: 'garmin', maxHr: null, wanted: 'garmin', why: null, ...SAME,
     })
   })
 
@@ -246,13 +250,13 @@ describe('pickZones : quelles zones afficher', () => {
     expect(pickZones({ source: 'garmin', garminOn: false, runs: { strava }, accounts: {}, hrMax: null, estimated: 192 })).toMatchObject({ from: 'strava', why: 'unlinked' })
     // Ni montre ni Strava : le calcul
     expect(pickZones({ source: 'garmin', garminOn: true, runs: {}, accounts: {}, hrMax: null, estimated: 190 })).toEqual({
-      set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'garmin', why: 'wait',
+      set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'garmin', why: 'wait', ...SAME,
     })
   })
 
   it('source Strava : jamais la montre, même si ses zones sont connues', () => {
     expect(pickZones({ source: 'strava', garminOn: true, runs: { garmin: watch, strava }, accounts: { garmin: watchAccount }, hrMax: 188, estimated: 192 })).toEqual({
-      set: { floors: FLOORS, low: null, top: null }, sec: [300, 1800, 240, 60, 0], from: 'strava', maxHr: null, wanted: 'strava', why: null,
+      set: { floors: FLOORS, low: null, top: null }, sec: [300, 1800, 240, 60, 0], from: 'strava', maxHr: null, wanted: 'strava', why: null, ...SAME,
     })
     // Course pas lue : les derniers seuils connus du compte, temps à compter sur la courbe
     expect(pickZones({ source: 'strava', runs: { strava: null }, accounts: { strava: stravaAccount }, hrMax: null, estimated: 192 })).toMatchObject({
@@ -263,9 +267,9 @@ describe('pickZones : quelles zones afficher', () => {
   })
 
   it('source Strava sans zones : calcul sur la FC max, en disant pourquoi', () => {
-    expect(pickZones({ source: 'strava', runs: {}, accounts: {}, hrMax: null, estimated: 190 })).toEqual({ set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'strava', why: 'wait' })
+    expect(pickZones({ source: 'strava', runs: {}, accounts: {}, hrMax: null, estimated: 190 })).toEqual({ set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'strava', why: 'wait', ...SAME })
     expect(pickZones({ source: 'strava', runs: {}, accounts: { strava: { floors: null, off: true } }, hrMax: 186, estimated: 190 })).toEqual({
-      set: maxHrZones(186), sec: null, from: 'set', maxHr: 186, wanted: 'strava', why: 'off',
+      set: maxHrZones(186), sec: null, from: 'set', maxHr: 186, wanted: 'strava', why: 'off', ...SAME,
     })
     // Abonnement arrêté mais seuils déjà connus : on les garde
     expect(pickZones({ source: 'strava', runs: {}, accounts: { strava: { floors: FLOORS, off: true } }, hrMax: null, estimated: 190 }).from).toBe('strava')
@@ -273,20 +277,71 @@ describe('pickZones : quelles zones afficher', () => {
 
   it('source FC max : toujours le calcul, même si d’autres zones sont connues', () => {
     expect(pickZones({ source: 'fcmax', runs: { garmin: watch, strava }, accounts: { garmin: watchAccount, strava: stravaAccount }, hrMax: null, estimated: 190 })).toEqual({
-      set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'fcmax', why: null,
+      set: maxHrZones(190), sec: null, from: 'seen', maxHr: 190, wanted: 'fcmax', why: null, ...SAME,
     })
     expect(pickZones({ source: 'fcmax', hrMax: 184, estimated: 190 })).toMatchObject({ from: 'set', maxHr: 184 })
   })
 
+  it('zones changées depuis la course : celles d’aujourd’hui par défaut, celles du jour à la demande', () => {
+    // Réglages lus aujourd'hui sur la montre (« live »), qui ne sont plus ceux du jour de la course
+    const today = { floors: [126, 141, 155, 169], low: 112, top: 185, off: false, live: true }
+    const input = { source: 'garmin' as const, garminOn: true, forRun: true, runs: { garmin: watch }, accounts: { garmin: today }, hrMax: null, estimated: 192 }
+    // Par défaut : les zones actuelles de la montre, temps à recompter sur la courbe, zone 5 sans haut
+    expect(pickZones(input)).toEqual({
+      set: { floors: [126, 141, 155, 169], low: 112, top: null }, sec: null, from: 'garmin', maxHr: null, wanted: 'garmin', why: null, changed: true, view: 'current',
+    })
+    // À la demande : celles du jour, avec le temps compté par la montre
+    expect(pickZones({ ...input, view: 'day' })).toEqual({
+      set: { floors: WATCH, low: 118, top: null }, sec: [120, 1500, 601, 90, 0], from: 'garmin', maxHr: null, wanted: 'garmin', why: null, changed: true, view: 'day',
+    })
+    // Mêmes zones qu'aujourd'hui, à un battement près : rien à choisir, la course garde ses zones et le temps de la montre
+    const same = pickZones({ ...input, view: 'day', accounts: { garmin: { ...watchAccount, live: true } } })
+    expect(same).toMatchObject({ changed: false, view: 'current', set: { floors: WATCH, low: 118 }, sec: [120, 1500, 601, 90, 0] })
+    // Zones du compte déduites d'une course, ou contredites par la dernière course (pas « live ») : la course garde les siennes
+    const unsure = pickZones({ ...input, accounts: { garmin: { ...today, live: false } } })
+    expect(unsure).toMatchObject({ changed: false, view: 'current', set: { floors: WATCH, low: 118 }, sec: [120, 1500, 601, 90, 0] })
+    // Strava ne donne ses zones qu'avec une course : rien ne dit que celles du compte sont d'aujourd'hui
+    const viaStrava = pickZones({ source: 'strava', forRun: true, runs: { strava }, accounts: { strava: stravaAccount }, hrMax: null, estimated: 192 })
+    expect(viaStrava).toMatchObject({ from: 'strava', changed: false, set: { floors: FLOORS }, sec: [300, 1800, 240, 60, 0] })
+    // La montre voulue mais illisible, Strava en secours : les zones de la course chez Strava, sans choix
+    const fallback = pickZones({ source: 'garmin', garminOn: true, forRun: true, runs: { strava }, accounts: { strava: stravaAccount }, hrMax: null, estimated: 192 })
+    expect(fallback).toMatchObject({ from: 'strava', changed: false, set: { floors: FLOORS } })
+  })
+
+  it('sameZones : mêmes zones, au battement près', () => {
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: [...WATCH], low: 118 })).toBe(true)
+    // Un battement d'écart (un arrondi) ne fait pas un changement de réglage
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: [130, 146, 158, 171], low: 119 })).toBe(true)
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: [131, 145, 158, 174], low: 118 })).toBe(false)
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: WATCH, low: 120 })).toBe(false)
+    // Bas de zone 1 inconnu d'un côté : seuls les seuils comptent
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: WATCH, low: null })).toBe(true)
+    expect(sameZones({ floors: WATCH, low: 118 }, { floors: WATCH.slice(1), low: 118 })).toBe(false)
+  })
+
+  it('watchZonesHold : la course la plus récente fait foi', () => {
+    const account = { floors: WATCH, low: 118, since: '2026-03-10T08:00:00Z' }
+    const other = { floors: [126, 141, 155, 169], low: 112 }
+    // Aucune course lue chez Garmin : rien ne contredit les réglages
+    expect(watchZonesHold(account, null)).toBe(true)
+    // Course d'avant la lecture de ces réglages : d'autres zones, c'est justement un changement
+    expect(watchZonesHold(account, { startedAt: '2026-03-09T17:00:00Z', zones: other })).toBe(true)
+    // Course d'après : elle doit porter les mêmes zones, au battement près
+    expect(watchZonesHold(account, { startedAt: '2026-03-11T17:00:00Z', zones: { floors: [130, 145, 159, 172], low: 118 } })).toBe(true)
+    expect(watchZonesHold(account, { startedAt: '2026-03-11T17:00:00Z', zones: other })).toBe(false)
+    // Date illisible : pas de quoi contredire
+    expect(watchZonesHold({ ...account, since: '' }, { startedAt: '2026-03-11T17:00:00Z', zones: other })).toBe(true)
+  })
+
   it('ni zones ni FC max : rien à afficher', () => {
-    expect(pickZones({ source: 'strava', hrMax: null, estimated: null })).toEqual({ set: null, sec: null, from: null, maxHr: null, wanted: 'strava', why: 'wait' })
-    expect(pickZones({ source: 'fcmax', hrMax: 0, estimated: undefined })).toEqual({ set: null, sec: null, from: null, maxHr: null, wanted: 'fcmax', why: null })
+    expect(pickZones({ source: 'strava', hrMax: null, estimated: null })).toEqual({ set: null, sec: null, from: null, maxHr: null, wanted: 'strava', why: 'wait', ...SAME })
+    expect(pickZones({ source: 'fcmax', hrMax: 0, estimated: undefined })).toEqual({ set: null, sec: null, from: null, maxHr: null, wanted: 'fcmax', why: null, ...SAME })
   })
 })
 
 describe('phrases : d’où viennent les zones', () => {
-  const base = { set: { floors: FLOORS, low: null, top: null }, sec: null, maxHr: null }
-  const computed = { set: maxHrZones(190), sec: null, maxHr: 190 }
+  const base = { set: { floors: FLOORS, low: null, top: null }, sec: null, maxHr: null, changed: false, view: 'current' as const }
+  const computed = { set: maxHrZones(190), sec: null, maxHr: 190, changed: false, view: 'current' as const }
 
   it('zoneNote : sous le cardio d’une course', () => {
     expect(zoneNote({ ...base, from: 'garmin', wanted: 'garmin', why: null })).toBe('Ce sont les zones de ta montre Garmin.')
@@ -298,7 +353,14 @@ describe('phrases : d’où viennent les zones', () => {
     expect(zoneNote({ ...computed, from: 'seen', wanted: 'garmin', why: 'wait' })).toBe('Les zones de ta montre n’ont pas pu être lues : tes zones sont calculées sur une FC max de 190 bpm (la plus haute vue sur tes courses).')
     expect(zoneNote({ ...computed, from: 'seen', wanted: 'strava', why: 'off' })).toBe('Strava ne donne tes zones qu’à ses abonnés : tes zones sont calculées sur une FC max de 190 bpm (la plus haute vue sur tes courses).')
     expect(zoneNote({ ...computed, from: 'set', wanted: 'strava', why: 'wait' })).toBe('Tes zones Strava n’ont pas pu être lues : tes zones sont calculées sur une FC max de 190 bpm (celle que tu as saisie).')
-    expect(zoneNote({ set: null, sec: null, maxHr: null, from: null, wanted: 'garmin', why: 'wait' })).toBe('Il faut au moins trois courses avec cardio pour calculer tes zones.')
+    expect(zoneNote({ set: null, sec: null, maxHr: null, from: null, wanted: 'garmin', why: 'wait', changed: false, view: 'current' })).toBe('Il faut au moins trois courses avec cardio pour calculer tes zones.')
+  })
+
+  it('zoneNote : course courue avant un changement de zones', () => {
+    expect(zoneNote({ ...base, from: 'garmin', wanted: 'garmin', why: null, changed: true, view: 'current' })).toBe(
+      'Tes zones ont changé depuis cette course : elle est relue avec celles d’aujourd’hui, et le temps est recompté sur ta courbe.',
+    )
+    expect(zoneNote({ ...base, from: 'garmin', wanted: 'garmin', why: null, changed: true, view: 'day' })).toBe('Ce sont les zones que ta montre avait ce jour-là, comme dans Garmin Connect.')
   })
 
   it('zoneSourceLine : dans les réglages', () => {
@@ -317,6 +379,6 @@ describe('phrases : d’où viennent les zones', () => {
     // Strava voulu mais pas lu
     expect(zoneSourceLine({ ...computed, from: 'seen', wanted: 'strava', why: 'off' })).toBe('Strava ne donne tes zones qu’à ses abonnés. En attendant, elles sont calculées sur ta FC max.')
     expect(zoneSourceLine({ ...computed, from: 'seen', wanted: 'strava', why: 'wait' })).toBe('Tes zones Strava seront lues à l’ouverture d’une course. En attendant, elles sont calculées sur ta FC max.')
-    expect(zoneSourceLine({ set: null, sec: null, maxHr: null, from: null, wanted: 'strava', why: 'wait' }, { reading: true })).toBe('Lecture de tes zones Strava…')
+    expect(zoneSourceLine({ set: null, sec: null, maxHr: null, from: null, wanted: 'strava', why: 'wait', changed: false, view: 'current' }, { reading: true })).toBe('Lecture de tes zones Strava…')
   })
 })

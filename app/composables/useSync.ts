@@ -97,6 +97,7 @@ export function useSync() {
   const plan = usePlan()
   const debriefs = useDebriefs()
   const fitness = useFitness()
+  const zones = useZones()
   const { track, refreshDemo } = useHealth()
   const syncing = useState('syncing', () => false)
   const synced = useState('synced', () => false)
@@ -153,6 +154,8 @@ export function useSync() {
       // Chaque échec est noté dans l'état des connexions (useHealth) au lieu de passer inaperçu.
       loadDetails().catch(() => {})
       fitness.loadGear(fresh).catch(() => {})
+      // « Tout relire maintenant » : les zones cardio aussi (sinon elles se lisent à la demande)
+      if (fresh) zones.loadLatest(true).catch(() => {})
       if (accounts.value.garmin.connected) {
         loadGarminRecords(fresh).catch(() => {})
         plan.load(fresh).catch(() => {})

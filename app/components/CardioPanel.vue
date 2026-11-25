@@ -6,6 +6,8 @@
  * nommées (jamais la couleur seule). États : chargement, erreur, pas de cardio, pas de zones.
  * Les zones sont celles de la montre du coureur, sinon de son compte Strava (le temps par zone est alors
  * celui compté à la source), sinon calculées sur sa FC max : le choix est fait par useZones().pick.
+ * Une course courue avant un changement de zones est relue avec celles d'aujourd'hui ; un bouton
+ * ramène à celles du jour (événement « view »).
  * Géométrie : shared/utils/runchart.ts ; zones : shared/utils/zones.ts.
  */
 import { HeartCrack, RefreshCw } from 'lucide-vue-next'
@@ -26,7 +28,7 @@ const props = withDefaults(
   }>(),
   { settingsTo: null, avgHr: null, peakHr: null, height: 150 },
 )
-defineEmits<{ retry: [] }>()
+defineEmits<{ retry: []; view: [view: 'current' | 'day'] }>()
 
 /** Bandes de zones (fond) et barres : de plus en plus franches */
 const BAND_MIX = [6, 10, 15, 21, 29]
@@ -175,6 +177,9 @@ const label = computed(() => {
 
       <p class="fine maxhr">
         {{ zoneNote(zones) }}
+        <button v-if="zones.changed" type="button" class="link" @click="$emit('view', zones.view === 'day' ? 'current' : 'day')">
+          {{ zones.view === 'day' ? 'Voir avec mes zones actuelles' : 'Voir les zones du jour' }}
+        </button>
         <NuxtLink v-if="settingsTo" :to="settingsTo" class="link">Modifier</NuxtLink>
       </p>
     </template>

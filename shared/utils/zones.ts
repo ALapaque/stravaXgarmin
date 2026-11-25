@@ -17,6 +17,12 @@ export type ZoneProvider = 'garmin' | 'strava'
 export type ZoneSource = ZoneProvider | 'fcmax'
 /** Réglage du coureur. « auto » : la montre si Garmin est connecté, sinon Strava. */
 export type ZoneChoice = 'auto' | ZoneSource
+/**
+ * Quelles zones pour une course courue avant un changement de réglage : celles d'aujourd'hui (défaut,
+ * pour comparer toutes les courses avec la même règle) ou celles du jour de la course (ce que Garmin
+ * Connect garde affiché : il ne recalcule jamais une activité).
+ */
+export type ZoneView = 'current' | 'day'
 
 /** Jeu de zones : seuils d'entrée des zones 2, 3, 4 et 5 (bpm), et bornes à afficher quand elles existent. */
 export interface ZoneSet {
@@ -74,6 +80,8 @@ export interface WatchRunZonesReply {
 export interface AccountZones {
   /** Dernière lecture des zones du compte lui-même ; vide si elles viennent d'une course */
   at: string
+  /** Première lecture de ces réglages-là dans le compte : une course courue ensuite doit porter les mêmes zones */
+  since?: string
   /** Début de la course qui a donné ces seuils (vide : lus dans le compte) : une course plus ancienne ne les remplace pas */
   runAt: string
   floors: number[] | null
@@ -101,6 +109,10 @@ export interface ZonePick {
    * ses zones à ses abonnés (« off »), ou la lecture n'a pas (encore) abouti (« wait »).
    */
   why: 'unlinked' | 'off' | 'wait' | null
+  /** Les zones de la source ont changé depuis cette course : on peut la voir avec les deux jeux */
+  changed: boolean
+  /** Le jeu affiché ; toujours « current » quand rien n'a changé */
+  view: ZoneView
 }
 
 const LABELS = ['Très facile', 'Endurance', 'Tempo', 'Seuil', 'Maximum'] as const
@@ -288,18 +300,59 @@ export function garminRunZones(raw: unknown): RunZones | null {
 
 /* ───── Choix des zones à afficher ───── */
 
-type KnownZones = Pick<AccountZones, 'floors'> & Partial<Pick<AccountZones, 'low' | 'top' | 'off'>>
+type KnownZones = Pick<AccountZones, 'floors'> &
+  Partial<Pick<AccountZones, 'low' | 'top' | 'off'>> & {
+    /**
+     * Ces zones sont les réglages d'aujourd'hui, lus dans le compte et non déduits d'une course : on peut
+     * relire une ancienne course avec. Vrai seulement pour la montre (Strava ne donne ses zones qu'avec une course).
+     */
+    live?: boolean
+  }
+
+/**
+ * Mêmes zones, au battement près : l'arrondi d'un seuil peut différer entre les réglages de la montre et
+ * une activité, et un seul battement d'écart ne change rien à la lecture d'une course. Le bas de la zone 1
+ * n'est comparé que si les deux en ont un.
+ */
+export function sameZones(a: Pick<ZoneSet, 'floors' | 'low'>, b: Pick<ZoneSet, 'floors' | 'low'>): boolean {
+  const near = (x: number, y: number | undefined) => y !== undefined && Math.abs(x - y) <= 1
+  if (a.floors.length !== b.floors.length || a.floors.some((f, i) => !near(f, b.floors[i]))) return false
+  return a.low === null || b.low === null || near(a.low, b.low)
+}
+
+/**
+ * Les zones lues dans les réglages de la montre sont-elles bien celles qu'elle applique ? L'API de Garmin
+ * ne se vérifie pas depuis l'atelier, alors la course la plus récente fait foi : courue après que l'appli
+ * a lu ces réglages (« since »), elle doit porter les mêmes zones. Sinon la lecture ne dit pas ce que fait
+ * la montre (autre profil de sport, réglage pas encore arrivé sur la montre) : rien n'est relu avec.
+ */
+export function watchZonesHold(
+  account: Pick<ZoneSet, 'floors' | 'low'> & { since: string },
+  newest: { startedAt: string; zones: Pick<ZoneSet, 'floors' | 'low'> } | null,
+): boolean {
+  if (!newest) return true
+  const ran = Date.parse(newest.startedAt)
+  const read = Date.parse(account.since)
+  if (!Number.isFinite(ran) || !Number.isFinite(read) || ran <= read) return true
+  return sameZones(newest.zones, account)
+}
 
 /**
  * Choix des zones à afficher. Source « garmin » : la montre, sinon le compte Strava ; source « strava » :
  * le compte Strava ; puis, faute de mieux (ou source « fcmax »), le calcul sur la FC max, en disant pourquoi.
  * Pour chaque source : les zones lues avec la course, sinon les dernières connues du compte.
+ * Si les réglages d'aujourd'hui de la source voulue (compte « live ») ne sont plus ceux de la course,
+ * ils sont pris par défaut (temps à recompter sur la courbe), ceux du jour à la demande (« view »).
  * FC max : celle saisie par le coureur, sinon la plus haute vue sur ses courses.
  */
 export function pickZones(i: {
   source: ZoneSource
   /** Garmin est-il connecté ? (pour dire pourquoi la montre n'a pas servi) */
   garminOn?: boolean
+  /** Pour une course dont les zones ont changé depuis : celles d'aujourd'hui (défaut) ou celles du jour */
+  view?: ZoneView
+  /** Zones demandées pour une course : la zone 5 n'a alors pas de haut, comme dans Garmin Connect */
+  forRun?: boolean
   runs?: Partial<Record<ZoneProvider, RunZones | null>> | null
   accounts?: Partial<Record<ZoneProvider, KnownZones | null>> | null
   hrMax: number | null | undefined
@@ -310,26 +363,30 @@ export function pickZones(i: {
     wanted === 'garmin' ? (i.garminOn === false ? 'unlinked' : 'wait') : wanted === 'strava' ? (i.accounts?.strava?.off ? 'off' : 'wait') : null
   const chain: ZoneProvider[] = wanted === 'garmin' ? ['garmin', 'strava'] : wanted === 'strava' ? ['strava'] : []
   for (const p of chain) {
-    const reason = p === wanted ? null : why
+    const base = { from: p, maxHr: null, wanted, why: p === wanted ? null : why, changed: false, view: 'current' as ZoneView }
     const run = i.runs?.[p]
     const own = validFloors(run?.floors)
-    if (own) {
-      const sec = Array.isArray(run!.sec) && run!.sec.length === 5 ? run!.sec : null
-      return { set: { floors: own, low: lowOf(run!.low, own), top: null }, sec, from: p, maxHr: null, wanted, why: reason }
-    }
+    const day = own ? { floors: own, low: lowOf(run!.low, own), top: null } : null
+    const daySec = own && Array.isArray(run!.sec) && run!.sec.length === 5 ? run!.sec : null
     const account = i.accounts?.[p]
     const known = validFloors(account?.floors)
-    if (known) {
-      return { set: { floors: known, low: lowOf(account!.low, known), top: topOf(account!.top, known) }, sec: null, from: p, maxHr: null, wanted, why: reason }
+    const now = known ? { floors: known, low: lowOf(account!.low, known), top: i.forRun ? null : topOf(account!.top, known) } : null
+    // Les zones de la source voulue ont changé depuis cette course : deux lectures possibles
+    if (day && now && p === wanted && account!.live && !sameZones(day, now)) {
+      return i.view === 'day' ? { ...base, set: day, sec: daySec, changed: true, view: 'day' } : { ...base, set: now, sec: null, changed: true }
     }
+    if (day) return { ...base, set: day, sec: daySec }
+    if (now) return { ...base, set: now, sec: null }
   }
   const typed = i.hrMax && i.hrMax > 0 ? i.hrMax : null
   const maxHr = typed ?? (i.estimated && i.estimated > 0 ? i.estimated : null)
-  return { set: maxHr ? maxHrZones(maxHr) : null, sec: null, from: typed ? 'set' : maxHr ? 'seen' : null, maxHr, wanted, why }
+  return { set: maxHr ? maxHrZones(maxHr) : null, sec: null, from: typed ? 'set' : maxHr ? 'seen' : null, maxHr, wanted, why, changed: false, view: 'current' }
 }
 
 /** Sous le cardio d'une course : d'où viennent les zones affichées, et pourquoi si ce ne sont pas celles voulues. */
 export function zoneNote(p: ZonePick): string {
+  if (p.changed && p.view === 'current') return 'Tes zones ont changé depuis cette course : elle est relue avec celles d’aujourd’hui, et le temps est recompté sur ta courbe.'
+  if (p.changed && p.from === 'garmin') return 'Ce sont les zones que ta montre avait ce jour-là, comme dans Garmin Connect.'
   if (p.from === 'garmin') return 'Ce sont les zones de ta montre Garmin.'
   const missing =
     p.wanted === 'garmin'

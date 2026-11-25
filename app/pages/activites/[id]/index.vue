@@ -6,6 +6,7 @@
  * Ordinateur (à partir de 860 px) : deux colonnes, l'en-tête visuel et le débrief à gauche.
  */
 import { ArrowRight, ClipboardCheck, Footprints, Heart, Mountain, Share2, Trophy } from 'lucide-vue-next'
+import type { ZoneView } from '#shared/utils/zones'
 
 const { recordsOf } = useRecords()
 const { show } = useToast()
@@ -84,6 +85,12 @@ watch(
  */
 let zonesAsked = ''
 const zonesDone = ref(false)
+/** Course courue avant un changement de zones : celles d'aujourd'hui par défaut, celles du jour à la demande */
+const zoneView = ref<ZoneView>('current')
+watch(
+  () => a.value?.id,
+  () => (zoneView.value = 'current'),
+)
 watch(
   () => [a.value?.id, restored.value, hasHr.value] as const,
   ([id, ready, hr]) => {
@@ -96,7 +103,7 @@ watch(
   },
   { immediate: true },
 )
-const zonePick = computed(() => zones.pick(a.value))
+const zonePick = computed(() => zones.pick(a.value, zoneView.value))
 
 const cardioState = computed<'loading' | 'error' | 'none' | 'ready'>(() => {
   if (!hasHr.value) return 'none'
@@ -298,6 +305,7 @@ async function shareImage() {
           :avg-hr="a.avgHr || null"
           :peak-hr="a.maxHr || null"
           @retry="loadStream"
+          @view="zoneView = $event"
         />
 
         <section v-if="showSplits" class="card card--pad splits sec" :style="{ '--d': 5 }" aria-labelledby="splits-title">
