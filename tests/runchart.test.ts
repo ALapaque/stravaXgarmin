@@ -261,6 +261,18 @@ describe('zoneShares', () => {
     expect(zoneShares([0, 0, 0, 0, 0]).every((x) => x.pct === 0)).toBe(true)
     expect(zoneShares(null)).toEqual([])
   })
+
+  it('temps hors zones (sous la zone 1 de la montre) : parts sur la durée, arrondies vers le bas', () => {
+    // 50 min de course, dont 5 min sous la zone 1 : 8 + 16 + 21 min comptées
+    const z = zoneShares([480, 960, 1260, 0, 0], 3000)
+    expect(z.map((x) => x.pct)).toEqual([16, 32, 42, 0, 0])
+    expect(z.map((x) => x.sec)).toEqual([480, 960, 1260, 0, 0])
+    // 1259 s sur 3000 = 41,97 % : affiché 41, jamais arrondi au-dessus
+    expect(zoneShares([480, 960, 1259, 0, 0], 3000)[2]!.pct).toBe(41)
+    // Écart de quelques secondes entre deux comptages : la somme reste 100
+    expect(zoneShares([600, 1200, 1190, 0, 0], 3000).reduce((s, x) => s + x.pct, 0)).toBe(100)
+    expect(zoneShares([600, 1200, 1200, 0, 0], null).reduce((s, x) => s + x.pct, 0)).toBe(100)
+  })
 })
 
 describe('groupSteps / stepDone', () => {

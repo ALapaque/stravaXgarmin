@@ -7,14 +7,13 @@
  */
 import { ArrowRight, ClipboardCheck, Footprints, Heart, Mountain, Share2, Trophy } from 'lucide-vue-next'
 
-const { activities } = useActivities()
 const { recordsOf } = useRecords()
 const { show } = useToast()
-const settings = useSettings()
 const plan = usePlan()
 const convention = useConvention()
 const { get: getDebrief, toDebrief } = useDebriefs()
 const streams = useStreams()
+const zones = useZones()
 
 // Course ouverte par son adresse : jamais de 404 avant d'avoir rechargé l'état gardé et synchronisé
 const { run: a, state } = useRunPage()
@@ -77,16 +76,38 @@ watch(
   { immediate: true },
 )
 
+/*
+ * Zones : celles de la montre, sinon celles du compte Strava, lues avec la course (une fois l'état gardé
+ * rechargé, comme les courbes). Tant que ces lectures ne sont pas finies, le bloc cardio attend : pas de
+ * zones qui changent sous les yeux. Un seul essai par course et par visite : après un échec, les zones
+ * de secours s'affichent, sans redemander à chaque fois que la liste des courses bouge (synchro, détails).
+ */
+let zonesAsked = ''
+const zonesDone = ref(false)
+watch(
+  () => [a.value?.id, restored.value, hasHr.value] as const,
+  ([id, ready, hr]) => {
+    if (!id || !ready || !hr || !a.value || zonesAsked === id) return
+    zonesAsked = id
+    zonesDone.value = false
+    zones.load(a.value).finally(() => {
+      if (zonesAsked === id) zonesDone.value = true
+    })
+  },
+  { immediate: true },
+)
+const zonePick = computed(() => zones.pick(a.value))
+
 const cardioState = computed<'loading' | 'error' | 'none' | 'ready'>(() => {
   if (!hasHr.value) return 'none'
-  if (stream.value) return stream.value.hr?.length ? 'ready' : 'none'
+  if (stream.value) {
+    if (!stream.value.hr?.length) return 'none'
+    // Une fois l'essai de cette visite terminé, on affiche ce qu'on a : jamais d'attente sans fin
+    return a.value && !zonesDone.value && zones.pending(a.value) ? 'loading' : 'ready'
+  }
   if (loadFailed.value) return 'error'
   return 'loading'
 })
-const estimated = computed(() => estimateHrMax(activities.value))
-const maxHr = computed(() => settings.value.hrMax || estimated.value)
-const maxHrFrom = computed(() => (settings.value.hrMax ? 'set' : estimated.value ? 'seen' : null))
-/** Le réglage de la FC max arrive avec la page « Coureur » des réglages : le lien n'apparaît qu'une fois qu'elle existe */
 /* Retour : vers l'écran d'où l'on vient (connu seulement dans le navigateur, après le montage) */
 const back = ref(backTarget(null))
 onMounted(() => (back.value = backTarget(window.history.state?.back)))
@@ -272,8 +293,7 @@ async function shareImage() {
           :style="{ '--d': 4 }"
           :stream="stream"
           :state="cardioState"
-          :max-hr="maxHr"
-          :max-hr-from="maxHrFrom"
+          :zones="zonePick"
           :settings-to="hrSettings"
           :avg-hr="a.avgHr || null"
           :peak-hr="a.maxHr || null"

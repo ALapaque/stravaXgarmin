@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /*
- * Réglages · Coureur : FC max (estimée d'après tes courses, ou saisie entre 120 et 230), les cinq zones
- * avec leurs plages en bpm (hrZones, shared/utils/zones.ts), ton objectif course et le seuil d'usure des chaussures.
- * La page d'une course y renvoie par son lien « Modifier » à côté de la FC max.
+ * Réglages · Coureur : tes cinq zones cardio avec leurs plages en bpm (celles de ta montre Garmin, de ton
+ * compte Strava, ou calculées sur ta FC max : useZones, shared/utils/zones.ts), ta FC max (estimée d'après
+ * tes courses, ou saisie entre 120 et 230), ton objectif course et le seuil d'usure des chaussures.
+ * La page d'une course y renvoie par son lien « Modifier » sous les zones.
  */
 import { Footprints, HeartPulse, RotateCcw } from 'lucide-vue-next'
-import { estimateHrMax, hrZones } from '#shared/utils/zones'
+import { estimateHrMax, hrZones, zoneRange, zoneSourceLine, type ZoneSource } from '#shared/utils/zones'
 
 useHead({ title: 'Coureur · stravaXgarmin' })
 
@@ -57,7 +58,56 @@ const ZONE_USE = [
   'Efforts courts et très durs, VMA',
 ]
 const BAR_MIX = [34, 50, 66, 82, 100]
-const zones = computed(() => (maxHr.value ? [...hrZones(maxHr.value)].reverse() : []))
+
+/* ───── Zones : celles de la montre, de Strava, ou calculées sur la FC max ───── */
+
+const zoneState = useZones()
+const restored = useRestored()
+const { active: demo } = useDemo()
+const SOURCES: { id: ZoneSource; label: string }[] = [
+  { id: 'garmin', label: 'Garmin' },
+  { id: 'strava', label: 'Strava' },
+  { id: 'fcmax', label: 'FC max' },
+]
+const pick = computed(() => zoneState.pick())
+const zones = computed(() => (pick.value.set ? [...hrZones(pick.value.set, pick.value.from)].reverse() : []))
+const reading = ref(false)
+async function readZones() {
+  if (reading.value) return
+  reading.value = true
+  try {
+    await zoneState.loadLatest()
+  } finally {
+    reading.value = false
+  }
+}
+/*
+ * Lecture une fois l'état gardé rechargé et les courses connues (navigateur seulement) ; à nouveau si tu
+ * changes de source. Un seul essai par visite et par source : un échec ne relance pas la lecture en boucle.
+ */
+const hasRuns = computed(() => activities.value.some((a) => a.stravaId && a.avgHr > 0))
+// Les zones de la montre se lisent sans course ; celles de Strava viennent avec une course
+let asked: '' | 'norun' | 'run' = ''
+watch(
+  () => [restored.value, zoneState.source.value, hasRuns.value] as const,
+  ([ready, source, runs], old) => {
+    if (source !== old?.[1]) asked = ''
+    const level = runs ? 'run' : 'norun'
+    if (!ready || source === 'fcmax' || asked === 'run' || asked === level) return
+    if (!runs && source !== 'garmin') return
+    asked = level
+    readZones()
+  },
+  { immediate: true },
+)
+const zonesLine = computed(() => {
+  // Avant que l'état gardé soit rechargé, on ne sait pas encore : pas de phrase qui changerait aussitôt
+  if (!restored.value && !demo.value) return '\u00a0'
+  const known = zoneState.known.value
+  return zoneSourceLine(pick.value, { reading: reading.value, method: known.garmin?.method, custom: known.strava?.custom })
+})
+/** La FC max ne sert pas tant que les zones viennent d'ailleurs */
+const hrUnused = computed(() => (pick.value.from === 'garmin' ? 'ta montre' : pick.value.from === 'strava' ? 'Strava' : ''))
 const sourceLine = computed(() => {
   if (fromUser.value) return estimated.value ? `Saisie par toi · estimée d’après tes courses : ${estimated.value} bpm` : 'Saisie par toi'
   if (estimated.value) return 'Estimée d’après tes courses : la plus haute fréquence cardiaque vue'
@@ -75,47 +125,22 @@ const sourceLine = computed(() => {
 
     <div class="cols">
       <div class="col">
-        <h2 id="hr-title" class="eyebrow group">Fréquence cardiaque maximale</h2>
-        <section class="card hr" aria-labelledby="hr-title">
-          <div class="hr-top">
-            <span class="tile" style="--tile: var(--ko)" aria-hidden="true"><HeartPulse :size="22" /></span>
-            <label class="hr-field">
-              <span class="sr-only">FC max en battements par minute</span>
-              <input
-                v-model="draft"
-                class="num hr-input"
-                type="number"
-                inputmode="numeric"
-                :min="HR_MIN"
-                :max="HR_MAX"
-                step="1"
-                placeholder="–"
-                :aria-invalid="Boolean(error) || undefined"
-                aria-describedby="hr-source hr-error"
-                @change="commit"
-                @keydown.enter.prevent="commit"
-              >
-              <span class="unit">bpm</span>
-            </label>
-            <span v-if="fromUser" class="chip chip--ok">saisie</span>
-            <span v-else-if="estimated" class="chip">estimée</span>
-          </div>
-          <p id="hr-source" class="hint">{{ sourceLine }}</p>
-          <p v-if="error" id="hr-error" class="err" role="alert">{{ error }}</p>
-          <button v-if="fromUser" type="button" class="btn btn--sm btn--secondary reset" @click="reset">
-            <RotateCcw :size="16" aria-hidden="true" /> Revenir à l’estimation
-          </button>
-        </section>
-
         <h2 id="zones-title" class="eyebrow group">Tes cinq zones</h2>
         <section class="card zones-card" aria-labelledby="zones-title">
+          <div class="zones-src">
+            <div class="segmented" role="group" aria-label="D’où viennent tes zones">
+              <button v-for="o in SOURCES" :key="o.id" type="button" :aria-pressed="zoneState.source.value === o.id" @click="settings.zoneSource = o.id">{{ o.label }}</button>
+            </div>
+            <p class="hint" aria-live="polite">{{ zonesLine }}</p>
+            <NuxtLink v-if="pick.wanted === 'garmin' && pick.why === 'unlinked'" to="/connexion/garmin" class="link">Connecter Garmin</NuxtLink>
+          </div>
           <ol v-if="zones.length" class="zones">
             <li v-for="z in zones" :key="z.z" class="zone" :style="{ '--mix': `${BAR_MIX[z.z - 1]}%`, '--w': `${40 + z.z * 12}%`, '--k': 5 - z.z }">
               <span class="z-k num" aria-hidden="true">Z{{ z.z }}</span>
               <span class="z-main">
                 <span class="z-head">
                   <span class="z-name">Zone {{ z.z }} · {{ z.label }}</span>
-                  <span class="z-range num">{{ z.from }}–{{ z.to }} bpm</span>
+                  <span class="z-range num">{{ zoneRange(z) }} bpm</span>
                 </span>
                 <span class="z-bar" aria-hidden="true"><span /></span>
                 <span class="z-use">{{ ZONE_USE[z.z - 1] }}</span>
@@ -123,7 +148,41 @@ const sourceLine = computed(() => {
             </li>
           </ol>
           <p v-else class="lead empty">Saisis ta FC max, ou cours trois fois avec ta ceinture ou ta montre : tes zones apparaîtront ici.</p>
-          <p v-if="zones.length" class="fine foot">De 50 à 100 % de ta FC max, par tranches de 10 %.</p>
+        </section>
+
+        <h2 id="hr-title" class="eyebrow group">Fréquence cardiaque maximale</h2>
+        <section class="card hr" aria-labelledby="hr-title">
+          <div class="hr-top">
+            <span class="tile" style="--tile: var(--ko)" aria-hidden="true"><HeartPulse :size="22" /></span>
+            <div class="hr-main">
+              <label class="hr-field">
+                <span class="sr-only">FC max en battements par minute</span>
+                <input
+                  v-model="draft"
+                  class="num hr-input"
+                  type="number"
+                  inputmode="numeric"
+                  :min="HR_MIN"
+                  :max="HR_MAX"
+                  step="1"
+                  placeholder="–"
+                  :aria-invalid="Boolean(error) || undefined"
+                  aria-describedby="hr-source hr-error"
+                  @change="commit"
+                  @keydown.enter.prevent="commit"
+                >
+                <span class="unit">bpm</span>
+              </label>
+              <span v-if="fromUser" class="chip chip--ok">saisie</span>
+              <span v-else-if="estimated" class="chip">estimée</span>
+            </div>
+          </div>
+          <p id="hr-source" class="hint">{{ sourceLine }}</p>
+          <p v-if="hrUnused" class="hint">Elle ne sert pas tant que tes zones viennent de {{ hrUnused }}.</p>
+          <p v-if="error" id="hr-error" class="err" role="alert">{{ error }}</p>
+          <button v-if="fromUser" type="button" class="btn btn--sm btn--secondary reset" @click="reset">
+            <RotateCcw :size="16" aria-hidden="true" /> Revenir à l’estimation
+          </button>
         </section>
       </div>
 
@@ -185,17 +244,26 @@ const sourceLine = computed(() => {
   gap: 14px;
 }
 
-.hr-field {
+/* Le nombre n'est jamais rogné : écran étroit et police large, la pastille passe dessous, alignée sur lui */
+.hr-main {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.hr-field {
+  flex: 1 0 auto;
   display: flex;
   align-items: baseline;
   gap: 6px;
-  min-width: 0;
 }
 
 .hr-input {
+  flex: none;
   width: 3.6ch;
-  min-width: 0;
   padding: 0 0 2px;
   border: 0;
   border-bottom: 2px solid var(--line-strong);
@@ -247,7 +315,15 @@ const sourceLine = computed(() => {
 .zones-card {
   display: flex;
   flex-direction: column;
-  padding: 6px 0;
+  padding: 0 0 6px;
+}
+
+.zones-src {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .zones {
@@ -339,10 +415,6 @@ const sourceLine = computed(() => {
   margin: 0;
   padding: 14px 18px;
   font-size: 15px;
-}
-
-.foot {
-  padding: 4px 18px 12px;
 }
 
 /* ── Chaussures ── */

@@ -53,8 +53,15 @@ export async function stravaFetch<T>(
   } catch (e: unknown) {
     const status = (e as { statusCode?: number }).statusCode ?? 502
     if (status === 429) throw createError({ statusCode: 429, statusMessage: 'Strava limite les demandes, réessaie dans un quart d’heure' })
-    throw createError({ statusCode: status === 401 ? 401 : 502, statusMessage: `Strava a refusé la requête (${status})` })
+    // « upstream » : le code d'origine, pour les routes qui doivent distinguer un refus attendu d'une panne
+    throw createError({ statusCode: status === 401 ? 401 : 502, statusMessage: `Strava a refusé la requête (${status})`, data: { upstream: status } })
   }
+}
+
+/** Code HTTP répondu par Strava dans une erreur levée par stravaFetch (null si ce n'en est pas une). */
+export function stravaStatus(e: unknown): number | null {
+  const up = (e as { data?: { upstream?: unknown } } | null)?.data?.upstream
+  return typeof up === 'number' ? up : null
 }
 
 /** Champ utile d'une activité Strava (GET /athlete/activities). */

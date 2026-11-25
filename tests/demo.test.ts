@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { comparePlan } from '../shared/utils/compliance'
 import { needsDebrief } from '../shared/utils/debrief'
-import { buildDemo, demoStream } from '../shared/utils/demo'
+import { buildDemo, demoStream, demoWatchZones, demoZoneFloors } from '../shared/utils/demo'
 import { matchPlan } from '../shared/utils/planmatch'
 import { detectConvention, displayTitle } from '../shared/utils/titles'
+import { timeInZones, validFloors } from '../shared/utils/zones'
 
 const DAY = 86_400_000
 
@@ -122,6 +123,23 @@ describe.each(['2026-11-22', '2026-07-15', '2026-11-23', '2027-01-01'])('buildDe
     const ids = new Set(runs.map((a) => a.id))
     for (const h of demo.history) expect(ids.has(h.activityId)).toBe(true)
     for (const n of demo.notifications) if (n.to?.startsWith('/activites/')) expect(ids.has(n.to.split('/')[2]!)).toBe(true)
+  })
+
+  it('zones de démo (montre et Strava) : seuils plausibles, et un footing passé en endurance', () => {
+    const watch = demoWatchZones(runs)
+    expect(validFloors(watch.floors)).toEqual(watch.floors)
+    expect(watch.low).toBeLessThan(watch.floors[0]!)
+    expect(watch.method).toBe('reserve')
+    const floors = demoZoneFloors(runs)
+    expect(validFloors(floors)).toEqual(floors)
+    // La montre et Strava ne découpent pas pareil : c'est ce que la démo montre
+    expect(watch.floors).not.toEqual(floors)
+    const easy = runs.find((r) => r.type === 'easy' && r.avgHr > 0)!
+    for (const f of [watch.floors, floors]) {
+      const sec = timeInZones(demoStream(easy), f)!
+      // Zones 1 et 2 : l'essentiel d'un footing (plus de « Tempo » pour une sortie facile)
+      expect((sec[0]! + sec[1]!) / sec.reduce((x, y) => x + y, 0)).toBeGreaterThan(0.6)
+    }
   })
 
   it('demoStream : courbes tirées des tours', () => {

@@ -8,10 +8,13 @@ export type HealthKey =
   | 'strava.details'
   | 'strava.gear'
   | 'strava.streams'
+  | 'strava.zones'
   | 'garmin.activities'
   | 'garmin.plan'
   | 'garmin.forme'
   | 'garmin.records'
+  | 'garmin.zones'
+  | 'garmin.runZones'
   | 'ai'
 
 export type HealthProvider = 'strava' | 'garmin' | 'ai'
@@ -37,10 +40,13 @@ export const HEALTH_SOURCES: { key: HealthKey; provider: HealthProvider; label: 
   { key: 'strava.details', provider: 'strava', label: 'Détail des courses', hint: 'Temps au kilomètre et meilleurs efforts' },
   { key: 'strava.gear', provider: 'strava', label: 'Chaussures', hint: 'Tes paires et leur kilométrage' },
   { key: 'strava.streams', provider: 'strava', label: 'Fréquence cardiaque et allure', hint: 'Courbes de la dernière course ouverte' },
+  { key: 'strava.zones', provider: 'strava', label: 'Zones cardio', hint: 'Les zones de ton compte Strava, lues avec la dernière course ouverte' },
   { key: 'garmin.activities', provider: 'garmin', label: 'Noms donnés par ta montre', hint: 'Le nom de chaque activité' },
   { key: 'garmin.plan', provider: 'garmin', label: 'Séances prévues', hint: 'Ton calendrier d’entraînement' },
   { key: 'garmin.forme', provider: 'garmin', label: 'Forme du jour', hint: 'VO2max, charge, préparation du jour' },
   { key: 'garmin.records', provider: 'garmin', label: 'Records', hint: 'Tes records de tous les temps' },
+  { key: 'garmin.zones', provider: 'garmin', label: 'Zones cardio', hint: 'Les zones réglées sur ta montre' },
+  { key: 'garmin.runZones', provider: 'garmin', label: 'Temps par zone', hint: 'Compté par ta montre, pour la dernière course ouverte' },
   { key: 'ai', provider: 'ai', label: 'Titres et analyses', hint: 'Demandes faites à l’IA' },
 ]
 
@@ -109,6 +115,21 @@ export const HEALTH_INFO = {
   /** Courbes reçues pour la dernière course ouverte */
   streams: (s: { hr?: unknown; v?: unknown }) =>
     s.hr && s.v ? 'Cardio et allure' : s.hr ? 'Cardio seulement' : s.v ? 'Allure seulement' : 'Aucune courbe pour cette course',
+  /** Zones du compte Strava, lues avec la dernière course ouverte (seuils des zones 2 à 5) */
+  zones: (r: { available?: boolean; zones?: { floors?: number[]; custom?: boolean } | null }) => {
+    if (r.available === false) return 'Réservées aux abonnés Strava'
+    const f = r.zones?.floors
+    if (!f?.length) return 'Pas de zones pour cette course'
+    return `Zones ${r.zones?.custom ? 'réglées par toi dans Strava' : 'de ton compte'} : seuils à ${f.join(', ')} bpm`
+  },
+  /** Zones réglées sur la montre (seuils des zones 1 à 5) */
+  watchZones: (z: { floors?: number[]; low?: number | null } | null | undefined) => {
+    if (!z?.floors?.length) return 'Aucune zone réglée sur ta montre'
+    return `Seuils à ${[...(z.low ? [z.low] : []), ...z.floors].join(', ')} bpm`
+  },
+  /** Temps par zone compté par la montre pour la dernière course ouverte */
+  watchRunZones: (z: { sec?: number[] | null } | null | undefined) =>
+    !z ? 'Pas de zones pour cette course' : z.sec ? 'Temps par zone compté par ta montre' : 'Zones de la course, sans temps compté',
   records: (n: number) => plural(n, 'record', 'records'),
   ai: () => 'Dernière demande réussie',
   /** Données de forme reçues, puis celles qui manquent */

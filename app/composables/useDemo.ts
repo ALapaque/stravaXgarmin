@@ -14,6 +14,9 @@ export function useDemo() {
     useDebriefState().value = demo?.debriefs ?? {}
     useTypeOverrides().value = {}
     useState('streams').value = {}
+    useState('zones').value = {}
+    useState('zonesAccount').value = {}
+    useState('zonesFailed').value = {}
     usePublished().value = {}
     usePlan().reset(on)
     useFitness().reset(on)
@@ -66,6 +69,9 @@ export function useDemo() {
     useDebriefState().value = {}
     useTypeOverrides().value = {}
     useState('streams').value = {}
+    useState('zones').value = {}
+    useState('zonesAccount').value = {}
+    useState('zonesFailed').value = {}
     usePublished().value = {}
     useHealth().reset(false)
     usePlan().reset(false)

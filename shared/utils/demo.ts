@@ -12,6 +12,7 @@ import type { Activity, AppNotification, EffortKey, Forme, Gear, HistoryEntry, P
 import type { RunType } from './runs'
 import { streamFromLaps, type RunStream } from './streams'
 import { flattenSteps, stepDistance, stepDuration, type PlanStep } from './workout'
+import { estimateHrMax, reserveZones, stravaDefaultFloors, type WatchZones } from './zones'
 
 /** À changer quand la forme des données de démo change : une démo gardée plus ancienne est régénérée. */
 export const DEMO_VERSION = 6
@@ -529,4 +530,20 @@ export function buildDemo(today: string): DemoData {
 /** Courbes de démo d'une course, fabriquées à partir de ses tours (déterministes). */
 export function demoStream(a: Pick<Activity, 'id' | 'laps'>): RunStream {
   return streamFromLaps(a.laps ?? [], hash(a.id))
+}
+
+/**
+ * Zones du compte Strava de démo (seuils des zones 2 à 5) : celles que Strava déduirait de la FC max
+ * la plus haute vue sur les courses de démo. Rien n'est gardé : elles se recalculent à la demande.
+ */
+export function demoZoneFloors(runs: { maxHr?: number | null }[]): number[] {
+  return stravaDefaultFloors(estimateHrMax(runs) ?? 185)
+}
+
+/**
+ * Zones de la montre de démo : réglées en % de la FC de réserve (repos à 52), comme beaucoup de coureurs
+ * le font. Elles ne tombent pas comme celles de Strava : la démo montre pourquoi la source compte.
+ */
+export function demoWatchZones(runs: { maxHr?: number | null }[]): WatchZones {
+  return reserveZones(estimateHrMax(runs) ?? 185, 52)
 }

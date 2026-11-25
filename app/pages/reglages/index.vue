@@ -6,7 +6,6 @@
  */
 import { ChevronRight, Link2, PenLine, HeartPulse, Bell, Palette, Sparkles, LogOut } from 'lucide-vue-next'
 import { legacyRedirect } from '#shared/utils/nav'
-import { estimateHrMax } from '#shared/utils/zones'
 
 definePageMeta({
   middleware: [(to) => {
@@ -24,7 +23,6 @@ const { current: appVersion, showHistory } = useUpdates()
 const { accounts } = useAccounts()
 const { active: demo, exit } = useDemo()
 const { summary: health } = useHealth()
-const { activities } = useActivities()
 const convention = useConvention()
 const { goalInfo } = useFitness()
 
@@ -48,9 +46,10 @@ const accountsLine = computed(() => {
 const publishLine = computed(() =>
   [settings.value.autoSync ? 'Synchro automatique' : 'Synchro à la main', convention.enabled.value ? `[${convention.sources.value[0] ?? 'SOURCE'}] - Titre` : 'titres sans étiquette'].join(' · '),
 )
-const hrMax = computed(() => settings.value.hrMax || estimateHrMax(activities.value))
+const zones = useZones()
 const runnerLine = computed(() => {
-  const hr = hrMax.value ? `FC max ${hrMax.value} bpm` : 'FC max à préciser'
+  const z = zones.pick()
+  const hr = z.from === 'garmin' ? 'Zones de ta montre' : z.from === 'strava' ? 'Zones de Strava' : z.maxHr ? `FC max ${z.maxHr} bpm` : 'FC max à préciser'
   const goal = goalInfo.value && !goalInfo.value.past ? `objectif J-${goalInfo.value.days}` : `chaussures ${settings.value.shoeLimitKm} km`
   return `${hr} · ${goal}`
 })

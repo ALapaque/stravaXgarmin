@@ -391,11 +391,18 @@ export function shareChart(i: {
 
 /* ───── Temps par zone ───── */
 
-/** Part de chaque zone : pourcentages entiers dont la somme fait 100 (plus forts restes). */
-export function zoneShares(sec: number[] | null | undefined): { z: number; sec: number; pct: number }[] {
+/**
+ * Part de chaque zone : pourcentages entiers dont la somme fait 100 (plus forts restes).
+ * « duration » : durée de la course, quand une partie du temps n'est dans aucune zone (la montre ne
+ * compte pas ce qui est sous sa zone 1). Les parts sont alors prises sur la durée, arrondies vers le
+ * bas comme dans Garmin Connect : leur somme ne fait pas 100, et c'est voulu.
+ */
+export function zoneShares(sec: number[] | null | undefined, duration?: number | null): { z: number; sec: number; pct: number }[] {
   const list = (Array.isArray(sec) ? sec : []).slice(0, 5).map((s) => num(s))
   const total = list.reduce((a, b) => a + b, 0)
   if (!total) return list.map((s, i) => ({ z: i + 1, sec: s, pct: 0 }))
+  // Au moins une demi-minute hors zones : sinon c'est un simple écart d'arrondi entre deux comptages
+  if (duration && duration - total >= 30) return list.map((s, i) => ({ z: i + 1, sec: s, pct: Math.floor((s / duration) * 100) }))
   const raw = list.map((s) => (s / total) * 100)
   const pct = raw.map(Math.floor)
   let left = 100 - pct.reduce((a, b) => a + b, 0)

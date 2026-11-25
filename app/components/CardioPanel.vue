@@ -3,26 +3,28 @@
  * Cardio d'une course : la courbe de fréquence cardiaque en aire, posée sur les bandes de zones,
  * puis le temps passé dans chaque zone (cinq barres avec libellé, durée et pourcentage).
  * Zones : une seule teinte (--ko), de plus en plus franche de la zone 1 à la zone 5, et toujours
- * nommées (jamais la couleur seule). États : chargement, erreur, pas de cardio, pas de FC max.
+ * nommées (jamais la couleur seule). États : chargement, erreur, pas de cardio, pas de zones.
+ * Les zones sont celles de la montre du coureur, sinon de son compte Strava (le temps par zone est alors
+ * celui compté à la source), sinon calculées sur sa FC max : le choix est fait par useZones().pick.
  * Géométrie : shared/utils/runchart.ts ; zones : shared/utils/zones.ts.
  */
 import { HeartCrack, RefreshCw } from 'lucide-vue-next'
 import type { RunStream } from '#shared/utils/streams'
+import type { ZonePick } from '#shared/utils/zones'
 
 const props = withDefaults(
   defineProps<{
     stream: RunStream | null
     state: 'loading' | 'error' | 'none' | 'ready'
-    maxHr: number | null
-    /** D'où vient la FC max : saisie par le coureur, ou la plus haute vue */
-    maxHrFrom?: 'set' | 'seen' | null
-    /** Lien « Modifier » vers le réglage de la FC max (absent : pas de lien) */
+    /** Zones à afficher et leur origine (montre, compte Strava, FC max saisie, FC max la plus haute vue) */
+    zones: ZonePick
+    /** Lien « Modifier » vers le réglage des zones (absent : pas de lien) */
     settingsTo?: string | null
     avgHr?: number | null
     peakHr?: number | null
     height?: number
   }>(),
-  { maxHrFrom: null, settingsTo: null, avgHr: null, peakHr: null, height: 150 },
+  { settingsTo: null, avgHr: null, peakHr: null, height: 150 },
 )
 defineEmits<{ retry: [] }>()
 
@@ -40,7 +42,10 @@ const bounds = computed(() => hrBounds(props.stream?.hr))
 const scale = computed(() => (bounds.value && total.value ? { total: total.value, lo: bounds.value.lo, hi: bounds.value.hi, w: W, h: H } : null))
 const paths = computed(() => (scale.value ? seriesPath(props.stream?.t, props.stream?.hr, scale.value) : { line: '', area: '' }))
 const ticks = computed(() => timeTicks(total.value))
-const zones = computed(() => (props.maxHr ? hrZones(props.maxHr) : []))
+const floors = computed(() => props.zones.set?.floors ?? null)
+const rows = computed(() => (props.zones.set ? hrZones(props.zones.set, props.zones.from) : []))
+/** Bas de la zone 1 de la montre : en dessous, Garmin ne compte le temps dans aucune zone, et l'appli fait pareil */
+const lowBound = computed(() => (props.zones.from === 'garmin' ? (rows.value[0]?.from || null) : null))
 const yOf = (v: number) => {
   const s = scale.value!
   return ((s.hi - Math.min(Math.max(v, s.lo), s.hi)) / (s.hi - s.lo)) * 100
@@ -48,17 +53,27 @@ const yOf = (v: number) => {
 /** Bandes visibles dans l'échelle, avec leur position (en % de la hauteur) */
 const bands = computed(() => {
   const s = scale.value
-  if (!s) return []
-  return zones.value
+  const f = floors.value
+  if (!s || !f) return []
+  // Une bande va du seuil de sa zone au seuil de la suivante ; la zone 1 part du bas (ou de son propre bas, pour la montre), la zone 5 va jusqu'en haut
+  return rows.value
     .map((z, i) => {
-      const top = yOf(i === 4 ? Math.max(z.to, s.hi) : z.to)
-      const bottom = yOf(i === 0 ? Math.min(z.from, s.lo) : z.from)
+      const top = yOf(i === 4 ? s.hi : f[i]!)
+      const bottom = yOf(i === 0 ? (lowBound.value ?? s.lo) : f[i - 1]!)
       return { z: z.z, top, h: bottom - top }
     })
     .filter((b) => b.h > 0.5)
 })
 
-const shares = computed(() => zoneShares(timeInZones(props.stream, props.maxHr)))
+// Temps par zone : celui compté par la montre ou par Strava quand il vient avec les zones, sinon compté sur la courbe
+const zoneSec = computed(() => props.zones.sec ?? timeInZones(props.stream, floors.value, lowBound.value))
+const shares = computed(() => zoneShares(zoneSec.value, lowBound.value ? total.value : null))
+/** Temps passé sous la zone 1 de la montre (dans aucune zone) ; 0 s'il est négligeable */
+const below = computed(() => {
+  if (!lowBound.value || !zoneSec.value) return 0
+  const rest = Math.round(total.value - zoneSec.value.reduce((a, b) => a + b, 0))
+  return rest >= 30 ? rest : 0
+})
 const maxShare = computed(() => Math.max(...shares.value.map((s) => s.sec), 1))
 
 /* Survol : instant, cardio et zone sous le doigt ou la souris */
@@ -73,7 +88,9 @@ const hover = computed(() => {
   if (at.value === null) return null
   const v = valueAt(props.stream?.t, props.stream?.hr, at.value)
   if (v === null) return null
-  return { x: at.value / total.value, y: yOf(v), v, z: props.maxHr ? zoneOf(v, props.maxHr) : null }
+  // 0 : sous la zone 1 de la montre
+  const z = !floors.value ? null : lowBound.value && v < lowBound.value ? 0 : zoneOf(v, floors.value)
+  return { x: at.value / total.value, y: yOf(v), v, z }
 })
 const label = computed(() => {
   const z = shares.value.filter((s) => s.sec > 0).map((s) => `zone ${s.z} : ${s.pct} %`)
@@ -137,28 +154,27 @@ const label = computed(() => {
           <span v-for="t in ticks" :key="t.t" class="tick" :style="{ left: `${t.x * 100}%` }">{{ t.label }}</span>
         </div>
         <p class="readout" :class="{ on: hover }" aria-hidden="true">
-          <template v-if="hover">{{ clock(at ?? 0) }} ·{{ hover.v }} bpm<template v-if="hover.z"> · zone {{ hover.z }}</template></template>
+          <template v-if="hover">{{ clock(at ?? 0) }} ·{{ hover.v }} bpm<template v-if="hover.z"> · zone {{ hover.z }}</template><template v-else-if="hover.z === 0"> · sous la zone 1</template></template>
           <template v-else>Survole ou touche la courbe pour lire ton cardio.</template>
         </p>
       </figure>
 
-      <ol v-if="maxHr && shares.length" class="zones" aria-label="Temps par zone">
+      <ol v-if="rows.length && shares.length" class="zones" aria-label="Temps par zone">
         <li v-for="s in [...shares].reverse()" :key="s.z" class="zone" :style="{ '--mix': `${BAR_MIX[s.z - 1]}%`, '--w': `${(s.sec / maxShare) * 100}%`, '--k': 5 - s.z }">
           <span class="z-head">
             <span class="z-k">Z{{ s.z }}</span>
-            <span class="z-name">{{ zones[s.z - 1]?.label }}</span>
-            <span class="z-range">{{ zones[s.z - 1]?.from }}–{{ zones[s.z - 1]?.to }}</span>
+            <span class="z-name">{{ rows[s.z - 1]?.label }}</span>
+            <span v-if="rows[s.z - 1]" class="z-range">{{ zoneRange(rows[s.z - 1]!) }}</span>
             <span class="z-val"><span class="num">{{ clock(s.sec) }}</span><span class="z-pct">{{ s.pct }} %</span></span>
           </span>
           <span class="z-track" aria-hidden="true"><span class="z-bar" :class="{ empty: !s.sec }" /></span>
         </li>
       </ol>
 
+      <p v-if="below" class="fine below">{{ clock(below) }} sous ta zone 1 : comme ta montre, l’appli ne les compte dans aucune zone.</p>
+
       <p class="fine maxhr">
-        <template v-if="maxHr">
-          Zones calculées sur une FC max de {{ maxHr }} bpm ({{ maxHrFrom === 'set' ? 'celle que tu as saisie' : 'la plus haute vue sur tes courses' }}).
-        </template>
-        <template v-else>Il faut au moins trois courses avec cardio pour calculer tes zones.</template>
+        {{ zoneNote(zones) }}
         <NuxtLink v-if="settingsTo" :to="settingsTo" class="link">Modifier</NuxtLink>
       </p>
     </template>
@@ -407,6 +423,10 @@ const label = computed(() => {
   from {
     transform: scaleX(0);
   }
+}
+
+.below {
+  margin: 0;
 }
 
 .maxhr {

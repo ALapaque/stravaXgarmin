@@ -56,7 +56,7 @@ Pas de base de données : les connexions Strava, Garmin et IA sont chiffrées da
 | `/progression` | **Progression** : rubriques Régularité (plan suivi sur 8 semaines, semaine par semaine, série en cours, charge et risque de blessure, accès au bilan), Forme (Garmin et objectif ; sans Garmin, estimation du niveau par l'IA), Records (meilleurs temps et compétitions), Matériel (chaussures et usure). |
 | `/bilan` | **Bilan** de la semaine choisie (`?semaine=AAAA-MM-JJ`) ou du mois (`?p=mois`) : chiffres comparés, plan suivi, records, lecture par l'IA, image à partager en story. |
 | `/objectif` | Objectif course : compte à rebours et temps prédit. |
-| `/activites/:id` | Une course : tours (pensée pour le tapis), cardio et zones, prévu contre réalisé, carte si GPS, débrief. |
+| `/activites/:id` | Une course : tours (pensée pour le tapis), cardio par zones (celles de la montre Garmin, sinon du compte Strava, avec le temps par zone compté à la source), prévu contre réalisé, carte si GPS, débrief. |
 | `/activites/:id/debrief` | **Débrief** (écran de concentration, sans barre du bas) : issue, ressenti, note, titre, analyse, publication sur Strava. |
 | `/notifications` | Centre de notifications (la cloche). |
 | `/reglages` | Réglages, par l'avatar : Comptes, Titres et publication, Coureur, Notifications, Apparence, À propos (quoi de neuf, version, quitter la démo). |
@@ -64,7 +64,7 @@ Pas de base de données : les connexions Strava, Garmin et IA sont chiffrées da
 | `/reglages/etat` | État des connexions : ce que l'appli a réussi à lire, et quand. |
 | `/reglages/synchro` | Synchro automatique, « Écraser un nom Strava », convention de titres (automatique, toujours, jamais ; sources ; étiquette d'échec ; exemple en direct), ce que le Débrief publie, accès aux règles de nommage et à l'historique. |
 | `/reglages/nommage` | Modèles de nom par type de séance, pour les noms génériques. |
-| `/reglages/coureur` | FC max (estimée ou saisie) et les cinq zones, objectif, seuil d'usure des chaussures. |
+| `/reglages/coureur` | Les cinq zones cardio (celles de la montre Garmin, du compte Strava, ou calculées sur la FC max), FC max (estimée ou saisie), objectif, seuil d'usure des chaussures. |
 | `/reglages/notifications` | Notifications sur le téléphone et par sorte. |
 | `/reglages/apparence` | Les six thèmes et la personnalisation (couleur, arrondis, police, fond animé). |
 | `/historique` | Tout ce qui a été modifié sur Strava, avec annulation. |
@@ -90,7 +90,7 @@ La logique pure vit dans `shared/utils/` (partagée navigateur et serveur) et a 
 | `today.ts`, `journal.ts` | Carte principale d'Aujourd'hui, « Ta semaine », alertes ; semaines du Journal |
 | `progress.ts` | Plan suivi sur 8 semaines, série en cours, courses par semaine, compétitions |
 | `bilan.ts` | Semaine du bilan, plan suivi de la semaine, ce qui part chez l'IA (chiffres, plan suivi, ressentis sur 10, jamais les notes écrites) |
-| `zones.ts` | Zones cardiaques, FC max estimée |
+| `zones.ts` | Zones cardio : lecture de celles de la montre Garmin et du compte Strava, calcul sur la FC max, choix entre les trois, FC max estimée |
 | `nav.ts` | Anciennes adresses, retour depuis une course |
 | `health.ts` | État des connexions |
 | `demo.ts` | Données de démo, datées par rapport au jour (aucune donnée réelle) |

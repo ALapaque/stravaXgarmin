@@ -1,5 +1,6 @@
 import type { NotifKind } from './useNotifications'
 import { DEFAULT_PARTS, type DebriefParts } from '#shared/utils/debrief'
+import type { ZoneChoice } from '#shared/utils/zones'
 
 export function useSettings() {
   return useState('settings', () => ({
@@ -35,6 +36,8 @@ export function useSettings() {
     shoeLimitKm: 700,
     /** Convention de titres « [SOURCE] - Titre » : auto (détectée dans tes titres Strava), toujours, jamais */
     tags: { mode: 'auto' as 'auto' | 'on' | 'off', fail: 'FAIL', sources: [] as string[] },
+    /** Zones cardio : « auto » (ta montre si Garmin est connecté, sinon Strava), ta montre, Strava, ou calculées sur ta FC max */
+    zoneSource: 'auto' as ZoneChoice,
     /** FC max saisie par toi (prioritaire sur l'estimation) */
     hrMax: null as number | null,
     /** Seules les courses après cette date réclament un débrief (posée à la première ouverture réelle) */
